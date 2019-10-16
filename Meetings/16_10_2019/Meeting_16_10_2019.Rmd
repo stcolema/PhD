@@ -1,0 +1,20 @@
+---
+title: "Meeting 16/10/2019"
+author: "Stephen Coleman"
+date: "16/10/2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Summary
+
+This meeting was more "touch-base" than anything else. The following were discussed:
+
+* Working from elsewhere: use the group calendar.
+* Make a noting system that Chris can find for meetings.
+  + Consider a repo where weekly summaries can also live?
+* Re-stated plan to create summary docs of different integrative clustering methods.
+* Biology lectures.

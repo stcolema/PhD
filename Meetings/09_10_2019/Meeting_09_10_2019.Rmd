@@ -1,0 +1,25 @@
+---
+title: "Meeting 09/10/2019"
+author: "Stephen Coleman"
+date: "16/10/2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Summary
+
+Initial meeting.
+
+* Discussed a loose plan for the first year of the PhD.
+* Signed up for Biology of Disease and planned to look into other courses.
+* Suggested chin-wag with Kath and Camilla and Sylvia and Paul.
+
+## First year plan
+
+1. October - December: Reading of integrative clustering methods. Create summary documents with a mind to the first year report.
+2. January - March: Turn Consensus clustering of MDI into a paper.
+3. April - August: Upgrade and plan year two.
+
