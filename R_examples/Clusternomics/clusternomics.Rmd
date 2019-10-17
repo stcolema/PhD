@@ -90,7 +90,41 @@ $$\{(1, A), (2, A), (3, B)\}$$
 
 In this way the local structure informs the global structure.
 
+The original paper introduces two models that are "asymptotically equivalent". 
+The first is easier to develop an intuition of, but it is the second that is 
+implmented as it is more computationally efficient.
 
+### Notation
+
+Let us denote the number of datasets by $L$ and all observed data by $X$. Let
+
+$$X = (X_1,  \ldots, X_L),$$
+$$X_l = (X_{l1},\ldots,X_{ln})$$
+where $X_l$ is the data of the $lth$ context.
+
+It is assumed that it is the same $n$ individuals in each dataset in the same 
+order. Therefore we have $L$ membership vectors denoting cluster membership:
+
+$$C = (C_1, \ldots, C_L),$$
+$$C_l = (c_{l1},\ldots,c_{ln}).$$
+
+### Intuitive model
+
+The basis of the integrative model is a finite approximation of a Dirichlet 
+process known as a Dirichlet-Multinomial Allocation mixture model 
+[@green2001modelling]. There is a nice explanation of this model in 
+@savage2013identifying.
+
+In this case we model the latent structure in the $lth$ dataset using a mixture 
+of $K_l$ distributions. This means that the full model density is the weighted 
+sum of the probability density functions associated with each distribution where
+the weights, $\pi_{lk}$, are the proportion of the total population assigned to the 
+$kth$ cluster:
+
+$$p(X_{li}| c_{li} = k) = \pi_{lk} f(X_{li} | \theta_{lk}),$$
+$$p(X_{li}) = \sum_{k=1}^{K_l} \pi_{lk} f(X_{li} | \theta_{lk}).$$
+Here $K_l$ is the total number of clusters present and $\theta_{lk}$ are the 
+parameters defining the $kth$ distribution in the $lth$ dataset.
 
 
 # References
