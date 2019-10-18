@@ -108,7 +108,7 @@ order. Therefore we have $L$ membership vectors denoting cluster membership:
 $$C = (C_1, \ldots, C_L),$$
 $$C_l = (c_{l1},\ldots,c_{ln}).$$
 
-### Intuitive model
+### Basic model
 
 The basis of the integrative model is a finite approximation of a Dirichlet 
 process known as a Dirichlet-Multinomial Allocation mixture model 
@@ -116,15 +116,92 @@ process known as a Dirichlet-Multinomial Allocation mixture model
 @savage2013identifying.
 
 In this case we model the latent structure in the $lth$ dataset using a mixture 
-of $K_l$ distributions. This means that the full model density is the weighted 
-sum of the probability density functions associated with each distribution where
+of $K_l$ components. This means that the full model density is the weighted 
+sum of the probability density functions associated with each component where
 the weights, $\pi_{lk}$, are the proportion of the total population assigned to the 
-$kth$ cluster:
+$kth$ components:
 
 $$p(X_{li}| c_{li} = k) = \pi_{lk} f(X_{li} | \theta_{lk}),$$
-$$p(X_{li}) = \sum_{k=1}^{K_l} \pi_{lk} f(X_{li} | \theta_{lk}).$$
+$$p(X_{li}) = \sum_{k=1}^{K_l} \pi_{lk} f_l(X_{li} | \theta_{lk}).$$
 Here $K_l$ is the total number of clusters present and $\theta_{lk}$ are the 
 parameters defining the $kth$ distribution in the $lth$ dataset.
 
+The weights, $\pi_l = (\pi_{l1},\ldots,\pi_{lK_l})$, follow a Dirichlet 
+distribution with concentration parameter $\alpha_0$.
+
+The distributions in the mixture model for each dataset are:
+
+\[
+\begin{aligned}
+\pi_l &\sim \textrm{Dirichlet}\left(\frac{\alpha_0}{K_l},\ldots,\frac{\alpha_0}{K_l}\right) \\
+c_{li} &\sim \textrm{Categorical}(\pi_l) \\
+\theta_{lk} &\sim h_l \\
+X_{li} | c_{ln} = k &\sim f_l(X_{li} | \theta_{lk})
+\end{aligned}
+\]
+
+
+where $H_l$ is some prior distribution for parameteters for each mixture
+component; $F_l$ is a probability distribution for samples given the parameters
+$\theta_{lk}$. Note that each context may have different distributions and
+hyperparameters.
+
+### First formulation: the intuitive model
+
+For ease of understanding, let $L=2$. Then each context has its own mixture 
+weights with symmetric Dirichlet priors:
+
+\[
+\begin{aligned}
+\pi_1 &\sim \textrm{Dirichlet}\left(\frac{\alpha_1}{K_1},\ldots,\frac{\alpha_1}{K_1}\right) \\
+\pi_2 &\sim \textrm{Dirichlet}\left(\frac{\alpha_2}{K_2},\ldots,\frac{\alpha_2}{K_2}\right)
+\end{aligned}
+\]
+
+
+These weights form the basis of the local clustering within each dataset. A 
+third mixure distribution is used to link the two local clusters. This has a 
+Dirichlet prior over the global mixture weights, $\rho$, which is defined over 
+the outer product of the local weights:
+
+
+\[
+\rho \sim \textrm{Dirichlet}\left(\gamma \textrm{ vec}(\pi_1 \otimes \pi_2)\right).
+\]
+
+The outer product is defined:
+
+\[
+\begin{aligned}
+\pi_1 \otimes \pi_2 &= \pi_1 \pi_2^T \\
+  &= \begin{pmatrix}
+  \pi_{11}\pi_{21} & \pi_{11}\pi_{22} & \cdots & \pi_{11}\pi_{2K_2} \\
+  \pi_{12}\pi_{21} & \pi_{12}\pi_{22} & \cdots & \pi_{12}\pi_{2K_2} \\
+  \vdots & \vdots & \ddots & \vdots \\
+  \pi_{1K_1}\pi_{21} & \pi_{1K_1}\pi_{22} & \cdots & \pi_{1K_1}\pi_{2K_2} \\
+  \end{pmatrix}
+\end{aligned}
+\]
+
+Then the vector function takes the column vectors of the matrix and places them 
+in one vector:
+
+\[
+\mathrm{vec}(\pi_1 \otimes \pi_2) = \begin{pmatrix}
+  \pi_{11}\pi_{21} \\
+  \vdots \\
+  \pi_{1K_1}\pi_{21}\\
+  \pi_{11}\pi_{22} \\
+  \vdots \\
+  \pi_{1K_1}\pi_{22} \\
+  \pi_{11}\pi_{23} \\
+  \vdots \\
+  \pi_{1K_1}\pi_{2K_2}
+\end{pmatrix}
+\]
+
+This is the basis for the non-symmetric concentration parametera of the 
+Dirichlet distribution over the global mixture weights, $\rho$. 
 
 # References
+
