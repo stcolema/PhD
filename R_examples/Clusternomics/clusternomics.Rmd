@@ -136,7 +136,7 @@ The distributions in the mixture model for each dataset are:
 \pi_l &\sim \textrm{Dirichlet}\left(\frac{\alpha_0}{K_l},\ldots,\frac{\alpha_0}{K_l}\right) \\
 c_{li} &\sim \textrm{Categorical}(\pi_l) \\
 \theta_{lk} &\sim h_l \\
-X_{li} | c_{ln} = k &\sim f_l(X_{li} | \theta_{lk})
+X_{li} | c_{li} = k &\sim f_l(X_{li} | \theta_{lk})
 \end{aligned}
 \]
 
@@ -200,8 +200,103 @@ in one vector:
 \end{pmatrix}
 \]
 
-This is the basis for the non-symmetric concentration parametera of the 
+This is the basis for the non-symmetric concentration parameter of the 
 Dirichlet distribution over the global mixture weights, $\rho$. 
+
+A global membership variable, $c$, is drawn from a Catgeorical distribution with
+concentration parameter $\rho$:
+
+\[
+\begin{aligned}
+c_i &= (c_{1i}, c_{2i}) \\
+c &\sim \textrm{Categorical}(\rho) \\
+X_{li} | c_{li} = k &\sim f_l(X_{li} | \theta_{lk}), l \in \{1, 2\}
+\end{aligned}
+\]
+
+In this way the local clusters, $c_{li}$, in the $lth$ context are projections 
+of the global clustering, $c_i$, onto this space.
+
+The model achieves the property that the local assignment should affect the 
+global assignment posterior probability. This can be seen as local assignments 
+affect the posterior probability of the context-specific weights, $\pi_l$, which
+in turn define the probabilities of the global combinatorial clusters through 
+the hierarchical model (a change in the membership of the $kth$ component in the
+$lth$ dataset affects an entire slice of column vectors in the tensors defining 
+the concentration parameter for the global component weights, $\rho$).
+
+The model also represents different degrees of dependence by allowing any combination of cluster assignments across contexts. When there is a single common cluster structure across the two contexts, the occupied clusters will be concentrated along the diagonal of the probability matrix of $\rho$.
+
+When $L > 2$ then the outer product of the local componenet weights generalises 
+to a tensor product. In this case the hierarchical model is given by:
+
+\[
+\begin{aligned}
+\pi_l | \alpha_0 &\sim \textrm{Dirichlet}\left(\frac{\alpha_0}{K_l},\ldots,\frac{\alpha_0}{K_l}\right) \\
+\rho | \gamma, \{\pi_1\, \ldots, \pi_L\} & \sim \textrm{Dirichlet}\left(\gamma \left\{\bigotimes_{l=1}^L \pi_l \right\} \right)  \\
+c_i | \rho &\sim \textrm{Categorical}(\rho), c_i = \left(c_{1i},\ldots,c_{Li}\right)\\
+\theta_{lk} &\sim h_l \\
+X_{li} | c_{li} = k &\sim f_l(X_{li} | \theta_{lk})
+\end{aligned}
+\]
+
+The model for $L$ contexts has a scaling issue as each additional dataset brings
+an additional layer of calculations in the probability tensor. The second model 
+is designed to reduce this cost by avoiding calculations for uninhabited 
+components.
+
+### Second formulation: the quick model
+
+This model attempts to reduce the number of combinations required. This requires
+decoupling the number of local clusters and the number of global clusters. A 
+mixture over $S$ global clusters is defined:
+
+\[
+\begin{aligned}
+\rho | \gamma_0 & \sim \textrm{Dirichlet}\left(\frac{\gamma_0}{S}, \ldots, \frac{\gamma_0}{S} \right) \\
+c_i | \rho &\sim \textrm{Categorical}(\rho)
+\end{aligned}
+\]
+
+where $\rho$ is the global mixture weights and $c_i$ is the components 
+assignment indivator variable as before. A variable $z_{ls}$ is then defined 
+that associates the $sth$ global cluster with context specific clusters:
+
+\[
+\begin{aligned}
+\pi_l | \alpha_0 & \sim \textrm{Dirichlet}\left(\frac{\alpha_0}{K_l},\ldots,\frac{\alpha_0}{K_l}\right), \\
+z_{ls} | \pi_l & \sim \textrm{Categorical}(\pi_l).
+\end{aligned}
+\]
+
+Here $z_{ls} \in \{1, \ldots, K_l\}$ assignes the $sth$ global cluster to the a 
+specific local cluster in the $lth$ dataset. One may consider $(z_{sl})_{s=1}^S$ 
+as the coordinates of the global clusters in the $lth$ dataset. This link 
+means that the $c_i$ maps a point to a global cluster as well as the local 
+clusters.
+
+In the previous model the mapping of global clusters to local clusters was
+implicit, because each combination of context clusters mapped to a unique 
+global cluster. In this model, the mapping is probabilistic and forms a part of
+the model. One may now state $S$, the number of global components, and thus 
+limit the number of computations required in contrast to the preceding model.
+
+This hierarchial model is defined by:
+
+\[
+\begin{aligned}
+\rho | \gamma_0 & \sim \textrm{Dirichlet}\left(\frac{\gamma_0}{S},\ldots,\frac{\gamma_0}{S}\right), \\
+c_i | \rho & \sim \textrm{Categorical}(\rho), \\
+\pi_l | \alpha_0 & \sim \textrm{Dirichlet}\left(\frac{\alpha_0}{K_l},\ldots,\frac{\alpha_0}{K_l}\right), \\
+z_{ls} | \pi_l & \sim \textrm{Categorical}(\pi_l) \\
+\theta_{kl} | h_l & \sim h_l \\
+X_{li} | c_i, (z_{sl})_{s=1}^S, (\theta_{lk})_{k=1}^K &\sim f_l(X_{li} | \theta_{lk_{c_i}})
+\end{aligned}
+\]
+
+## Inference
+The quick, decoupled model is implemented in the R package `clusternomics` and uses Gibbs sampling as the inference algorithm.
+
 
 # References
 
