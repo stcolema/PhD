@@ -159,7 +159,7 @@ eigen-features k (number of clusters is k+1) and the values of parameter set
 lambda (which determines sparsity). Normally, we have to optimize k and lambda
 through model tuning which we discuss in the next section.
 
-```{r iClusterPlus_call}
+```{r iClusterPlus_call, eval = F}
 n_clusters <- 3
 n_iter <- 10
 data_types <- c("binomial", "gaussian", "gaussian")
@@ -203,7 +203,7 @@ result, either $k=2$ can be chosen as the best $k$ based on the percentage of
 explained variation. For general practice, set `n.lambda=NULL` to use the 
 default value.
 
-```{r model_tuning}
+```{r model_tuning, eval = F}
 
 # This is slow. Setting to not evaluate in Markdown.
 
@@ -246,7 +246,7 @@ This ratio can be interpreted as the percentage of explained variation. Using a
 plot of the deviance ratio a function of $k$, the value of $k$ for which the 
 deviance ratio levels off is selected.
 
-```{r optimise_k}
+```{r optimise_k, eval = F}
 output <- alist()
 files <- grep("cv.fit", dir())
 for (i in 1:length(files)) {
@@ -262,7 +262,7 @@ devR <- getDevR(output)
 From this one obtains the ID for the lambda vector at which the BIC is minimised.
 Then we obtain the corresponding deviance ratio.
 
-```{r min_bic_dev}
+```{r min_bic_dev, eval = F}
 minBICid <- apply(BIC, 2, which.min)
 devRatMinBIC <- rep(NA, nK)
 for (i in 1:K) {
@@ -272,7 +272,7 @@ for (i in 1:K) {
 
 We plot the deviance ratio as a function of the number of clusters ($k+1$).
 
-```{r plot_k_scree}
+```{r plot_k_scree, eval = F}
 plot(1:(K + 1),
   c(0, devRatMinBIC),
   type = "b",
@@ -283,7 +283,7 @@ plot(1:(K + 1),
 
 From this an optimal value of $k=2$ (i.e. $n_{clusters}=3$) is selected.
 
-```{r get_clusters}
+```{r get_clusters, eval = F}
 clusters <- getClusters(output)
 rownames(clusters) <- rownames(gbm.exp)
 colnames(clusters) <- paste("K=", 2:(length(output) + 1), sep = "")
