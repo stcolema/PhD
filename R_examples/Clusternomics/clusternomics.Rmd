@@ -21,7 +21,6 @@ shown below for two 1D datasets.
 ```{r motivating_example}
 library(ggplot2) # ubiquitous
 library(ggExtra) # for ggMarginal
-library
 
 # Personal preference
 theme_set(theme_bw())
