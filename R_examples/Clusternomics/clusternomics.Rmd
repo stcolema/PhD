@@ -578,5 +578,82 @@ ggplot(aris, aes(x = Iteration, y = ARI, colour = "MCMC iterations")) +
   scale_colour_discrete(name = "Cluster assignments")
 ```
 
+Now we include an example with real data. There's some issues in the `clusternomics` R package that cause surprising errors.
+
+```{r clusternomics_tgca_breast}
+breast_dir <- "./TGCA_data/Breast/"
+
+# The different contexts
+context_1_file_name <- "context1_GE.csv"
+context_2_file_name <- "context2_Meth.csv"
+context_3_file_name <- "context3_miRNA.csv"
+context_4_file_name <- "context4_Protein.csv"
+context_filenames <- c(
+  context_1_file_name,
+  context_2_file_name,
+  context_3_file_name,
+  context_4_file_name
+)
+
+# Read in these files
+contexts <- paste0(breast_dir, context_filenames)
+context_data <- lapply(contexts, read.csv, row.names = 1)
+
+# The data has to be transposed for the algorithm (then common number of rows)
+matrix_context_data <- lapply(context_data, as.matrix) %>% lapply(., t)
+
+# Paramters of our gibbs sampling ({1000, 500, 25} breaks this for some reason)
+n_iter <- 100
+burn <- 50
+thin <- 5
+
+# There's what I asusme is a mistake in contextCluster where the length of the
+# cluster limits is compared to the number of contexts, not the length of the
+# $context component of this object. Hence the pointless additions.
+breast_cluster_limits <- list("global" = 30, "context" = c(20, 20, 20, 20), "a" = 1, "b" = 2)
+
+breast_results <- clusternomics::contextCluster(matrix_context_data,
+  breast_cluster_limits,
+  maxIter = n_iter,
+  burnin = burn,
+  lag = thin,
+  dataDistributions = "diagNormal",
+  verbose = F
+)
+
+# Extract resulting cluster assignments
+breast_samples <- breast_results$samples
+
+# Extract global cluster assignments for each MCMC sample
+breast_clusters <- laply(1:length(breast_samples), function(i) breast_samples[[i]]$Global)
+
+breast_cc <- numberOfClusters(breast_clusters)
+qplot(seq(from = burn, to = n_iter, by = thin), breast_cc) +
+  geom_line() +
+  xlab("MCMC iterations") +
+  ylab("Number of clusters")
+
+breast_clusterLabels <- unique(breast_clusters %>% as.vector())
+breast_sizes <- matrix(nrow = nrow(breast_clusters), ncol = length(breast_clusterLabels))
+for (ci in 1:length(breast_clusterLabels)) {
+  breast_sizes[, ci] <- rowSums(breast_clusters == breast_clusterLabels[ci])
+}
+
+boxplot(breast_sizes, xlab = "Global combined clusters", ylab = "Cluster size")
+
+# Compute the co-clustering matrix from global cluster assignments
+breast_coclust <- coclusteringMatrix(breast_clusters)
+
+# Plot the co-clustering matrix as a heatmap
+breast_h <- heatmap.2(
+  breast_coclust,
+  col = mypalette, trace = "none",
+  dendrogram = "row", labRow = "", labCol = "", key = TRUE,
+  keysize = 1.5, density.info = c("none"),
+  main = "MCMC co-clustering matrix",
+  scale = "none"
+)
+```
+
 # References
 
