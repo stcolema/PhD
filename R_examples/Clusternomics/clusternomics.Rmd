@@ -603,14 +603,15 @@ context_data <- lapply(contexts, read.csv, row.names = 1)
 matrix_context_data <- lapply(context_data, as.matrix) %>% lapply(., t)
 
 # Paramters of our gibbs sampling ({1000, 500, 25} breaks this for some reason)
-n_iter <- 100
-burn <- 50
-thin <- 5
+# This is far too few iterations by the way.
+n_iter <- 5000
+burn <- 3000
+thin <- 50
 
 # There's what I asusme is a mistake in contextCluster where the length of the
 # cluster limits is compared to the number of contexts, not the length of the
 # $context component of this object. Hence the pointless additions.
-breast_cluster_limits <- list("global" = 30, "context" = c(20, 20, 20, 20), "a" = 1, "b" = 2)
+breast_cluster_limits <- list("global" = 50, "context" = c(35, 35, 35, 35), "a" = 1, "b" = 2)
 
 breast_results <- clusternomics::contextCluster(matrix_context_data,
   breast_cluster_limits,
