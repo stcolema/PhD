@@ -10,12 +10,29 @@ bibliography: bcc.bib
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
+## Notation
+
+\[
+\begin{aligned}
+n & & \textrm{ The number of samples in the data.} \\
+p & & \textrm{ The number of measurements for each sample.} \\
+L & & \textrm{ The number of datasets present.} \\
+K_l & & \textrm{ The number of components present in the $lth$ dataset.} \\
+x &= (x_1, \ldots,x_l) & \textrm{ The datasets. } \\
+x_l &= (x_{l1}, \ldots, x_{ln}) & \textrm{ The observed data for the $lth$ dataset.} \\
+c &= (c_1, \ldots, c_L) & \textrm{ The membership vectors for each dataset (our latent variable).} \\
+c_l &= (c_{l1}, \ldots, c_{ln}) & \textrm{ The context-specific component membership.} \\
+C &= (C_1, \ldots, C_n) & \textrm{ The global allocation vector.} \\
+\pi_l &= (\pi_{l1,}\ldots, \pi_{lK_l}) & \textrm{ The mixture weights in the $lth$ context.}
+\end{aligned}
+\]
+
 ## Intro
 
 ### Dirichlet-Multinomial Allocation mixture model
 
 This model [@lock2013bayesian] is based upon a finite approximation of the 
-Dirichlet process known as the Dirichlet-Multinomial Allocation mixture model 
+Dirichlet process known as the Dirichlet-Multinomial Allocation (DMA) mixture model 
 [@green2001modelling], as is Clusternomics [@gabasova2017clusternomics] and 
 Multiple Dataset Integration [@kirk2012bayesian].
 
@@ -33,7 +50,7 @@ problem being that the number of clusters allowed in the result is arbitrary.
 Another common problem is that some of the methods are not model based which
 gives an ad-hoc nature to the paritioning. A method that does not suffer from 
 these problems is the Dirichlet process. A tractable approximation of this
-is the Dirichlet-Multinomial Allocation mixture model which is a common choice 
+is the DMA mixture model which is a common choice 
 in the Bayesian-model based clustering. In this case we model each 
 sub-population by an individual distribution. We also allow the number of
 clusters present to be inferred from the data, thus avoiding a heuristic or 
@@ -60,7 +77,7 @@ p(x_i) = \sum_{k=1}^K\pi_k f(x_1 | \theta_k)
 Note that while there are component-specific parameters, the density function 
 used, $f(\cdot)$, is common across all components.
 
-In the Dirichlet-Multinomial Allocation mixture model, the mixture weights are 
+In the DMA mixture model, the mixture weights are 
 given a Dirichlet prior, normally with a symmetric concentration parameter. The 
 allocation variable is then sampled from a Cateogrical distrbution defined by 
 the component weights. The component parameters are then updated based upon the 
@@ -84,5 +101,21 @@ occupied (i.e. in our $c$ vector we have 30 unique labels). One must use a
 higher $K$ then this; if we try again with $K=50$ and $c$ contains 40 unique 
 values than the number of clusters is learnt from the data and not an arbitrary 
 choice of the user.
+
+# Integrative model
+
+Bayesian Consensus Clustering [@lock2013bayesian] is extension of the DMA 
+mixture model. Consider the case of $L$ datasets. In this case there are 
+context-specific models similar to that described above with a common number of 
+components, $K$, in each model. There is then an additional *global clustering*,
+$C=(C_1, \ldots, C_N)$, where $C_i \in \{1, \ldots, K\} \forall i \in [1, N]$.
+In this model it is the local allocations that are dependent upon the global 
+membership. For the $lth$ context, given the global clustering $C$, the context-
+specific concentration parameter, $\alpha_l$:
+
+\[
+P(c_{li} = k | C_i) = \nu(k, C_i, \alpha_l)
+\]
+
 
 ## References
