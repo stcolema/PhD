@@ -88,8 +88,6 @@ take the form:
 
 $$\{(1, A), (2, A), (3, B)\}$$
 
-In this way the local structure informs the global structure.
-
 The original paper introduces two models that are "asymptotically equivalent". 
 The first is easier to develop an intuition of, but it is the second that is 
 implmented as it is more computationally efficient.
@@ -295,7 +293,8 @@ X_{li} | c_i, (z_{sl})_{s=1}^S, (\theta_{lk})_{k=1}^K &\sim f_l(X_{li} | \theta_
 \]
 
 ## Inference
-The quick, decoupled model is implemented in the R package `clusternomics` and uses Gibbs sampling as the inference algorithm.
+The quick, decoupled model is implemented in the R package `clusternomics` and 
+uses Gibbs sampling as the inference algorithm.
 
 # R package
 
@@ -325,8 +324,8 @@ First, define two local clusters in each of two contexts:
 
 \[
 \begin{aligned}
-\textrm{Cluster 1: } x & \sim \mathcal{N}\left(\begin{pmatrix} -1.5 \\ -1.5 \end{pmatrix}, \begin{pmatrix} 1 \\ 1 \end{pmatrix} \right) \\
-\textrm{Cluster 2: } x & \sim \mathcal{N}\left(\begin{pmatrix} 1.5 \\ 1.5 \end{pmatrix}, \begin{pmatrix} 1 \\ 1 \end{pmatrix} \right)
+\textrm{Cluster 1: } x & \sim \mathcal{N}\left(\begin{pmatrix} -1.5 \\ -1.5 \end{pmatrix}, \begin{pmatrix} 1 & 0 \\ 0 & 1 \end{pmatrix} \right) \\
+\textrm{Cluster 2: } x & \sim \mathcal{N}\left(\begin{pmatrix} 1.5 \\ 1.5 \end{pmatrix}, \begin{pmatrix} 1 & 0 \\ 0 & 1 \end{pmatrix} \right)
 \end{aligned}
 \]
 

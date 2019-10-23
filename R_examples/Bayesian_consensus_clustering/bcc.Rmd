@@ -19,20 +19,20 @@ Dirichlet process known as the Dirichlet-Multinomial Allocation mixture model
 [@green2001modelling], as is Clusternomics [@gabasova2017clusternomics] and 
 Multiple Dataset Integration [@kirk2012bayesian].
 
-Consider a dataset of $N$ samples, $X = (x_1,\ldots,x_N)$ where each sample is 
-itself a $p$-vector of measurements fro some $p \in \mathbb{N}$. We are 
+Consider a dataset of $N$ samples, $x = (x_1,\ldots,x_N)$ where each sample is 
+itself a $p$-vector of measurements for some $p \in \mathbb{N}$. We are 
 interested in uncovering structure in the data. To do this we associate each 
-sample, $X_i$, with a *cluster*. In this way we move from a $p$-dimensional 
-space to a 1-dimensional space. We want to understand if there are 
-sub-populations in our sample that are responsible for heterogeneity. By 
-partitioning the data into clusters we hope to have some insight into this 
-underlying structure and improve our understanding of, and, as a result of this,
-our ability to interpret the data. There are a myriad of ways to uncover such 
+sample, $x_i$, with a *cluster*.This moves us from a $p$-dimensional 
+space to a 1-dimensional space based upon similarity of samples which enables 
+interpretation. We want to understand if there are sub-populations in our sample
+that are responsible for heterogeneity. By partitioning the data into clusters 
+we hope to have some insight into this underlying structure and improve our 
+understanding of the data. There are a myriad of ways to uncover such 
 partitions. Some methods have more obvious disadvantages than others, a common 
-problem being that the number of clusters allowed in the follow result is 
-somewhat arbitrary. Another common problem is that some of the methods are not 
-model based which gives a somewhat ad-hoc nature. A method that does not suffer 
-from these problems is the Dirichlet process. A tractable approximation of this
+problem being that the number of clusters allowed in the result is arbitrary. 
+Another common problem is that some of the methods are not model based which
+gives an ad-hoc nature to the paritioning. A method that does not suffer from 
+these problems is the Dirichlet process. A tractable approximation of this
 is the Dirichlet-Multinomial Allocation mixture model which is a common choice 
 in the Bayesian-model based clustering. In this case we model each 
 sub-population by an individual distribution. We also allow the number of
@@ -74,6 +74,15 @@ c_i &\sim \textrm{Categorical}(\pi), \\
 x_i | c_i = k &\sim f(x_i | \theta_k).
 \end{aligned}
 \]
-Here $h(\cdot)$ is some distribution, often with additional hyperparameters.
+Here $h(\cdot)$ is some distribution, often with additional hyperparameters. If 
+one let's $K \to \infty$ then this model becomes a Dirichlet process. To 
+approximate this $K$ is set to an arbitrarily large number. In this scenario one
+must have chosen a $K$ sufficiently large that there are empty clusters for the 
+model to be a true approximation of the Dirichlet process. For example, say we 
+set $K=30$ in our initialisation, and that in the output 30 clusters are 
+occupied (i.e. in our $c$ vector we have 30 unique labels). One must use a 
+higher $K$ then this; if we try again with $K=50$ and $c$ contains 40 unique 
+values than the number of clusters is learnt from the data and not an arbitrary 
+choice of the user.
 
 ## References
