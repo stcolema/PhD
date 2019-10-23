@@ -1,0 +1,17 @@
+---
+title: "Meeting 23/10/2019"
+author: "Stephen Coleman"
+date: "10/23/2019"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Summary
+
+* Discussed the Clusternomics model and specifically the problems with the R package.
+  * Recommended to ask Paul if model is woth the time to fix code (in his opinion);
+  * If so, try looking at an older release and checking the results of the tutorial with this.
+* Plan is to produce a markdown of Bayesian Consensus Clustering (and then iCluster).
