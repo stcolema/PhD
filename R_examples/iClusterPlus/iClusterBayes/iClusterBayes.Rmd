@@ -57,30 +57,29 @@ X = LF + \epsilon.
 \]
 
 Here the loadings matrix, $L$, is a $p \times (K + 1)$ matrix and the factors, $F$, are encoded in a $(K + 1) \times N$ matrix. 
+\[
+L = \begin{bmatrix}
+  l_{10} & l_{11} & \cdots & l_{1K} \\
+  \vdots & \vdots & \ddots & \vdots \\
+  l_{p0} & l_{p1} & \cdots & l_{pK}
+\end{bmatrix}
+\]
+\[
+F = \begin{bmatrix}
+  1      & 1      & \cdots & 1      \\
+  z_{11} & z_{12} & \cdots & z_{1N} \\
+  \vdots & \vdots & \ddots & \vdots \\
+  z_{K1} & z_{K2} & \cdots & z_{KN}
+\end{bmatrix}
+\]
+iCluster aims to reduce the dimensionality of the problem. They change the framing of the problem. Consider a single row of $X$, associated with the $jth$ feature (for example a gene) and denote this $X_j$. Similarly let $L_j$ be the row of the loadings matrix associated with the $jth$ feature. Now let us say:
 
 \[
-\begin{aligned}
-L &= \begin{bmatrix}
-  l_{01} & l_{11} & \cdots & l_{K1} \\
-  \vdots & \vdots & \ddots & \vdots \\
-  l_{0p} & l_{1p} & \cdots & l_{Kp}
-\end{bmatrix} \\
-
-F &= \begin{bmatrix}
-  1 & z_{11} & \cdots & z_{1K} \\
-  \vdots & \vdots & \ddots & \vdots \\
-  1 & z_{N1} & \cdots & z_{NK}
-\end{bmatrix}
-\end{aligned}
+X_j^T = F^T L_j^T + \epsilon
 \]
 
-iCluster aims to reduce the dimensionality of the problem. To do this an additional matrix, $\Gamma$ is included. $\Gamma$ has the form $diag(1, \gamma_j, \ldots, \gamma_j)$. The inclusion of a constant 1 in both $\Gamma$ and $F$ allows an intercept value of $l_{01}$. $\gamma_j$ 
+Then inclusion of a specific $(K + 1) \times (K + 1)$ sparsity inducing matrix, $\Gamma_j$, which has the form $diag(1, \gamma_j, \ldots, \gamma_j)$. The inclusion of a constant 1 in both $\Gamma$ and $F$ allows an intercept value of $l_{j0}$.
 
-<!-- \[ -->
-<!-- X_l = \Gamma_l \beta_l Z + \epsilon  -->
-<!-- %x_{lij} = z_i \Gamma_{lj} \beta_{lj} + \epsilon_{lij} -->
-<!-- \] -->
-
-Where $Z$ is the factors matrix, and 
+To do this an additional matrix, $\Gamma$ is included. $\Gamma$ has the form $diag(1, \gamma_j, \ldots, \gamma_j)$. The inclusion of a constant 1 in both $\Gamma$ and $F$ allows an intercept value of $l_{10}$.
 
 ## References
