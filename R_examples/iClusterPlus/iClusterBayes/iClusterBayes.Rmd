@@ -1,0 +1,86 @@
+---
+title: "iCluster Bayes"
+author: "Stephen Coleman"
+date: "24/10/2019"
+output: pdf_document
+bibliography: iCluster.bib
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Notation
+
+\[
+\begin{aligned}
+N & & \textrm{The number of samples in the data.} \\
+L & & \textrm{The number of datasets present.} \\
+p_l & & \textrm{The number of measurements for each sample in the $lth$ dataset.} \\
+K_l & & \textrm{The number of components present in the $lth$ dataset.} \\
+X &= (X_1, \ldots, X_l) & \textrm{The datasets.} \\
+X_l &= (X_{l1}, \ldots, X_{lN}) & \textrm{The observed data for the $lth$ dataset.} \\
+c &= (c_1, \ldots, c_L) & \textrm{ The membership vectors for each dataset (our latent variable).} \\
+c_l &= (c_{l1}, \ldots, c_{lN}) & \textrm{The context-specific component membership.} \\
+C &= (C_1, \ldots, C_N) & \textrm{The global allocation vector.} \\
+\pi_l &= (\pi_{l1,}\ldots, \pi_{lK_l}) & \textrm{The mixture weights in the $lth$ context.}
+\end{aligned}
+\]
+
+If $K_1 = \ldots = K_L$ then we use $K$ as the number of components in each 
+context. We treat $p_l$ in the same way. I denote abbreviations or terms that 
+will be used in place of another in the format "[Full name] ([name hereafter])".
+
+
+## Intro
+
+The Bayesian latent variable model (iCluster Bayes) proposed by @mo2017fully is 
+an extension of the Gaussian latent variable model proposed by
+@shen2009integrative. This model has already been extended to incorporate 
+feature selection [@shen2013sparse]. This model maps from the data, $X$, to a 
+low dimensional subspace, $Z$. This is map from the $L$ high dimensional spaces
+to a single $N \times K$ space, where the $ith$ sample has an associated vector 
+of values $z_i = (z_{i1}, \ldots, z_{iK}) \forall i \in [1, N]$. $z_i$ is a 
+continuous variable and $z_i \sim \textbf{MVN}(\mathbf{0}, \mathbf{I}_K)$. In other 
+models the data is mapped to a $N \times K$ space of probabilities before being 
+assigned to specific clusters. This space, $Z$, does not consist of 
+probabilities. The model then uses $k$-means clustering on this space where 
+$k=K+1$.
+
+
+# Model
+
+The model is based upon factor analysis. COnsider the single dataset case initially and let $X$ be in the form of [$measurements \times samples$], thus it is a $p \times N$ matrix. Then we model this using a factor analysis:
+
+\[
+X = LF + \epsilon.
+\]
+
+Here the loadings matrix, $L$, is a $p \times (K + 1)$ matrix and the factors, $F$, are encoded in a $(K + 1) \times N$ matrix. 
+
+\[
+\begin{aligned}
+L &= \begin{bmatrix}
+  l_{01} & l_{11} & \cdots & l_{K1} \\
+  \vdots & \vdots & \ddots & \vdots \\
+  l_{0p} & l_{1p} & \cdots & l_{Kp}
+\end{bmatrix} \\
+
+F &= \begin{bmatrix}
+  1 & z_{11} & \cdots & z_{1K} \\
+  \vdots & \vdots & \ddots & \vdots \\
+  1 & z_{N1} & \cdots & z_{NK}
+\end{bmatrix}
+\end{aligned}
+\]
+
+iCluster aims to reduce the dimensionality of the problem. To do this an additional matrix, $\Gamma$ is included. $\Gamma$ has the form $diag(1, \gamma_j, \ldots, \gamma_j)$. The inclusion of a constant 1 in both $\Gamma$ and $F$ allows an intercept value of $l_{01}$. $\gamma_j$ 
+
+<!-- \[ -->
+<!-- X_l = \Gamma_l \beta_l Z + \epsilon  -->
+<!-- %x_{lij} = z_i \Gamma_{lj} \beta_{lj} + \epsilon_{lij} -->
+<!-- \] -->
+
+Where $Z$ is the factors matrix, and 
+
+## References
