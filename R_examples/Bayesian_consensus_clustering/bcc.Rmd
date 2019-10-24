@@ -14,27 +14,31 @@ knitr::opts_chunk$set(echo = TRUE)
 
 \[
 \begin{aligned}
-n & & \textrm{ The number of samples in the data.} \\
-p & & \textrm{ The number of measurements for each sample.} \\
-L & & \textrm{ The number of datasets present.} \\
-K_l & & \textrm{ The number of components present in the $lth$ dataset.} \\
-x &= (x_1, \ldots,x_l) & \textrm{ The datasets. } \\
-x_l &= (x_{l1}, \ldots, x_{ln}) & \textrm{ The observed data for the $lth$ dataset.} \\
+N & & \textrm{The number of samples in the data.} \\
+L & & \textrm{The number of datasets present.} \\
+p_l & & \textrm{The number of measurements for each sample in the $lth$ dataset.} \\
+K_l & & \textrm{The number of components present in the $lth$ dataset.} \\
+x &= (x_1, \ldots,x_l) & \textrm{The datasets.} \\
+x_l &= (x_{l1}, \ldots, x_{lN}) & \textrm{The observed data for the $lth$ dataset.} \\
 c &= (c_1, \ldots, c_L) & \textrm{ The membership vectors for each dataset (our latent variable).} \\
-c_l &= (c_{l1}, \ldots, c_{ln}) & \textrm{ The context-specific component membership.} \\
-C &= (C_1, \ldots, C_n) & \textrm{ The global allocation vector.} \\
-\pi_l &= (\pi_{l1,}\ldots, \pi_{lK_l}) & \textrm{ The mixture weights in the $lth$ context.}
+c_l &= (c_{l1}, \ldots, c_{lN}) & \textrm{The context-specific component membership.} \\
+C &= (C_1, \ldots, C_N) & \textrm{The global allocation vector.} \\
+\pi_l &= (\pi_{l1,}\ldots, \pi_{lK_l}) & \textrm{The mixture weights in the $lth$ context.} \\
+\Pi &= (\Pi_1, \ldots, \Pi_K) & \textrm{The mixutre weights for the global components.}
 \end{aligned}
 \]
 
-## Intro
+If $K_1 = \ldots = K_L$ then we use $K$ as the number of components in each 
+context. We treat $p_l$ in the same way. I denote abbreviations or terms that 
+will be used in place of another in the format "[Full name] ([name hereafter])".
 
-### Dirichlet-Multinomial Allocation mixture model
+# Dirichlet-Multinomial Allocation mixture model
 
-This model [@lock2013bayesian] is based upon a finite approximation of the 
-Dirichlet process known as the Dirichlet-Multinomial Allocation (DMA) mixture model 
-[@green2001modelling], as is Clusternomics [@gabasova2017clusternomics] and 
-Multiple Dataset Integration [@kirk2012bayesian].
+Bayesian Consensus Clustering (BCC) [@lock2013bayesian] is
+based upon a finite approximation of the Dirichlet process known as the 
+Dirichlet-Multinomial Allocation (DMA) mixture model [@green2001modelling], as
+is Clusternomics [@gabasova2017clusternomics] and Multiple Dataset Integration 
+[@kirk2012bayesian].
 
 Consider a dataset of $N$ samples, $x = (x_1,\ldots,x_N)$ where each sample is 
 itself a $p$-vector of measurements for some $p \in \mathbb{N}$. We are 
@@ -104,18 +108,59 @@ choice of the user.
 
 # Integrative model
 
-Bayesian Consensus Clustering [@lock2013bayesian] is extension of the DMA 
-mixture model. Consider the case of $L$ datasets. In this case there are 
-context-specific models similar to that described above with a common number of 
-components, $K$, in each model. There is then an additional *global clustering*,
-$C=(C_1, \ldots, C_N)$, where $C_i \in \{1, \ldots, K\} \forall i \in [1, N]$.
-In this model it is the local allocations that are dependent upon the global 
-membership. For the $lth$ context, given the global clustering $C$, the context-
-specific concentration parameter, $\alpha_l$:
+BCC [@lock2013bayesian] is extension of the DMA mixture model. Consider the case
+of $L$ datasets describing the same $N$ samples with different measurements or under different experimental conditions (e.g. gene expression data in one dataset, copy number variation of the same genes in
+another). In this case there are context-specific models similar to that 
+described above with a common number of components, $K$, in each model. There is
+then an additional *global clustering*, $C=(C_1, \ldots, C_N)$, where 
+$C_i \in \{1, \ldots, K\} \forall i \in [1, N]$. In this model it is the local
+allocations that are dependent upon the global membership. For the $lth$ 
+context, given the global clustering $C$, the context-specific concentration 
+parameter, $\alpha_l$:
 
 \[
 P(c_{li} = k | C_i) = \nu(k, C_i, \alpha_l)
 \]
+
+where $\alpha_l$ changes the magnitude of dependence of the local clustering 
+about the global clustering. The conditional model is:
+
+\[
+P(c_{li} = k | x_{li}, C_i, \theta_{lk}) \propto \nu(k, C_i, \alpha_l) f_L(x_{li} | \theta_{lk}).
+\]
+
+@lock2013bayesian assume the following form for $\nu(\cdot)$:
+
+\[
+\nu(c_{li}, C_i, \alpha_l) = \alpha_l  \mathbb{I}(c_{li} = C_i) + \frac{1 - \alpha_l}{K - 1} (1 - \mathbb{I}(c_{li} = C_i))
+\]
+
+where $\alpha_l \in [\frac{1}{K}, 1]$ controls the similarity of the clustering 
+in context $l$ to the global clustering and $\mathbb{I}(\cdot)$ is the indicator
+function. If $\alpha_l=1$ then $c_l = C$. The $\alpha_l$ is a random variable 
+inferred from the data. Let $\alpha = (\alpha_1, \ldots, \alpha_L)$.
+
+Let $\Pi=(\Pi_1, \ldots, \Pi_K)$ be the component weights at the global level.
+Then the conditional probability of the context-specific clustering given the 
+component weights is defined to be:
+
+\[
+P(c_{li} = k | \Pi ) = \alpha_l \Pi_k + (1 - \Pi_k) \frac{1 - \alpha_l}{K - 1}
+\]
+
+Note that if $kth$ global mixture weight is 0 (and hence the associated 
+component has a total membership of 0) then the probability of assignment to the
+$kth$ local cluster is 0 if and only if $\alpha_l = 1$. This is unlikely to 
+happen (as 1 is the upper bound on $\alpha_l$), and therefore it is normal that
+there are *more* local clusters than global clusters in stark contrast to the
+Clusternomics model.
+
+The probability of being allocated to the $kth$ global component is:
+
+\[
+P(C_i = k | c, \Pi, \alpha) \propto \Pi_k \prod_{l=1}^L \nu(c_{li}, k, \alpha_l).
+\]
+
 
 
 ## References
