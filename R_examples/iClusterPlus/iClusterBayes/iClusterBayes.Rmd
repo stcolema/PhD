@@ -62,24 +62,69 @@ L = \begin{bmatrix}
   l_{10} & l_{11} & \cdots & l_{1K} \\
   \vdots & \vdots & \ddots & \vdots \\
   l_{p0} & l_{p1} & \cdots & l_{pK}
-\end{bmatrix}
-\]
-\[
+\end{bmatrix}; 
 F = \begin{bmatrix}
   1      & 1      & \cdots & 1      \\
   z_{11} & z_{12} & \cdots & z_{1N} \\
   \vdots & \vdots & \ddots & \vdots \\
   z_{K1} & z_{K2} & \cdots & z_{KN}
-\end{bmatrix}
+\end{bmatrix}.
 \]
-iCluster aims to reduce the dimensionality of the problem. They change the framing of the problem. Consider a single row of $X$, associated with the $jth$ feature (for example a gene) and denote this $X_j$. Similarly let $L_j$ be the row of the loadings matrix associated with the $jth$ feature. Now let us say:
+iCluster aims to reduce the dimensionality of the problem. They change the framing of the problem. Consider a single row of $X$, associated with the $jth$ feature (for example a gene if $X$ consists of gene expression data) and denote this $X_j$. Similarly let $L_j$ be the row of the loadings matrix associated with the $jth$ feature. Now let us say:
 
 \[
 X_j^T = F^T L_j^T + \epsilon
 \]
 
-Then inclusion of a specific $(K + 1) \times (K + 1)$ sparsity inducing matrix, $\Gamma_j$, which has the form $diag(1, \gamma_j, \ldots, \gamma_j)$. The inclusion of a constant 1 in both $\Gamma$ and $F$ allows an intercept value of $l_{j0}$.
+The next step is the inclusion of a specific $(K + 1) \times (K + 1)$ sparsity inducing matrix, $\Gamma_j$, which has the form $diag(1, \gamma_j, \ldots, \gamma_j)$; this will allows to discard a subset of features as uniformative [@george1997approaches]. The inclusion of a constant 1 in both $\Gamma$ and $F$ allows an intercept value of $l_{j0}$. $\gamma_j$ is a binary variable. If the value of a given loading, $l_j$, is small enough that ignoring it is preferable, then the $\gamma_j$ takes a value of 0; otherwise it is 1. In this case our model takes the form:
 
-To do this an additional matrix, $\Gamma$ is included. $\Gamma$ has the form $diag(1, \gamma_j, \ldots, \gamma_j)$. The inclusion of a constant 1 in both $\Gamma$ and $F$ allows an intercept value of $l_{10}$.
+\[
+X_j^T = F^T \Gamma_j L_j^T + \epsilon.
+\]
+
+Consider an example where $N=4$ and $K=3$. Then:
+
+\[
+\begin{aligned}
+\begin{bmatrix} 
+  x_{j1} \\
+  x_{j2} \\
+  x_{j3} \\
+  x_{j4}
+\end{bmatrix} &= \begin{bmatrix}
+ 1 & z_{11} & z_{12} \\
+ 1 & z_{21} & z_{22} \\
+ 1 & z_{31} & z_{32} \\
+ 1 & z_{41} & z_{42}
+ \end{bmatrix} \begin{bmatrix}
+ 1 & 0 & 0 \\
+ 0 & \gamma_j & 0 \\
+ 0 & 0 & \gamma_j
+ \end{bmatrix} \begin{bmatrix}
+ l_{j0} \\
+ l_{j1} \\
+ l_{j2}
+ \end{bmatrix} \\
+ & = \begin{bmatrix}
+ 1 & z_{11} \gamma_j & z_{12} \gamma_j \\
+ 1 & z_{21} \gamma_j & z_{22} \gamma_j\\
+ 1 & z_{31} \gamma_j & z_{32} \gamma_j\\
+ 1 & z_{41} \gamma_j & z_{42} \gamma_j
+ \end{bmatrix} \begin{bmatrix}
+ l_{j0} \\
+ l_{j1} \\
+ l_{j2}
+ \end{bmatrix} \\
+ & = \begin{bmatrix}
+ l_{j0} + \gamma_j (z_{11}l_{j1} + z_{12} l_{j2}) \\
+ l_{j0} + \gamma_j (z_{21}l_{j1} + z_{22} l_{j2}) \\
+ l_{j0} + \gamma_j (z_{31}l_{j1} + z_{32} l_{j2}) \\
+ l_{j0} + \gamma_j (z_{41}l_{j1} + z_{42} l_{j2})
+ \end{bmatrix} 
+\end{aligned}
+\]
+
+One can see that if $\gamma_j=0$ that the feature is loaded only through the intercept value of $l_{j0}$, whereas if $\gamma_j=1$ the remaining terms are included.
+
 
 ## References
