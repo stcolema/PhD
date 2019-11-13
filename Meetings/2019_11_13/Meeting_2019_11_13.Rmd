@@ -20,8 +20,9 @@ Discussed possible projects for the first year.
 3. TAGM-MDI (continuation of internship with Paul Kirk and Olly Crooke); and
 4. Improving mixture MCMC by means of cluster-merge splitting.
 
-Current plan is to work on a 3/2 day rota for Consensus clustering (3 days) and 
-the Thesis introduction (2 days).
+For now I will work on Consensus clustering and the thesis introduciton. Current 
+plan is to work on a 3/2 day rota for Consensus clustering (3 days) and 
+the thesis introduction chapter (2 days).
 
 ### Consensus clustering
 
@@ -34,7 +35,7 @@ studies are required. I plan to use the following datasets:
 4. Full set of yeast genes for which MDI cannot converge; and
 5. A subset of the CEDAR dataset.
 
-### Introduciton chapter
+### Introduction chapter
 
 The aim is to have an introduction to the thesis (focusing on integrative 
 clustering methods). Current methods to include are:
