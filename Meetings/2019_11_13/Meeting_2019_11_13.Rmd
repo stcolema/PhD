@@ -20,7 +20,7 @@ Discussed possible projects for the first year.
 3. TAGM-MDI (continuation of internship with Paul Kirk and Olly Crooke); and
 4. Improving mixture MCMC by means of cluster-merge splitting.
 
-For now I will work on Consensus clustering and the thesis introduciton. Current 
+For now I will work on Consensus clustering and the thesis introduction. Current 
 plan is to work on a 3/2 day rota for Consensus clustering (3 days) and 
 the thesis introduction chapter (2 days).
 
