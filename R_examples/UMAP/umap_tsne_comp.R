@@ -12,7 +12,7 @@ umap_cost <- function(X, Y){
 }
 
 tsne_cost <- function(X, Y){
-  z <- exp(-X**2) * (log(1 + exp(-X**2) * (1 + Y**2)))
+  z <- exp(-X**2) * log(1 + Y**2)
   z
 }
 
