@@ -1,0 +1,30 @@
+---
+title: "Papers read"
+author: "Stephen Coleman"
+date: "13/11/2019"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+This document is a list of the papers I have read. The intention is to track 
+authors, institutes and journals a little bit more thoroughly than I have been.
+
+```{r data, echo=FALSE}
+integrative_journals <- read.csv("Integrative_clustering.csv")
+to_read <- read.csv("To_read.csv")
+```
+
+## Integrative clustering methods
+
+```{r integrative_clustering_journals, echo=FALSE}
+knitr::kable(integrative_journals[1:5, c(5, 4, 6, 3)])
+```
+
+## To read
+
+```{r to_read_journals, echo=FALSE}
+knitr::kable(to_read[, c(5, 4, 6, 3)])
+```
