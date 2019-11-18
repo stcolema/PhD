@@ -214,3 +214,18 @@ x1 <- rnorm(1000)
 empirical_cdf(x1, plot.cdf = T)
 x2 <- runif(1000)
 empirical_cdf(x2, plot.cdf = T)
+
+# === Question 6 ===============================================================
+
+rb <- function(x, y){
+  100 * ((y - x ** 2) ** 2) + (1 - x) ** 2
+}
+
+
+x <- seq(-1.5, 1.5, 0.001)
+n <- length(x) - 1
+z <- seq(-0.5, 1.5, 2/n)
+y <- sapply(x, rb, z)
+
+contour(x, z, z = y)
+contour(x, z, z = y, levels = "log10")
