@@ -222,10 +222,52 @@ rb <- function(x, y){
 }
 
 
-x <- seq(-1.5, 1.5, 0.001)
+rb.grad <- function(x, y){
+  df_dx <- 200*(2*x**3 -2 *x * y) + 2 * (x - 1)
+  df_dy <- 200*(y - x**2)
+  c(df_dx, df_dy)
+}
+
+approx.rb.grad <- function(x,y, delta = 1e-7){
+  df_dx <- (rb(x + delta, y) - rb(x, y)) / delta
+  df_dy <- (rb(x, y + delta) - rb(x, y)) / delta
+  c(df_dx, df_dy)
+}
+
+approx.rb.hessian <- function(x,y, delta = 1e-7){
+  df_dx <- (rb.grad(x + delta, y) - rb.grad(x, y)) / delta
+  df_dy <- (rb.grad(x, y + delta) - rb.grad(x, y)) / delta
+  matrix(c(df_dx, df_dy), nrow = 2)
+}
+
+rb.hessian <- function(x, y){
+  d2f_dx2 <- 400 * (3 * x**2 - y) + 2
+  d2f_dy2 <- 200
+  d2f_dxdy <- -400 * x
+  matrix(c(d2f_dx2, d2f_dxdy, d2f_dxdy, d2f_dy2), nrow = 2)
+}
+
+rb.taylor.expansion <- function(x, y){
+  rb(x, y) + sum(rb.grad(x, y), 0.5* rb.hessian(x, y))
+}
+
+x <- seq(-1.5, 1.5, 0.01)
 n <- length(x) - 1
 z <- seq(-0.5, 1.5, 2/n)
 y <- sapply(x, rb, z)
 
-contour(x, z, z = y)
-contour(x, z, z = y, levels = "log10")
+plt_1 <- contour(x, z, z = y)
+new_point <- rb.taylor.expansion(0.6, 0.6)
+contour(new_point, add = T)
+
+# contour(x, z, z = y, levels = "log10")
+
+z_lim <- range(y, finite = T)
+pretty(z_lim, 10)
+max(y)
+
+contour(log10(y))
+
+
+rb.hessian(4, 4)
+approx.rb.hessian(4, 4)

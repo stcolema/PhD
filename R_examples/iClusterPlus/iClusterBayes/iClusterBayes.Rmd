@@ -124,7 +124,29 @@ Consider an example where $N=4$ and $K=3$. Then:
 \end{aligned}
 \]
 
-One can see that if $\gamma_j=0$ that the feature is loaded only through the intercept value of $l_{j0}$, whereas if $\gamma_j=1$ the remaining terms are included.
+One can see that if $\gamma_j=0$ that the feature is loaded only through the intercept value of $l_{j0}$, whereas if $\gamma_j=1$ the remaining terms are included. I believe the entire dataset is then modelled as:
+
+\[
+X^T = \begin{bmatrix}
+   l_{10} + \gamma_1\sum_{k=1}^K l_{1k} z_{1k}  & \cdots & l_{p0} + \gamma_p \sum_{k=1}^K l_{pk} z_{1k} \\
+   \vdots & \ddots & \vdots \\
+   l_{10} + \gamma_1\sum_{k=1}^K l_{1k} z_{Nk}  & \cdots & l_{p0} + \gamma_p \sum_{k=1}^K l_{pk} z_{Nk}
+\end{bmatrix}
+\]
+
+### Continuous data
+
+OK there's some issues around this point in the original paper []. They use a slightly different notation than I do, letting $\beta_j = L_j \forall j \in [1, p]$. They let the priors be based around a vector $\beta_0$ which they never define. I shall assume it's some prior parameter (possibly the mean of the entire dataset), but it is possible that I have misunderstood it.
+
+In the case that the data is continuous, then the following priors are assumed:
+
+\[
+L_j \sim \textbf{MVN}\left(L_0, \Sigma_0\right), \sigma_j^2 \sim \textrm{IG}\left(\frac{\nu_0}{2}, \frac{\nu_0 \sigma_0^2}{2}\right), \gamma_j \sim \textrm{Bernoulli}\left(q\right)
+\]
+
+From these a posterior distribution can be derived:
+
+
 
 
 ## References
