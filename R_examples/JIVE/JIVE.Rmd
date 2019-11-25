@@ -46,19 +46,20 @@ Basically, this method describes the data as a sum of global factors, local
 factors and local noise. If one thinks of it in this way (i.e. related to factor
 analysis), JIVE avoids computation and considers only the matrix that would 
 normally be considered the product of the loadings matrix and the factors matrix.
-Any clustering structure can still be observed within this object.
+It is a dimension reduction method that can help with clustering, but is not 
+itself a clustering method (such as MOFA, another method we'll describe someday).
 
-### Factor analysis as a clustering method 
-Consider traditional factor analysis. If one can describe all of the columns
-(denoting samples) in terms of a linear combination of two factors (i.e. the
-factor matrix has a rank of 2), it is similar to saying that the data falls into
-two clusters. Consider if one had a mixture model which reduced to two components
-- one could then describe each point as a linear combindation of the component 
-means (based upon the allocation probabilities of that point) plus some 
-individual noise (randomly sampled from the associated covariance matrices).
-This is an odd way to think about mixture models, but it links the intuition of
-how mixture models cluster points (which I think is highly intuitive) to the 
-Factor analysis based methods of clustering.
+<!-- ### Factor analysis is not a clustering method -->
+<!-- Consider traditional factor analysis. If one can describe all of the columns -->
+<!-- (denoting samples) in terms of a linear combination of two factors (i.e. the -->
+<!-- factor matrix has a rank of 2), it is similar to saying that the data falls into -->
+<!-- two clusters. Consider if one had a mixture model which reduced to two components -->
+<!-- - one could then describe each point as a linear combindation of the component -->
+<!-- means (based upon the allocation probabilities of that point) plus some -->
+<!-- individual noise (randomly sampled from the associated covariance matrices). -->
+<!-- This is an odd way to think about mixture models, but it links the intuition of -->
+<!-- how mixture models cluster points (which I think is highly intuitive) to the -->
+<!-- Factor analysis based methods of clustering. -->
 
 ### Terminology
 
