@@ -1,0 +1,13 @@
+---
+title: "KLIC"
+author: "Stephen Coleman"
+date: "25/11/2019"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Kernel learning integrative clustering
+An extension of the original Consensus Clustering concept. Allows weighted combination of similarity matrices to form a consensus clustering.

@@ -1,0 +1,13 @@
+---
+title: "MOFA"
+author: "Stephen Coleman"
+date: "25/11/2019"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Multi-Omics Factor Analysis
+Another factor analysis model.

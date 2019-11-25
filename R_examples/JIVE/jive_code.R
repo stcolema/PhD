@@ -152,6 +152,8 @@ my_full_data <- list(
 
 full_jive_out <- jive(my_full_data)
 
-showPCA(full_jive_out, )
+
+
+showPCA(full_jive_out, 2, c(1, 1, 1))
 showHeatmaps(full_jive_out)
 showVarExplained(full_jive_out)
