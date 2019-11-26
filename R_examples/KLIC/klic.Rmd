@@ -3,6 +3,7 @@ title: "KLIC"
 author: "Stephen Coleman"
 date: "25/11/2019"
 output: pdf_document
+bibliography: klic.bib
 ---
 
 ```{r setup, include=FALSE}
@@ -68,4 +69,48 @@ Thus if one is interested in working in some feature space that can be defined i
 
 ## $k$-means clustering
 
-Imagine data and cluster it using some $k$ centroids. Hooray.
+$k$-means clustering assignes $N$ points to $K$ different clusters. These clusters are defined by the points assigned to them - they are the centroid of the assigned points. The aim of this algorithm is to minimise the sum of a ll squared distance between the points and their assigned centroid. 
+
+Let $m_k$ denote the $kth$ centroid. Then if $Z$ is the $N \times K$ classification matrix, with 
+
+\[
+z_{ik} = \begin{cases}
+ 1 \textrm{ if point $x_i$ is assigned to cluster $k$}, \\
+ 0 \textrm{ else.}
+\end{cases}
+\]
+
+In classic $k$-means clustering, each point can only be assigned to one cluster. We use the following notation:
+
+\[
+\begin{aligned}
+\sum_{k=1}^K z_{ik} &= 1 \textrm{ for all $i \in \{1, \ldots, N\}$ }\\
+N_k &= \sum_{i=1}^N z_{ik}  \\
+m_k &= \frac{1}{N_k} \sum_{i=1}^N z_{ik} x_i \textrm{ for all $k \in \{1, \ldots, K\}$}
+\end{aligned}
+\]
+
+We can consider this an optimisation problem.
+
+\[
+\underset{Z}{\operatorname{argmin}} \sum_{i = 1}^N \sum_{k=1}^K z_{ik} || x_i - m_k ||_2^2
+\]
+
+If we redefine this problem in some feature space defined by the feature map $\phi(\cdot)$, we can use the kernel trick in this context. First we write the problem in terms of the feature map:
+
+\[
+\begin{aligned}
+& \underset{Z}{\operatorname{argmin}} \sum_{i=1}^N \sum_{k=1}^K z_{ik}||\phi(x_i) - m^*_k ||_2^2 \\
+& m^*_k = \frac{1}{N_k} \sum_{i=1}^N z_{ik} \phi(x_i)
+\end{aligned}
+\]
+
+If we define the $K \times K$ matrix $L$ with $(k, k)th$ entries of $N_k$ and 0's elsewhere and the gram matrix $\Delta$ as the matrix with $(i,j)th$ entries $\delta(x_i, x_j)$, then, according to @gonen2014localized, this can be rephrased as a trace maximisation problem:
+
+\[
+\underset{Z}{\operatorname{argmax}} \textrm{tr}(L^{\frac{1}{2}}Z^T\Delta Z L^{\frac{1}{2}})
+\]
+
+
+
+## References
