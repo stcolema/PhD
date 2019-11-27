@@ -1,0 +1,26 @@
+---
+title: "Meeting 2019/11/27"
+author: "Stephen Coleman"
+date: "27/11/2019"
+output: pdf_document
+bibliography: Meeting_2019_11_27.bib
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Summary
+
+Discussed different datasets to apply Consensus Clustering and / or MDI to. Agreed upon the Cancer Genoma Atlas (TGCA) Breast Cancer (as per @lock2013bayesian) and the Pan-Cancer (as per @hoadley2014multiplatform) datasets.
+
+I will bring results from MDI and Consensus Clustering applied to the Yeast data from the original MDI paper to the next meeting.
+
+## Plan
+
+From the @lock2013bayesian paper, we intend to use the same reduced dataset as input to both MDI and Consensus Clustering. As this dataset is of reduced form due to the computational limits of the algorithm proposed within the paper, we will also run Consensus Clustering on the full dataset.
+
+We will also compare Consensus Clustering to the clustering produced by Cluster-of-cluster-analysis in figure 1 of @hoadley2014multiplatform.
+
+## References
+
