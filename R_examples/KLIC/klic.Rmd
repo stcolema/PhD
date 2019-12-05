@@ -39,10 +39,10 @@ or simply a kernel, $\delta$, is a symmetric map:
 \delta : \mathcal{X} \times \mathcal{X} \to \mathbb{R}
 \]
 
-which for all $x_1, \ldots, x_N \in \mathcal{X}$, the matrix $\Delta$ defined by entries $\Delta_{ij} = \delta(x_i, x_j)$, is positive semi-definite.
+which for all $x_1, \ldots, x_N \in \mathcal{X}$, the matrix $\mathbf{\Delta}$ defined by entries $\mathbf{\Delta}_{ij} = \delta(x_i, x_j)$, is positive semi-definite.
 
 #### Definition: **Kernel matrix**
-or __Gram matrix__, $\Delta$, is the positive semi-definite matrix defined by a kernel $\delta$ applied to data $\mathcal{X} = (x_1, \ldots, x_N)$ with entries $\Delta_{ij} = \delta(x_i, x_j)$.
+or __Gram matrix__, $\mathbf{\Delta}$, is the positive semi-definite matrix defined by a kernel $\delta$ applied to data $\mathcal{X} = (x_1, \ldots, x_N)$ with entries $\mathbf{\Delta}_{ij} = \delta(x_i, x_j)$.
 
 #### Definition: **Feature map**
 For each kernel $\delta$ there exists a **feature map** $\phi(\cdot)$, which maps the original data $\mathcal{X}=(x_1, \ldots, x_N)$ to some new feature space taking values in some inner product of $\mathcal{X}$ defined by:
@@ -71,7 +71,7 @@ Thus if one is interested in working in some feature space that can be defined i
 
 $k$-means clustering assignes $N$ points to $K$ different clusters. These clusters are defined by the points assigned to them - they are the centroid of the assigned points. The aim of this algorithm is to minimise the sum of a ll squared distance between the points and their assigned centroid. 
 
-Let $m_k$ denote the $kth$ centroid. Then if $Z$ is the $N \times K$ classification matrix, with 
+Let $m_k$ denote the $kth$ centroid. Then if $\mathbf{Z}$ is the $N \times K$ classification matrix, with 
 
 \[
 z_{ik} = \begin{cases}
@@ -93,23 +93,40 @@ m_k &= \frac{1}{N_k} \sum_{i=1}^N z_{ik} x_i \textrm{ for all $k \in \{1, \ldots
 We can consider this an optimisation problem.
 
 \[
-\underset{Z}{\operatorname{argmin}} \sum_{i = 1}^N \sum_{k=1}^K z_{ik} || x_i - m_k ||_2^2
+\underset{\mathbf{Z}}{\operatorname{argmin}} \sum_{i = 1}^N \sum_{k=1}^K z_{ik} || x_i - m_k ||_2^2
 \]
 
 If we redefine this problem in some feature space defined by the feature map $\phi(\cdot)$, we can use the kernel trick in this context. First we write the problem in terms of the feature map:
 
 \[
 \begin{aligned}
-& \underset{Z}{\operatorname{argmin}} \sum_{i=1}^N \sum_{k=1}^K z_{ik}||\phi(x_i) - m^*_k ||_2^2 \\
+& \underset{\mathbf{Z}}{\operatorname{argmin}} \sum_{i=1}^N \sum_{k=1}^K z_{ik}||\phi(x_i) - m^*_k ||_2^2 \\
 & m^*_k = \frac{1}{N_k} \sum_{i=1}^N z_{ik} \phi(x_i)
 \end{aligned}
 \]
 
-If we define the $K \times K$ matrix $L$ with $(k, k)th$ entries of $N_k$ and 0's elsewhere and the gram matrix $\Delta$ as the matrix with $(i,j)th$ entries $\delta(x_i, x_j)$, then, according to @gonen2014localized, this can be rephrased as a trace maximisation problem:
+If we define the $K \times K$ matrix $\mathbf{L}$ with $(k, k)th$ entries of $N_k$ and 0's elsewhere and the gram matrix $\mathbf{\Delta}$ as the matrix with $(i,j)th$ entries $\delta(x_i, x_j)$, then, according to @gonen2014localized, this can be rephrased as a trace maximisation problem:
 
 \[
-\underset{Z}{\operatorname{argmax}} \textrm{tr}(L^{\frac{1}{2}}Z^T\Delta Z L^{\frac{1}{2}})
+\underset{\mathbf{Z}}{\operatorname{argmax}} \textrm{ tr}(\mathbf{L^{\frac{1}{2}}Z^T\Delta Z L^{\frac{1}{2}} - \Delta})
 \]
+
+This is subject to the contraints:
+
+\[
+\begin{aligned}
+\mathbf{Z} \mathbf{1}_K &= \mathbf{1}_N \\
+z_{ik} &\in \left\{0, 1 \right\}
+\end{aligned}
+\]
+
+The binary variables, $z_{ik}$, make this problem very difficult to solve [@gonen2014localized]. Relaxing this constraint and letting $\mathbf{ZL^{\frac{1}{2}}} = \mathbf{H}$ and letting $\mathbf{H}$ take arbitrary real values constrained by $\mathbf{H^TH}=\mathbf{I_k}$ makes the optimisation problem more feasible:
+
+\[
+\underset{\mathbf{H}}{\operatorname{argmax}} \textrm{ tr}(\mathbf{H^T\Delta H - \Delta}).
+\]
+
+One can solve this by performing Kernel-PCA on the Gram matrix $\mathbf{\Delta}$ and setting $\mathbf{H}$ to the $k$ largest eigevalues. To fianlly acquire a clustering solution, one can normalise all rows of $\mathbf{H}$ to be on the unit sphere and then implement $k$-means clustering on this normalised matrix.
 
 
 
