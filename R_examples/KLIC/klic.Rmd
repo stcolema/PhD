@@ -128,6 +128,19 @@ The binary variables, $z_{ik}$, make this problem very difficult to solve [@gone
 
 One can solve this by performing Kernel-PCA on the Gram matrix $\mathbf{\Delta}$ and setting $\mathbf{H}$ to the $k$ largest eigevalues. To fianlly acquire a clustering solution, one can normalise all rows of $\mathbf{H}$ to be on the unit sphere and then implement $k$-means clustering on this normalised matrix.
 
+### Multiple kernel $k$-means clustering
+
+@gonen2014localized extend this concept of kernel $k$-means clustering to multiple kernel $k$-means clustering.
+
+
+### Coclustering matrices as kernels
+
+
+
+### Kernel learning integrative clustering
+
+
+
 
 
 ## References
