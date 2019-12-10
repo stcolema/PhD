@@ -1,0 +1,129 @@
+---
+title: "Weekly update 04/12/2019-11/12/2019"
+author: "Stephen Coleman"
+date: "10/12/2019"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Consensus clustering
+
+I have discovered that the command line version of MDI does not handle sparse categorical data well. I am trying to understand the priors he uses (the most likely source of the problem according to Paul), but a lack of comments apart from such cases as "TODO: add an explicit ``sample from prior" call in here" are making it an uphill battle.
+
+### Comparison command line to MATLAB
+
+```{r load_data, echo = FALSE, results='hide'}
+library(tibble)
+library(mdiHelpR)
+
+comparePSMs <- function(sim_1, sim_2, 
+                        curr_title = "compare_psms",
+                        col_pal = c("#FFFFFF", grDevices::colorRampPalette(RColorBrewer::brewer.pal(n = 7, name = "Blues"))(100)),
+                        breaks = defineBreaks(col_pal, lb = 0, ub = 1)){
+
+  # Extract the order from the pheatmap
+  row_order <- hclust(dist(sim_1))$order
+  
+  # Re order the matrices to have a common row order
+  sim_1 <- sim_1[row_order, row_order]
+  sim_2 <- sim_2[row_order, row_order]
+  
+  colnames(sim_1) <- NULL
+  colnames(sim_2) <- NULL
+
+  # Save the heatmaps of these to the same grid
+  compareHeatmapPSMandData(sim_1, sim_2,
+                           save_name = NA,
+                           main = curr_title,
+                           col_pal_sim = col_pal,
+                           col_pal_expr = col_pal,
+                           expr_breaks = breaks,
+                           sim_breaks = breaks
+  )
+}
+
+mdi_mason <- readRDS("./Data/cmd_line_358500.rds")
+mdi_matlab <- readRDS("./Data/matlab_8080.rds")
+consensus_mason <- readRDS("./Data/cmd_line_consensus_clustering.rds")
+consensus_matlab <- readRDS("./Data/matlab_consensus_clustering.rds")
+
+col_pal <- c("#FFFFFF", grDevices::colorRampPalette(RColorBrewer::brewer.pal(n = 7, name = "Blues"))(100))
+breaks <- defineBreaks(col_pal, lb = 0, ub = 1)
+
+```
+
+```{r combine_pheatmaps, echo = FALSE}
+
+dataset_1 <- mdi_mason$dataset[[1]]
+dataset_2 <- mdi_mason$dataset[[2]]
+dataset_3 <- mdi_mason$dataset[[3]]
+
+n_datasets <- length(mdi_mason$dataset)
+ph_list <- vector("list", 6 * n_datasets)
+
+# print(dataset_1)
+# print(mdi_matlab$dataset)
+for(i in 1:n_datasets){
+  dataset <- mdi_mason$dataset[[i]]
+  
+  mdi_mason_sim <- mdi_mason$similarity_matrix[mdi_mason$dataset == dataset][[1]]
+  mdi_matlab_sim <- mdi_matlab$similarity_matrix[mdi_matlab$dataset == dataset][[1]]
+  consensus_mason_sim <- consensus_mason$similarity_matrix[consensus_mason$dataset == dataset][[1]]
+  consensus_matlab_sim <- consensus_matlab$similarity_matrix[consensus_matlab$dataset == dataset][[1]]
+  
+  mdi_mason_expr <- mdi_mason$expression_data[mdi_mason$dataset == dataset][[1]]
+  mdi_matlab_expr <- mdi_matlab$expression_data[mdi_matlab$dataset == dataset][[1]]
+  consensus_mason_expr <- consensus_mason$expression_data[consensus_mason$dataset == dataset][[1]]
+  consensus_matlab_expr <- consensus_matlab$expression_data[consensus_matlab$dataset == dataset][[1]]
+  
+  ph_list[[6 * (i - 1) + 1]] <- comparePSMs(mdi_matlab_sim, mdi_mason_sim, curr_title = paste0(dataset, ": MATLAB vs CMD Line"), col_pal = col_pal)
+  ph_list[[6 * (i - 1) + 2]] <- comparePSMs(mdi_mason_sim, mdi_matlab_sim, curr_title = paste0(dataset, ": CMD Line vs MATLAB"), col_pal = col_pal)
+  ph_list[[6 * (i - 1) + 3]] <- comparePSMs(mdi_matlab_sim, consensus_mason_sim, curr_title = paste0(dataset, ": MATLAB vs CMD Line consensus"), col_pal = col_pal)
+  ph_list[[6 * (i - 1) + 4]] <- comparePSMs(mdi_matlab_sim, consensus_matlab_sim, curr_title = paste0(dataset, ": MATLAB vs MATLAB consensus"), col_pal = col_pal)
+  ph_list[[6 * (i - 1) + 5]] <- comparePSMs(consensus_matlab_sim, consensus_mason_sim, curr_title = paste0(dataset, ": MATLAB consensus vs CMD Line consensus"), col_pal = col_pal)
+  ph_list[[6 * (i - 1) + 6]] <- comparePSMs(consensus_mason_sim, consensus_matlab_sim, curr_title = paste0(dataset, ": CMD Line consensus vs MATLAB consensus"), col_pal = col_pal)
+}
+```
+
+Let's compare the posterior similarity matrices (PSMs) produced by the different methods. Our methods are:
+
+1. Command line MDI (358,500);
+2. Command line consensus clustering (1,000 seeds for 500 iterations);
+3. MATLAB MDI (8,080 iterations); and
+4. MATLAB consensus clustering (1,000 seeds for 100 iterations).
+
+The number of iterations is due to constraints on the 
+
+In each case the MATLAB MDI is our gold standard.
+
+We have three datasets, the time course data (which seems most consistent across methods), which is run using the Gaussian Process setting, and then two sparse categorical datasets, the Chip-chip transcription factor data from the Harbison paper and the protein-protein interaction data (Harbison and PPI resepective). Let's look at the comparison of the timecourse data for the MATLAB MDI and Command line MDI: 
+
+```{r mdi_comp_timecourse, echo=FALSE}
+ph_list[[1]]
+```
+
+Comparing the MATLAB to both forms of consensus clustering:
+
+```{r consensus_comp_timecourse, echo=FALSE}
+ph_list[[3]]
+ph_list[[4]]
+```
+
+This is not too bad. There's slightly different stories but quite a lot of agreement too. The real difference is within the categorical datasets:
+
+```{r mdi_comp_categorical, echo = FALSE}
+ph_list[[7]]
+ph_list[[9]]
+ph_list[[10]]
+
+ph_list[[13]]
+ph_list[[15]]
+ph_list[[16]]
+```
+
+We can see that the consensus clustering works pretty well even with only 100 iterations. That's a nice result.
+
+Now there's no particular reason to think that either of the long MDI chains have converged.
