@@ -19,37 +19,12 @@ I have discovered that the command line version of MDI does not handle sparse ca
 library(tibble)
 library(mdiHelpR)
 
-# comparePSMs <- function(sim_1, sim_2,
-#                         curr_title = "compare_psms",
-#                         col_pal = c("#FFFFFF", grDevices::colorRampPalette(RColorBrewer::brewer.pal(n = 7, name = "Blues"))(100)),
-#                         breaks = defineBreaks(col_pal, lb = 0, ub = 1)){
-#
-#   # Extract the order from the pheatmap
-#   row_order <- hclust(dist(sim_1))$order
-#
-#   # Re order the matrices to have a common row order
-#   sim_1 <- sim_1[row_order, row_order]
-#   sim_2 <- sim_2[row_order, row_order]
-#
-#   colnames(sim_1) <- NULL
-#   colnames(sim_2) <- NULL
-#
-#   # Save the heatmaps of these to the same grid
-#   compareHeatmapPSMandData(sim_1, sim_2,
-#                            save_name = NA,
-#                            main = curr_title,
-#                            col_pal_sim = col_pal,
-#                            col_pal_expr = col_pal,
-#                            expr_breaks = breaks,
-#                            sim_breaks = breaks
-#   )
-# }
-
 mdi_mason <- readRDS("./Data/cmd_line_358500.rds")
 mdi_matlab <- readRDS("./Data/matlab_8080.rds")
 consensus_mason <- readRDS("./Data/cmd_line_consensus_clustering.rds")
 consensus_matlab_100 <- readRDS("./Data/matlab_consensus_clustering_100.rds")
 consensus_matlab_500 <- readRDS("./Data/matlab_consensus_clustering_500.rds")
+mdi_matlab_bad_priors <- readRDS("./Data/matlab_bad_priors_1550.rds")
 
 col_pal <- c("#FFFFFF", grDevices::colorRampPalette(RColorBrewer::brewer.pal(n = 7, name = "Blues"))(100))
 breaks <- defineBreaks(col_pal, lb = 0, ub = 1)
@@ -64,7 +39,7 @@ dataset_3 <- mdi_mason$dataset[[3]]
 n_datasets <- length(mdi_mason$dataset)
 ph_list <- vector("list", 6 * n_datasets)
 
-n_ph <- 8
+n_ph <- 10
 for (i in 1:n_datasets) {
   dataset <- mdi_mason$dataset[[i]]
 
@@ -73,13 +48,15 @@ for (i in 1:n_datasets) {
   consensus_mason_sim <- consensus_mason$similarity_matrix[consensus_mason$dataset == dataset][[1]]
   consensus_matlab_100_sim <- consensus_matlab_100$similarity_matrix[consensus_matlab_100$dataset == dataset][[1]]
   consensus_matlab_500_sim <- consensus_matlab_500$similarity_matrix[consensus_matlab_500$dataset == dataset][[1]]
-
+  mdi_matlab_bad_priors_sim <- mdi_matlab_bad_priors$similarity_matrix[mdi_matlab_bad_priors$dataset == dataset][[1]]
+  
   mdi_mason_expr <- mdi_mason$expression_data[mdi_mason$dataset == dataset][[1]]
   mdi_matlab_expr <- mdi_matlab$expression_data[mdi_matlab$dataset == dataset][[1]]
   consensus_mason_expr <- consensus_mason$expression_data[consensus_mason$dataset == dataset][[1]]
   consensus_matlab_100_expr <- consensus_matlab_100$expression_data[consensus_matlab_100$dataset == dataset][[1]]
   consensus_matlab_500_expr <- consensus_matlab_500$expression_data[consensus_matlab_500$dataset == dataset][[1]]
-
+  mdi_matlab_bad_priors_expr <- mdi_matlab_bad_priors$expression_data[mdi_matlab_bad_priors$dataset == dataset][[1]]
+  
   ph_list[[n_ph * (i - 1) + 1]] <- compareMatrices(mdi_matlab_sim,
     mdi_mason_sim,
     curr_title = paste0(dataset, ": MATLAB vs CMD Line"),
@@ -135,6 +112,20 @@ for (i in 1:n_datasets) {
     col_pal = col_pal,
     col_names = F
   )
+  
+  ph_list[[n_ph * (i - 1) + 9]] <- compareMatrices(mdi_matlab_sim,
+    mdi_matlab_bad_priors_sim,
+    curr_title = paste0(dataset, ": MATLAB prior comparison"),
+    col_pal = col_pal,
+    col_names = F
+  )
+  
+  ph_list[[n_ph * (i - 1) + 10]] <- compareMatrices(mdi_mason_sim,
+    mdi_matlab_bad_priors_sim,
+    curr_title = paste0(dataset, ": Cmd line vs MATLAB, common priors"),
+    col_pal = col_pal,
+    col_names = F
+  )
 }
 ```
 
@@ -182,3 +173,37 @@ ph_list[[2 * n_ph + 8]]
 ```
 
 We can see that the consensus clustering works pretty well even with only 100 iterations, but really 500 is a fair bit better.
+
+The priors were finally located in the Command line code. The categorical prior is set to 0.5. In the MATLAB code it's an empiricla prior based upon the proportion of each category across the entire datasets. In our example categorical datasets the priors are then:
+
+\[
+\begin{aligned}
+\textrm{Command line prior: } &
+\begin{pmatrix} 
+  0.50 \\ 0.50
+\end{pmatrix}, \\ 
+\textrm{ MATLAB prior for the Transcription factor data: } &
+\begin{pmatrix}
+  0.988 \\ 0.012
+\end{pmatrix}, \\
+\textrm{ MATLAB prior for the PPI data: } & 
+\begin{pmatrix}
+  0.983 \\
+  0.017
+\end{pmatrix}
+\end{aligned}
+\]
+
+A clear difference. To check if this is the source of the issue the MATLAB code was re-run with a prior to match the command line code. The results can be seen below for each dataset:
+
+```{r bad_priors_comp, echo = F}
+ph_list[[0 * n_ph + 9]]
+ph_list[[0 * n_ph + 10]]
+
+ph_list[[1 * n_ph + 9]]
+ph_list[[1 * n_ph + 10]]
+
+ph_list[[2 * n_ph + 9]]
+ph_list[[2 * n_ph + 10]]
+```
+
