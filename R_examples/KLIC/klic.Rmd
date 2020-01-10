@@ -251,8 +251,32 @@ One can then implements $k$-means clustering on this normalised matrix.
 
 ### Multiple kernel $k$-means clustering
 
-@gonen2014localized extend this concept of kernel $k$-means clustering to multiple kernel $k$-means clustering.
+@gonen2014localized extend this concept of kernel $k$-means clustering to multiple kernel $k$-means clustering. Considered in the context of *multiview learning*, this method assumes we have $L$ different feature representations each with its own mapping function, i.e. $\{\Phi_m(\cdot)\}_{l=1}^L$. The aim is to combine these different views in a non-naive way; we wish to avoid simple concatenation. If instead we use a weighted sum such that the views that contribute the most signal are given the greatest weights with the restriction that weights are positive and sum to 1. This corresponds to replacing $\phi(x_i)$ with:
 
+\[
+\phi_\theta(x_i) = \begin{bmatrix}
+  \theta_1 \phi_1(x_i)^T \\ \vdots \\ \theta_L \phi_L (x_i)^T
+\end{bmatrix}.
+\]
+
+Here $\theta \in \mathbb{R}^L_+$ is the kernel weights that need to be optimised. The kernel function over the weighted mapping function becomes:
+
+\[
+\begin{aligned}
+\delta_\theta (x_i, x_j) &= \langle \phi_\theta(x_i), \phi_\theta(x_j) \rangle \\
+  &= \sum_{l=1}^L \langle \theta_l \phi_l(x_i), \theta_l \phi_l(x_j) \rangle \\
+  &= \sum_{l=1}^L \theta_l^2 \delta_l(x_i, x_j)
+\end{aligned}
+\]
+
+Where previously we could discard the $\mathbf{tr}[\Delta]$ component of the trace minimisation problem as being independant of the clustering matrix, it will now be dependent upon the kernel weights. Letting $\Delta_\theta= \sum_{l+1}^L \theta_l^2 \Delta_l$, our objective function becomes:
+
+\[
+\begin{aligned}
+& C = \mathbf{tr}[\Delta_\theta] - \mathbf{tr}[L^{1/2}Z^T\Delta_\theta Z L^{1/2}] \\
+& \textrm{subject to }H^TH = I, \sum_{l=1}^L \theta_l = 1
+\end{aligned}
+\]
 
 ### Coclustering matrices as kernels
 
