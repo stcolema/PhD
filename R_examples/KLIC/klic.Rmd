@@ -69,9 +69,13 @@ Thus if one is interested in working in some feature space that can be defined i
 
 ## $k$-means clustering
 
-$k$-means clustering assignes $N$ points to $K$ different clusters. These clusters are defined by the points assigned to them - they are the centroid of the assigned points. The aim of this algorithm is to minimise the sum of a ll squared distance between the points and their assigned centroid. 
+$k$-means clustering assigns each of $N$ points to *one* of $K$ different clusters. For cluster means $\mu = (\mu_1, \ldots, \mu_K)$, data $X=(x_1, \ldots, x_n)$ and cluster alloation matrix $\mathbf{Z}$, the objective function for $k$-means clustering is:
 
-Let $m_k$ denote the $kth$ centroid. Then if $\mathbf{Z}$ is the $N \times K$ classification matrix, with 
+\[
+C(\mathbf{Z}, \mu) = \sum_{i=1}^N \sum_{k=1}^K z_{ik}||x_i - \mu_k||^2.
+\]
+
+$\mathbf{Z}$ is a $N \times K$ binary matrix, with 
 
 \[
 z_{ik} = \begin{cases}
@@ -80,23 +84,32 @@ z_{ik} = \begin{cases}
 \end{cases}
 \]
 
-In classic $k$-means clustering, each point can only be assigned to one cluster. We use the following notation:
+We use the following notation:
 
 \[
 \begin{aligned}
 \sum_{k=1}^K z_{ik} &= 1 \textrm{ for all $i \in \{1, \ldots, N\}$ }\\
 N_k &= \sum_{i=1}^N z_{ik}  \\
-m_k &= \frac{1}{N_k} \sum_{i=1}^N z_{ik} x_i \textrm{ for all $k \in \{1, \ldots, K\}$}
+\mu_k &= \frac{1}{N_k} \sum_{i=1}^N z_{ik} x_i \textrm{ for all $k \in \{1, \ldots, K\}$}
 \end{aligned}
 \]
 
-We can consider this an optimisation problem.
+One can solve for $C$ by iterating over:
 
 \[
-\underset{\mathbf{Z}}{\operatorname{argmin}} \sum_{i = 1}^N \sum_{k=1}^K z_{ik} || x_i - m_k ||_2^2
+\begin{aligned}
+z_{ik} &= \mathbb{I}(k = \underset{\mathbf{k'}}{\operatorname{argmin}}|| x_i - \mu_{k'} ||_2^2), \\
+\mu_k &= \frac{1}{N_k} \sum_{i = 1}^N z_{ik} x_i.
+\end{aligned}
 \]
 
 If we redefine this problem in some feature space defined by the feature map $\phi(\cdot)$, we can use the kernel trick in this context. First we write the problem in terms of the feature map:
+
+\[
+C(\mathbf{Z}, \mu) = \sum_{i=1}^N \sum_{k=1}^K z_{ik}||\phi(x_i) - \mu_k||^2.
+\]
+
+Allocation and cluster means are as previously stated, except $x_i$ is replaced with the features $\phi(x_i)$.
 
 \[
 \begin{aligned}
@@ -105,13 +118,114 @@ If we redefine this problem in some feature space defined by the feature map $\p
 \end{aligned}
 \]
 
-If we define the $K \times K$ matrix $\mathbf{L}$ with $(k, k)th$ entries of $N_k$ and 0's elsewhere and the gram matrix $\mathbf{\Delta}$ as the matrix with $(i,j)th$ entries $\delta(x_i, x_j)$, then, according to @gonen2014localized, this can be rephrased as a trace maximisation problem:
+Define the $K \times K$ matrix $\mathbf{L}$ with $(k, k)th$ entries of $1 / N_k$ and 0's elsewhere (i.e. the $kth$ diagonal correspond the inverse of the number of points assigned to the $kth$ cluster). Define also the gram matrix $\mathbf{\Delta}$ as the matrix with $(i,j)th$ entries $\delta(x_i, x_j)$ and the matrix $\Phi$ where $\Phi_{ij} = \phi_i(x_j)$. Define also the matrix $\mathbf{M}$:
 
 \[
-\underset{\mathbf{Z}}{\operatorname{argmax}} \textrm{ tr}(\mathbf{L^{\frac{1}{2}}Z^T\Delta Z L^{\frac{1}{2}} - \Delta})
+\mathbf{M} = \Phi \mathbf{Z} L \mathbf{Z}^T.
 \]
 
-This is subject to the contraints:
+\[
+\begin{aligned}
+L\mathbf{Z}^T &= \begin{bmatrix} 
+  \frac{1}{N_1} & &  \\
+  & \ddots & \\
+  & & \frac{1}{N_K}
+\end{bmatrix} \begin{bmatrix}
+  z_{11} & \cdots & z_{N1} \\
+  \vdots & \ddots & \vdots \\
+  z_{K1} & \cdots & z_{NK}
+\end{bmatrix} \\
+ &= \begin{bmatrix}
+ \frac{z_{11}}{N_1} & \cdots & \frac{z_{N1}}{N_1} \\
+ \vdots & \ddots & \vdots \\
+ \frac{z_{1K}}{N_K} & \cdots & \frac{z_{NK}}{{N_K}}
+\end{bmatrix}, \\
+\mathbf{Z} L \mathbf{Z}^T &= \begin{bmatrix}
+  \sum_{k=1}^K \frac{z_{1k}z_{1k}}{N_k} & \cdots & \sum_{k=1}^K \frac{z_{1k}z_{Nk}}{N_k} \\
+  \vdots & \ddots & \vdots \\
+  \sum_{k=1}^K \frac{z_{Nk}z_{1k}}{N_k} & \cdots & \sum_{k=1}^K \frac{z_{Nk}z_{Nk}}{N_k}
+\end{bmatrix}
+\end{aligned}
+\]
+
+As $z_{ik}$ is a binary variable with the constraint that $\sum_{k=1}^Kz_{ik} = 1$, this means that the only non-zero entries are the entries for which there is a common allocation. If one re-arranges the rows of $\mathbf{Z} L \mathbf{Z}^T$ such that points assigned to the same cluster are contiguous, i.e. into a block diagonal matrix, then the matrix has the form:
+
+\[
+\mathbf{Z} L \mathbf{Z}^T = \begin{bmatrix}
+  \frac{1}{N_1} & \cdots & \frac{1}{N_1} \\
+  \vdots & \ddots & \vdots \\
+  \frac{1}{N_1} & \cdots & \frac{1}{N_1} &  \\
+  & & & \frac{1}{N_2} & \cdots & \frac{1}{N_2} \\
+  & & & \vdots & \ddots & \vdots & & \\
+  & & & \frac{1}{N_2} & \cdots & \frac{1}{N_2} & & \\
+  & & & & & & \ddots & & & \\
+  & & & & & & & \frac{1}{N_K} & \cdots & \frac{1}{N_K} \\
+  & & & & & & & \vdots & \ddots & \vdots \\
+  & & & & & & & \frac{1}{N_K} & \cdots & \frac{1}{N_K}
+\end{bmatrix}
+\]
+
+We consider the order of the points as stored in $X$ to be independent of the analysis and consider the rows of each matrix rearranged to give the above block diagonal structure.
+
+This means that multiplying by $X^T$ or $\Phi$ gives a $p \times N$ matrix with the $jth$ column being the mean of the cluster the $jth$ point is assigned to. The $jth$ column is of the form:
+
+\[
+\mathrm{col}_j(\Phi Z L Z^T) = \begin{bmatrix}
+  \frac{1}{N_{c_j}} \sum_{i=1}^N z_{ic_j}\phi_j(x_i) \\
+  \vdots \\
+  \frac{1}{N_{c_j}} \sum_{i=1}^N z_{ic_j}\phi_j(x_i) 
+\end{bmatrix} = \mu_{c_j}
+\]
+
+This allows us to write the objective function in the form $C = \mathbf{tr}[(\Phi - M) (\Phi - M)^T]$[@gonen2014localized].
+
+The $jth$ diagonal entry of this matrix is given by:
+
+\[
+C_{jj} = \sum_{j=1}^p(x_{ij} - \mu_{c_i j})^2.
+\]
+
+Thus, one can see how the statement of the function as a trace minimisation problem is merely a restatement of our original objective function.
+
+Note that:
+
+\[
+\begin{aligned}
+Z^TZ &= \begin{bmatrix}
+  \sum_{i=1}^N z_{i1}z_{i1} & \cdots & \sum_{i=1}^N z_{i1}z_{iK} \\
+  \vdots & \ddots & \vdots \\
+  \sum_{i=1}^N z_{i1}z_{iK} & \cdots & \sum_{i=1}^N z_{iN}z_{iK}
+\end{bmatrix} \\
+  &= \begin{bmatrix}
+  N_1 \\
+  & \ddots \\
+  & & N_K
+\end{bmatrix} \\
+  &= L^{-1}
+\end{aligned}
+\]
+
+This means that $(ZLZ^T)^2 = ZLZ^T$ which is the definition of a projection. Similarly $I - ZLZ^T$ is a projection on the complement. This combined with the fact that $\mathbf{tr}[AB]=\mathbf{tr}[BA]$ means that we can simplify the objective function:
+
+\[
+\begin{aligned}
+C &= \mathbf{tr}[\Phi(I - ZLZ^T)^2\Phi^T] \\
+  &= \mathbf{tr}[\Phi(I - ZLZ^T)\Phi^T] \\
+  &= \mathbf{tr}[\Phi\Phi^T] - \mathbf{tr}[\Phi Z L^{1/2} L^{1/2} Z^T \Phi^T] \\
+  &= \mathbf{tr}[\Phi^T \Phi] - \mathbf{tr}[L^{1/2}Z^T\Phi^T \Phi Z L^{1/2}] \\
+  &= \mathbf{tr}[\Delta] - \mathbf{tr}[L^{1/2}Z^T\Delta Z L^{1/2}]
+\end{aligned}
+\]
+
+Here we have let $L^{1/2}$ be the matrix with entries of the square root of the diagonal entries of $L$.
+
+As it is only the second part of the equation that depends upon the clustering matrix $Z$, one can formulate the equivalent maximisation problem:
+
+\[
+\max \mathbf{tr}[L^{\frac{1}{2}}Z^T\Delta Z L^{\frac{1}{2}}],
+\]
+
+subject to the contraints:
 
 \[
 \begin{aligned}
@@ -120,13 +234,20 @@ z_{ik} &\in \left\{0, 1 \right\}
 \end{aligned}
 \]
 
-The binary variables, $z_{ik}$, make this problem very difficult to solve [@gonen2014localized]. Relaxing this constraint and letting $\mathbf{ZL^{\frac{1}{2}}} = \mathbf{H}$ and letting $\mathbf{H}$ take arbitrary real values constrained by $\mathbf{H^TH}=\mathbf{I_k}$ makes the optimisation problem more feasible:
+The binary variables, $z_{ik}$, make this problem very difficult to solve [@gonen2014localized]. By setting $H = ZL^{1/2}$, we can restate the problem with matrix $H$ which is no longer constrained to be binary, but as $Z^TZ = L^{-1}$ does have the constraint that $H^T H = I$. One hopes that a clustering solution may then be derived as an additional step after the optimisation problem is solved. Thus the relaxed formulation of the problem is:
 
 \[
-\underset{\mathbf{H}}{\operatorname{argmax}} \textrm{ tr}(\mathbf{H^T\Delta H - \Delta}).
+\begin{aligned}
+& \max_H \mathbf{tr}[H^T \Delta H] \\
+& \textrm{subject to }H^TH = I
+\end{aligned}
 \]
 
-One can solve this by performing Kernel-PCA on the Gram matrix $\mathbf{\Delta}$ and setting $\mathbf{H}$ to the $k$ largest eigevalues. To fianlly acquire a clustering solution, one can normalise all rows of $\mathbf{H}$ to be on the unit sphere and then implement $k$-means clustering on this normalised matrix.
+One can solve this by performing Kernel-PCA on the Gram matrix $\mathbf{\Delta}$ and setting $\mathbf{H}$ to the $K$ largest eigevalues. To fianlly acquire a clustering solution, one can normalise all rows of $\mathbf{H}$ to be on the unit sphere. This is done as so:
+
+\[\hat{H}= \frac{H_{ik}}{\sqrt{\sum_{k=1}^K H_{ik}^2}}\]
+
+One can then implements $k$-means clustering on this normalised matrix.
 
 ### Multiple kernel $k$-means clustering
 
