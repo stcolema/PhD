@@ -1,0 +1,14 @@
+---
+title: "Meeting 2020/01/15"
+author: "Stephen Coleman"
+date: "15/01/2020"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Summary
+
+Due to issues with correcting the prior on the categorical mixtue model in the Command Line version of MDI, Stephen start using the MATLAB version. The current plan is to produce a LaTex document with the headings and order appropriate to PLOS Computational Biology, along with bullet points corresponding to the paragraphs in each section. Stephen has to check with Paul if the working title of "Consensus inference for Bayesian Clustering" is appropriate.
