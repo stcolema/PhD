@@ -1,0 +1,18 @@
+---
+title: "Meeting 22/01/2020"
+author: "Stephen Coleman"
+date: "24/01/2020"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Summary
+
+* Move to MATLAB code entirely (suspicious of high Phi values and of command line code generally);
+* Transfer Gaussian mixture component to Paul's MATLAB;
+* Test this - check derivations in code and test onf MDItestdata from original MDI paper;
+* Apply to TGCA data as manipulated for the BCC paper; and
+* Apply to Pan-Cancer dataset (to receive from Paul).
