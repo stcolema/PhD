@@ -11,6 +11,12 @@ knitr::opts_chunk$set(echo = TRUE)
 
 ## Summary
 
+* Update paper concept to refer to:
+  * Introduction:
+    * Consensus clustering + (R package);
+    * Bagging - concept of an ensemble of weak learners performing really well.
+  * Discussion:
+    * In problems acknowledge lack of theoretical argument, but point out effectiveness of machine learning techniques suchas ensemble methods and bagging and their empirical worth.
 * Move to MATLAB code entirely (suspicious of high Phi values and of command line code generally);
 * Transfer Gaussian mixture component to Paul's MATLAB;
 * Test this - check derivations in code and test onf MDItestdata from original MDI paper;
