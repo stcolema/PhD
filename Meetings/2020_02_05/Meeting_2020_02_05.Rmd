@@ -1,0 +1,17 @@
+---
+title: "Meeting 05/02/2020"
+author: "Stephen Coleman"
+date: "05/02/2020"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Summary
+
+* Check how NAs are handled in pre-processing of BCC TCGA data.
+* Mention ``mclust`` and ``tabulation`` to Eckart; look at Bayesian Hierarchical Clustering (and ``BHC`` the Bioconductor package). Also, log transform count data.
+* Latex derviation of collapsed gibbs sampler for mixture allocation for the general model and the gaussian case.
+* Test Gaussian mixtures in MDI on a simple simulation of standard normal data with a diagonal covariance matrix.
