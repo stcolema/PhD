@@ -19,7 +19,7 @@
 \usepackage{geometry} % to change the page dimensions
 \geometry{a4paper} % or letterpaper (US) or a5paper or....
 %\geometry{margin=2in} % for example, change the margins to 2 inches all round
-%\geometry{left=2.75cm, right=2.75cm, top=3.5cm, bottom=4.5cm}
+\geometry{left=2.0cm, right=2.0cm, top=3.5cm, bottom=4.5cm}
 % \geometry{landscape} % set up the page for landscape
 %   read geometry.pdf for detailed page layout information
 
@@ -159,14 +159,94 @@
 	&=&  \sqrt{\frac{\kappa_0 \lambda}{2\pi}} \exp \left(- \frac{\kappa_0 \lambda}{2}(\mu - \mu_0) ^ 2\right) \\
 	& & \hspace{3mm} \times \hspace{3mm} \frac{\beta_0 ^{\alpha_0}}{\Gamma(\alpha_0)} \lambda ^{\alpha_0 - 1} \exp(-\beta_0 \lambda) \\
 	&=& \sqrt{\frac{\kappa_0}{2\pi}} \frac{\beta_0 ^ {\alpha_0}}{\Gamma(\alpha_0)} \\
-	& & \hspace{3mm} \times \hspace{3mm}  \lambda^{\alpha_0 - \frac{1}{2}} \exp\left(-\frac{\lambda}{2}\left[\kappa_0 (\mu - \mu_0)^2 + 2 \beta_0\right])\right) \label{eqn:prior_pdf}
+	& & \hspace{3mm} \times \hspace{3mm}  \lambda^{\alpha_0 - \frac{1}{2}} \exp\left(-\frac{\lambda}{2}\left[\kappa_0 (\mu - \mu_0)^2 + 2 \beta_0\right]\right) \label{eqn:prior_pdf}
 	\end{eqnarray}
 	Here the normalising constant is:
 	
 	\begin{eqnarray}
-	Z_0 = \sqrt{\frac{\kappa_0}{2\pi}} \frac{\beta_0 ^ {\alpha_0}}{\Gamma(\alpha_0)}
+	Z_0^{-1} = \sqrt{\frac{\kappa_0}{2\pi}} \frac{\beta_0 ^ {\alpha_0}}{\Gamma(\alpha_0)}
 	\end{eqnarray}
 	One can see that this function in equation \ref{eqn:prior_pdf} will naturally complement the likelihood described in equation \ref{eqn:likelihood}.
 	
+	\subsection{Posterior}
+	From Bayes' theorem we have:
+	
+	\begin{eqnarray}
+	p(\mu, \lambda | x) &\propto& p(x | \mu, \lambda) p(\mu, \lambda) \\
+	&=& \left(\frac{\lambda}{2\pi}\right)^{\frac{n}{2}}\exp\left(-\frac{\lambda}{2} \left[n(\mu - \bar{x})^2 + \sum_{i=1}^n (x_i - \bar{x})^2\right] \right) \\
+	&& \hspace{3mm} \times \hspace{3mm} \lambda^{\alpha_0 - \frac{1}{2}} \exp\left(-\frac{\lambda}{2}\left[\kappa_0 (\mu - \mu_0)^2 + 2 \beta_0\right]\right) \\
+	&\propto&  \lambda^{\alpha_0 + \frac{n}{2} - \frac{1}{2}} \exp \left\{-\frac{\lambda}{2}\left[n(\mu - \bar{x})^2 + \kappa_0(\mu - \mu_0)^2 + \sum_{i=1}^n(x_i - \bar{x})^2 + 2\beta_0\right]\right\} \label{eqn:posterior_step_1}
+	\end{eqnarray}
+	We try and anticipate the parameters of our posterior. The following piece of logic might be slightly misleading. If one considers our prior as originating from previously observed data, we can consider the $\kappa_0$ parameter as the number of observations forming our prior and $\mu_0$ as the mean observed in our prior. In this case we would now expect that the observed mean, $\mu_n$, should correspond to a weighted average of combining the currently observed mean ($\bar{x}$), the number of observations in the current dataset ($n$) and these variables. Similarly, the ``total'' number of observations  between the prior data and the current data, $\kappa_n$, should be the sum of the number of samples in each, i.e.:
+	
+	\begin{eqnarray}
+	\kappa_n &=& \kappa_0 + n \\
+	\mu_n &=& \frac{\kappa_0 \mu_0 + n \bar{x}}{\kappa_0 + n}
+	\end{eqnarray}
+	If this is the case we would expect a term in the exponent:
+	
+	\begin{eqnarray}
+	\kappa_n (\mu - \mu_n)^2 &=& (\kappa_0 + n)\left[\mu - \left(\frac{\kappa_0 \mu_0 + n \bar{x}}{\kappa_0 + n}\right)\right]^2 \\
+	&=& (\kappa_0 + n) \left(\mu^2 - 2\mu(\kappa_0 \mu_0 + n \bar{x}) - \left(\frac{\kappa_0 \mu_0 + n \bar{x}}{\kappa_0 + n}\right)^2\right) %\\
+	%&=& \kappa_0 \mu^2 + n\mu^2 - 2\mu (\kappa_0 + n) (\kappa_0 \mu_0 + n \bar{x}) - \frac{(\kappa_0\mu_0)^2 + 2n\kappa_0\mu_0 \bar{x} + (n\bar{x})^2}{\kappa_0 + n}
+	\end{eqnarray}
+	Returning to equation \ref{eqn:posterior_step_1} and considering the part of the exponent containing $\mu$:
+	
+	\begin{eqnarray}
+	\kappa_0 (\mu - \mu_0) ^ 2 + n (\mu - \bar{x}) ^2 &=& \mu^2 (\kappa_0 + n) + n\bar{x}^2 + \kappa_0 \mu_0^2 -2n\mu\bar{x} -2 \kappa_0 \mu \mu_0 \\
+	&=& (\kappa_0 + n) \left[\mu^2 + \frac{n\bar{x}^2}{\kappa_0 + n} + \frac{\kappa_0 \mu_0^2}{\kappa_0 + n} - 2 \mu \left(\frac{n\bar{x} + \kappa_0 \mu_0}{\kappa_0 + n}\right) \right] \label{eqn:posterior_exponent_expansion}
+	\end{eqnarray}
+	Notice that several of the desired terms are present, focusing on the components of this equation that do not fit our expected form:
+	
+	\begin{eqnarray}
+	\frac{n\bar{x}^2}{\kappa_0 + n} + \frac{\kappa_0 \mu_0^2}{\kappa_0 + n} &=& \frac{n(\kappa_0 + n)\bar{x}^2 + \kappa_0(\kappa_0 + n)\mu_0^2}{(\kappa_0 + n)^2} \\
+	&=& \frac{n^2 \bar{x}^2 + 2\kappa_0 n \mu_0 \bar{x} + \kappa_0^ 2 \mu_0 ^ 2}{(\kappa_0 + n)^2} 2 \frac{\kappa_0 n \bar{x}^2 + \kappa_0 n\mu_0^2 - 2\kappa_0 n \mu_0 \bar{x}}{(\kappa_0 + n)^2} \\
+	\\
+	&=& \left(\frac{n\bar{x} + \kappa_0 \mu_0}{\kappa_0 + n}\right)^2 + \frac{n\kappa_0\left(\bar{x} - \mu_0 \right)^2}{(\kappa_0 + n)^2}
+	\end{eqnarray}
+	Substituting this result into equation \ref{eqn:posterior_exponent_expansion} gives us:
+	
+	\begin{eqnarray}
+	\kappa_0 (\mu - \mu_0) ^ 2 + n (\mu - \bar{x}) ^2 &=& (\kappa_0 + n) \left[\mu + \left(\frac{n\bar{x} + \kappa_0 \mu_0}{\kappa_0 + n}\right) \right]^2 + \frac{n\kappa_0\left(\bar{x} - \mu_0 \right)^2}{\kappa_0 + n}
+	\end{eqnarray}
+	Returning to equation \ref{eqn:posterior_step_1}:
+	
+	\begin{eqnarray}
+	p(\mu, \lambda | x) &\propto& \lambda^{\alpha_0 + \frac{n}{2} - \frac{1}{2}} \exp \left\{-\frac{\lambda}{2}\left[
+	(\kappa_0 + n) \left(\mu + \left(\frac{n\bar{x} + \kappa_0 \mu_0}{\kappa_0 + n}\right) \right)^2 + \frac{n\kappa_0\left(\bar{x} - \mu_0 \right)^2}{\kappa_0 + n} + \sum_{i=1}^n(x_i - \bar{x})^2 + 2\beta_0\right]\right\} \label{eqn:posterior}
+	\end{eqnarray}
+	This is the probability density function of a Normal-Gamma distribution.
+	
+	\begin{eqnarray}
+	p(\mu, \lambda| x) &=& NG(\mu, \lambda | \mu_n, \kappa_n, \alpha_n, \beta_n) \\
+	\mu_n &=& \frac{n\bar{x} + \kappa_0 \mu_0}{\kappa_0 + n} \\
+	\kappa_n &=& \kappa_0 + n \\
+	\alpha_n &=& \alpha_0 + \frac{n}{2} \\
+	\beta_n &=& \beta_0 + \frac{1}{2}\sum_{i=1}^n(x_i - \bar{x})^2 + \frac{n\kappa_0\left(\bar{x} - \mu_0 \right)^2}{2(\kappa_0 + n)}
+	\end{eqnarray}
+	As this posterior distribution is $NG(\mu_n,\kappa_n, \alpha_n, \beta_n)$, we know that the associated normalising constant is:
+	\begin{eqnarray}
+	Z_n &=& \frac{\Gamma(\alpha_n)}{\beta_n^{\alpha_n}}\sqrt{\frac{2\pi}{\kappa_n}}.
+	\end{eqnarray}
+	
+	\subsection{Marginal likelihood}
+	Consider now the posterior but track the constants (such as the $(2\pi)^{-n/2}$ in the likelihood). Denote the prior, likelihood and posterior less their normalising constants by $p'(\mu, \lambda)$, $p(x | \mu, \lambda)$ and $p'(\mu, \lambda | x)$ respectively:
+	
+	\begin{eqnarray}
+	\frac{1}{Z_n} p'(\mu, \lambda | x) &=& \frac{1}{p(x)}\frac{1}{Z_0} p'(\mu, \lambda)\left(\frac{1}{2\pi}\right)^{\frac{n}{2}} p'(x | \mu, \lambda)
+	\end{eqnarray}
+	We know that the product of the unnormalised prior and the unnormalised likelihood give the right hand side of equation \ref{eqn:posterior}, and that this is our unnormalised posterior, $p'(\mu, \lambda | x)$. Thus:
+	
+	\begin{eqnarray}
+	\frac{1}{Z_n} p'(\mu, \lambda | x) &=& \frac{1}{p(x)}\frac{1}{Z_0} \left(\frac{1}{2\pi}\right)^{\frac{n}{2}} p'(\mu, \lambda | x) \\
+	\implies p(x) &=& \frac{Z_n}{Z_0}(2\pi)^{-\frac{n}{2}} 
+	\end{eqnarray}
+	Thus our marginal likelihood is the ratio of the posterior normalising constants to the product of those of the likelihood and prior. Expanding this we finally have:
+	
+	\begin{eqnarray}
+	p(x) &=& \frac{\Gamma(\alpha_n)}{\beta_n^{\alpha_n}} \sqrt{\frac{2\pi}{\kappa_n}} \frac{\beta_0^{\alpha_0}}{\Gamma(\alpha_0)} \sqrt{\frac{\kappa_0}{2\pi}} (2\pi)^{-\frac{n}{2}} \\
+	&=& \frac{\Gamma(\alpha_n)}{\Gamma(\alpha_0)}\frac{\beta_0^{\alpha_0}}{\beta_n^{\alpha_n}} \sqrt{\frac{\kappa_0}{\kappa_n}}(2\pi)^{-\frac{n}{2}}
+	\end{eqnarray}
+
 	
 \end{document}
