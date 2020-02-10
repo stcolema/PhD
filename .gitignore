@@ -2,3 +2,13 @@
 .Rhistory
 .RData
 .Ruserdata
+
+# Ignore the .Rproj file
+*.Rproj
+
+# Ignore all logs
+*.log
+
+# Additional latex things to ignore
+*.aux
+*.synctex.gz
