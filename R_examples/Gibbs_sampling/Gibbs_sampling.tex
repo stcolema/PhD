@@ -81,11 +81,11 @@
 	
 	\section{Gibbs sampling}
 	
-	Consider Gibbs sampling of some vector of variables $\theta=(\theta_1,\ldots,\theta_p)$. Gibbs sampling works by iterating over each variable to be predicted, updating it based upon the current values of all the other variables and then repeating this a large number of times. Let $\theta^{(j)}=(\theta^{(j)}_1,\ldots,\theta^{(j)}_n)$ be the predicted values of $\theta$ in the $j^{th}$ iteration of Gibbs sampling. Our update for $\theta^{(j)}_i$ is conditioned on all the current values for the other variables - this means that the first $(i-1)$ variables have already been updated $j$ times, but the remaining $p - i$ variables are still baased upon the $(j-1)^{th}$ iteration, i.e. our update probability is of the form:
+	Consider Gibbs sampling of some vector of variables $\theta=(\theta_1,\ldots,\theta_p)$. Gibbs sampling works by iterating over each variable to be predicted, updating it based upon the current values of all the other variables and then repeating this a large number of times. Let $\theta^{(j)}=(\theta^{(j)}_1,\ldots,\theta^{(j)}_n)$ be the predicted values of $\theta$ in the $j^{th}$ iteration of Gibbs sampling. Our update for $\theta^{(j)}_i$ is conditioned on all the current values for the other variables - this means that the first $(i-1)$ variables have already been updated $j$ times, but the remaining $p - i$ variables are still based upon the $(j-1)^{th}$ iteration, i.e. our update probability is of the form:
 	\[
 	p\left(\theta^{(j)}_i | \theta^{(j)}_1,\ldots,\theta^{(j)}_{i-1},\theta^{(j-1)}_{i+1},\ldots, \theta^{(j - 1)}_p\right)
 	\]
-	Now, consider Gibbs sampling for a mixture of $K$ components for data $x=(x_1, \ldots, x_n)$, allocation variables $z=(z_,1\ldots,z_n)$, component parameters $\theta=(\theta_1,\ldots,\theta_K)$, and component weights $\pi=(\pi_1,\ldots,\pi_K)$. Let $x_{-i}$ indicate the vector $(x_1,\ldots,x_{i-1},x_{i+1},ldots,x_n)$ and similarly for $z_{-i}$. Let our model be that described in figure \ref{fig:hierarchical_mode}.
+	Now, consider Gibbs sampling for a mixture of $K$ components for data $x=(x_1, \ldots, x_n)$, allocation variables $z=(z_1,\ldots,z_n)$, component parameters $\theta=(\theta_1,\ldots,\theta_K)$, and component weights $\pi=(\pi_1,\ldots,\pi_K)$. Let $x_{-i}$ indicate the vector $(x_1,\ldots,x_{i-1},x_{i+1},\ldots,x_n)$ and similarly for $z_{-i}$. Let our model be that described in figure \ref{fig:hierarchical_mode}.
 	
 	\begin{figure}[!htb]
 		\centering
@@ -110,7 +110,7 @@
 	\end{eqnarray}
 	Note that $p(x_i | x_{-i}, z_{-i}, \pi)$ in the denominator is independent of $z_i$ and thus the same for all values of $k$.
 	
-	The integral in equation \ref{eqn:z_i_distn} is the posterior predictive distribution for $x_i$ given the other observations, $x_{-i}$. Thus, one may think of this as how well each component fits $x_i$.
+	The integral in equation \ref{eqn:z_i_distn} is the posterior predictive distribution for $x_i$ given the other observations, $x_{-i}$. Thus, one may think of this as how well each component predicts $x_i$.
 	
     An alternative way of describing this involves the ratio of marginal likelihoods. As we are component specific (given $z_i = k$), I drop the $z$ and $\pi$ from my conditional and assume we are referring only to the $x_j$ for which $z_j = k$.
     
@@ -230,7 +230,7 @@
 	\end{eqnarray}
 	
 	\subsection{Marginal likelihood}
-	Consider now the posterior but track the constants (such as the $(2\pi)^{-n/2}$ in the likelihood). Denote the prior, likelihood and posterior less their normalising constants by $p'(\mu, \lambda)$, $p(x | \mu, \lambda)$ and $p'(\mu, \lambda | x)$ respectively:
+	Consider now the posterior but track the normalising constants (such as the $(2\pi)^{-n/2}$ in the likelihood). Denote the prior, likelihood and posterior less their normalising constants by $p'(\mu, \lambda)$, $p(x | \mu, \lambda)$ and $p'(\mu, \lambda | x)$ respectively:
 	
 	\begin{eqnarray}
 	\frac{1}{Z_n} p'(\mu, \lambda | x) &=& \frac{1}{p(x)}\frac{1}{Z_0} p'(\mu, \lambda)\left(\frac{1}{2\pi}\right)^{\frac{n}{2}} p'(x | \mu, \lambda)
