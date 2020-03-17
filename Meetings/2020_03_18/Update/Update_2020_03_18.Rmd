@@ -13,6 +13,22 @@ knitr::opts_chunk$set(echo = TRUE)
 
 To test the idea of consensus inference we want to run simulations on a number of simple cases.
 
+<!-- The generative model for a finite mixture of $K$ Gaussians for $N$ items is: -->
+
+<!-- \[ -->
+<!-- p(x, z, \pi, \mu, \Sigma) = p(\mu, \Sigma)\prod_{i=1}^Np(x_i | z_i, \mu_{z_i}, \Sigma_{z_i})p(z_i | \mu, \Sigma)\prod_{k=1}^K\pi_k. -->
+<!-- \] -->
+
+<!-- This can be seen to be defined by a number of parameters: -->
+
+<!-- * $N$: the number of items being clustered; -->
+<!-- * $K$: the number of components being modeled; -->
+<!-- * $\pi$: the proportion of points associated with each component; -->
+<!-- * $\mu_k$: the mean vector associated with the $k^{th}$ component; and -->
+<!-- * $\Sigma_k$: the covariance matrix associated with the $k^{th}$ component. -->
+
+<!-- By using each of these to define a dataset we can generate datasets that test different aspects of the model (e.g. how different to the $\mu_k$ have to be, how well does it cope with very different $\pi_k$,etc.). -->
+
 Note: I use $vec(\cdot)$ to denote a vector of a repeated value.
 
 1. 2D Uniform: in this case $K=1$ and $N=100$ points are drawn from a uniform distribution for $p=2$ features. The method should find a single clustering, but the 2D case is relatively challenging and it is possible that there will be misleading structure present.
@@ -21,7 +37,7 @@ Note: I use $vec(\cdot)$ to denote a vector of a repeated value.
 4. ``Gene expression'' case. Let each cluster be defined by up/down regulation in a number of genes. Let up regulation be represented by a univariate standard normal with mean 1.5, down regulation be represented by a univariate normal with mean -1.5 and expressing as normal be represented by a univariate Gaussian with mean 0. For example, let gene 1 be uniform across the range $(-2, 2)$; let gene 2 be up-regulated in cluster 1 and down regulated in clusters 2, 3 and 4; let gene 3 be up-regulated in clusters 2 and 3, down-regulated in cluster 4 and normally expressed in cluster 1; etc.
 5. Repeat 4 with $\pi=(0.3, 0.1, 0.1, 0.5)$.
 6. Extend idea of up and down regulation to a less ``blocky'' structure. Define $K$ means (possibly by sampling from a univariate standard Gaussian distribution and/or a range $(0,\ldots, K)$. Ideally some means are relatively close to each other, others more separated. For each feature sample the mean associated with each cluster and make draws from this standard Gaussian. Consider something similar for drawing $K$ values for $\sigma$ from a Gamma dsitribution?
-7. Consider 4 - 6 with an additional $p_n$ noisy features. Should the$p_s$ features containing signal be much less in quantity? What ratio? I was thinking $p_s << p_n$, e.g. $p_s = 100$, $p_n = 400$.
+7. Consider 4 - 6 with an additional $p_n$ noisy features. Should the$p_s$ features containing signal be much less in quantity? What ratio? I was thinking $p_s << p_n$, e.g. $p_s = 100$, $p_n = 400$. Possibly a range like $p_n=0.1 p_s$, $p_n=p_s$ and $p_n = 5 p_s$ andtrying this only for one case.
 
 ## Guarantees on analysis
 I have been trying to think about the problem of exploring a ``good'' space with the different chains. I think that there will be, similarly to random forest, some measure defined by ratio between the correlation between chains (or at least their initialisation) and chain-model strength (i.e. how well the individual chains describe the posterior) that we wish to minimise. I think showing that the first ten iterations (my expectation for the burn-in) is quite different across many of the chains would be reassuring. I think that we have no easy ability to judge chain model strength (maybe autocorrelation is sufficient) as clustering is unsupervised and there's no way of being sure we are sampling the posterior, so creating a statistic for this might not be feasible.
