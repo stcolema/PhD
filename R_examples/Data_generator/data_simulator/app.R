@@ -22,9 +22,9 @@ theme_set(theme_bw() +
   theme(strip.background = element_rect(fill = "#21677e")) +
   theme(strip.text = element_text(colour = "white")))
 
-defineBreaks <- function(col_pal, lb = -1, ub = 1, mid_point = 0.5 * (lb + ub)){
+defineBreaks <- function(col_pal, lb = -1, ub = 1, mid_point = 0.5 * (lb + ub)) {
   palette_length <- length(col_pal)
-  
+
   breaks <- c(
     seq(lb, mid_point, length.out = ceiling(palette_length / 2) + 1),
     seq(mid_point + 1 / palette_length, ub, length.out = floor(palette_length / 2))
@@ -37,15 +37,15 @@ defineDataBreaks <- function(x, col_pal, mid_point = NULL) {
   }
   lb <- min(x)
   ub <- max(x)
-  
-  if(is.null(mid_point)){
-    if(lb < 0 & ub > 0){
+
+  if (is.null(mid_point)) {
+    if (lb < 0 & ub > 0) {
       mid_point <- 0
     } else {
       mid_point <- 0.5 * (lb + ub)
     }
   }
-  
+
   defineBreaks(col_pal, lb = lb, ub = ub, mid_point = mid_point)
 }
 
@@ -202,13 +202,13 @@ ui <- fluidPage(
   sidebarLayout(
     sidebarPanel(
       numericInput("seed",
-                   "Random seed used to generate data:",
-                   min = 1,
-                   max = 1e5,
-                   value = sample(1:1e5, 1),
-                   step = 1
+        "Random seed used to generate data:",
+        min = 1,
+        max = 1e5,
+        value = 1, #sample(1:1e5, 1),
+        step = 1
       ),
-      
+
       sliderInput("N",
         "Number of samples:",
         min = 10,
@@ -223,7 +223,7 @@ ui <- fluidPage(
         value = 2,
         step = 1
       ),
-      
+
       numericInput("phi",
         "Number of irrelevant features:",
         min = 0,
@@ -245,7 +245,7 @@ ui <- fluidPage(
         label = "Choose how class proportions are defined:",
         choices = c("even", "varying (sampled from Dirichlet)")
       ),
-      
+
       sliderInput("delta_mu",
         "Distance between means defining each cluster:",
         min = 0,
@@ -259,18 +259,31 @@ ui <- fluidPage(
         min = 0.1,
         max = 5,
         value = 1
+      ),
+      
+      sliderInput("alpha",
+                  "Concentration parameter for the Dirichlet distribution (only used if class proportions are set to ``varying''):",
+                  min = 0.1,
+                  max = 5,
+                  value = 2,
+                  width = "400px"
+      ),
+
+      checkboxInput(
+        "plotDensity",
+        "Plot density of cluster members in PCA plot:"
       )
     ),
 
     # Show a plot of the generated distribution
     mainPanel(
-      
+
       # Plot first two PCs
       plotOutput("distPlot"),
-      
+
       # PLot annotated heatmap of data
       plotOutput("themap"),
-      
+
       # Download data generated
       downloadButton("downloadData", "Download data")
     )
@@ -279,15 +292,15 @@ ui <- fluidPage(
 
 # Define server logic required to draw a histogram
 server <- function(input, output) {
-  
+
   # seed <- reactive({
   #   seed <- sample(1:1e5, size = 1)
   #   set.seed(seed)
   #   seed
   # })
-  
+
   # set.seed(input$seed)
-  
+
   # Generate the data and cluster IDs
   a <- reactive({
     set.seed(input$seed)
@@ -298,9 +311,9 @@ server <- function(input, output) {
       input$delta_mu,
       input$Sigma,
       input$pi,
-      input$phi
+      input$phi,
+      input$alpha
     )
-    
   })
 
 
@@ -310,28 +323,50 @@ server <- function(input, output) {
 
     pc_1 <- prcomp(my_data$data)
 
-    if(input$K < 10){
-      autoplot(pc_1, data = my_data$data) + #, colour = my_data$cluster_IDs) +
-        geom_point(aes(colour = as.factor(my_data$cluster_IDs))) +
-        geom_density_2d(aes(colour = as.factor(my_data$cluster_IDs))) +
-        labs(
-          title = "PCA of generated data",
-          subtitle = "Coloured by cluster IDs",
-          colour = "Cluster"
-        ) +
-        scale_colour_viridis_d()
-      
+    if (input$K < 10) {
+      if (input$plotDensity) {
+        autoplot(pc_1, data = my_data$data) + # , colour = my_data$cluster_IDs) +
+          geom_point(aes(colour = as.factor(my_data$cluster_IDs))) +
+          geom_density_2d(aes(colour = as.factor(my_data$cluster_IDs))) +
+          labs(
+            title = "PCA of generated data",
+            subtitle = "Coloured by cluster IDs",
+            colour = "Cluster"
+          ) +
+          scale_colour_viridis_d()
+      } else {
+        autoplot(pc_1, data = my_data$data) + # , colour = my_data$cluster_IDs) +
+          geom_point(aes(colour = as.factor(my_data$cluster_IDs))) +
+          labs(
+            title = "PCA of generated data",
+            subtitle = "Coloured by cluster IDs",
+            colour = "Cluster"
+          ) +
+          scale_colour_viridis_d()
+      }
     } else {
-      autoplot(pc_1, data = my_data$data) + #, colour = my_data$cluster_IDs) +
-        geom_point(aes(colour = as.factor(my_data$cluster_IDs))) +
-        geom_density_2d(aes(colour = as.factor(my_data$cluster_IDs))) +
-        labs(
-          title = "PCA of generated data",
-          subtitle = "Coloured by cluster IDs",
-          colour = "Cluster"
-        ) +
-        scale_colour_viridis_d() + 
-        theme(legend.position = "none")
+      if (input$plotDensity) {
+        autoplot(pc_1, data = my_data$data) + # , colour = my_data$cluster_IDs) +
+          geom_point(aes(colour = as.factor(my_data$cluster_IDs))) +
+          geom_density_2d(aes(colour = as.factor(my_data$cluster_IDs))) +
+          labs(
+            title = "PCA of generated data",
+            subtitle = "Coloured by cluster IDs",
+            colour = "Cluster"
+          ) +
+          scale_colour_viridis_d() +
+          theme(legend.position = "none")
+      } else {
+        autoplot(pc_1, data = my_data$data) + # , colour = my_data$cluster_IDs) +
+          geom_point(aes(colour = as.factor(my_data$cluster_IDs))) +
+          labs(
+            title = "PCA of generated data",
+            subtitle = "Coloured by cluster IDs",
+            colour = "Cluster"
+          ) +
+          scale_colour_viridis_d() +
+          theme(legend.position = "none")
+      }
     }
   })
 
@@ -361,10 +396,9 @@ server <- function(input, output) {
 
     # plot(ph$gtable)
   })
-  
+
   # Downloadable csv of selected dataset ----
   output$downloadData <- downloadHandler(
-  
     filename = "generated_data.csv",
     content = function(file) {
       write.csv(a(), file, row.names = T)
