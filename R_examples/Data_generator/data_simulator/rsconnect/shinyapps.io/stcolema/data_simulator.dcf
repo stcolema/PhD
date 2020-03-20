@@ -1,0 +1,12 @@
+name: data_simulator
+title: data_simulator
+username:
+account: stcolema
+server: shinyapps.io
+hostUrl: https://api.shinyapps.io/v1
+appId: 1971772
+bundleId: 2902969
+url: https://stcolema.shinyapps.io/data_simulator/
+when: 1584730031.12217
+asMultiple: FALSE
+asStatic: FALSE
