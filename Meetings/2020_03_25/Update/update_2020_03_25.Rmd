@@ -1,0 +1,795 @@
+---
+title: "Update 25/03/2020"
+author: "Stephen Coleman"
+date: "23/03/2020"
+output: pdf_document
+bibliography: update_2020_03_25_bib.bib
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(shiny)
+library(MASS)
+library(pheatmap)
+library(ggplot2)
+library(viridis)
+library(magrittr)
+# library(mdiHelpR)
+library(ggfortify)
+library(bookdown)
+
+set.seed(1)
+
+# define our ggplot2 theme of choice
+theme_set(theme_bw() +
+  theme(strip.background = element_rect(fill = "#21677e")) +
+  theme(strip.text = element_text(colour = "white")))
+
+defineBreaks <- function(col_pal, lb = -1, ub = 1, mid_point = 0.5 * (lb + ub)) {
+  palette_length <- length(col_pal)
+
+  breaks <- c(
+    seq(lb, mid_point, length.out = ceiling(palette_length / 2) + 1),
+    seq(mid_point + 1 / palette_length, ub, length.out = floor(palette_length / 2))
+  )
+}
+
+defineDataBreaks <- function(x, col_pal, mid_point = NULL) {
+  if (is.null(col_pal)) {
+    col_pal <- dataColPal(n)
+  }
+  lb <- min(x)
+  ub <- max(x)
+
+  if (is.null(mid_point)) {
+    if (lb < 0 & ub > 0) {
+      mid_point <- 0
+    } else {
+      mid_point <- 0.5 * (lb + ub)
+    }
+  }
+
+  defineBreaks(col_pal, lb = lb, ub = ub, mid_point = mid_point)
+}
+
+#' @title Generate dataset
+#' @description Generate a dataset based upon the cluster means
+#' (assumes each feature is independent)
+#' @param cluster_means A k-vector of cluster means defining the k clusters.
+#' @param n The number of samples to generate in the entire dataset.
+#' @param p The number of columns to generate in the dataset.
+#' @param pi A k-vector of the expected proportion of points to be drawn from
+#' each distribution.
+#' @param row_names The row names of the generated dataset.
+#' @param col_names The column names of the generated dataset.
+generateDataset <- function(cluster_means, cluster_sds, n, p, pi,
+                            row_names = paste0("Person_", 1:n),
+                            col_names = paste0("Gene_", 1:p)) {
+
+  # The number of distirbutions to sample from
+  K <- length(cluster_means)
+
+  # The membership vector for the n points
+  cluster_IDs <- sample(K, n, replace = T, prob = pi)
+
+  # The data matrix
+  my_data <- matrix(nrow = n, ncol = p)
+
+  # Iterate over each of the columns permuting the means associated with each
+  # label.
+  for (j in 1:p)
+  {
+    reordered_cluster_means <- sample(cluster_means)
+    reordered_cluster_sds <- sample(cluster_sds)
+
+    # Draw n points from the K univariate Gaussians defined by the permuted means.
+    for (i in 1:n) {
+      my_data[i, j] <- rnorm(1,
+        mean = reordered_cluster_means[cluster_IDs[i]],
+        sd = reordered_cluster_sds[cluster_IDs[i]]
+      )
+    }
+  }
+
+  # Order based upon allocation label
+  row_order <- order(cluster_IDs)
+
+  # Assign rownames and column names
+  rownames(my_data) <- row_names
+  colnames(my_data) <- col_names
+
+  # Return the data and the allocation labels
+  list(
+    data = my_data[row_order, ],
+    cluster_IDs = cluster_IDs[row_order]
+  )
+}
+
+# This is an idea for generating data
+generateFullDataset <- function(K, n, p,
+                                delta_mu = 1,
+                                cluster_sd = 1,
+                                pi_method = "even",
+                                p_noisy = 0,
+                                alpha = 2) {
+  my_data <- list(
+    data = NA,
+    cluster_IDs = NA
+  )
+
+  # Generate some cluster means
+  cluster_means <- seq(from = 0, to = (K - 1) * delta_mu, by = delta_mu) %>%
+    scale(center = T, scale = F)
+
+  if (delta_mu == 0) {
+    cluster_means <- rep(0, K)
+  }
+
+  # Generate some cluster standard deviations
+  cluster_sds <- rep(cluster_sd, K)
+
+  if (pi_method == "even") {
+    pi <- rep(1, K)
+  } else {
+    pi <- rgamma(K, alpha)
+    pi <- pi / sum(pi)
+  }
+
+  # Find the number of requested informative features
+  p_signal <- p # max(0, (p - p_noisy))
+
+  data_sd <- 1
+
+  # Generate data
+  if (p_signal > 0) {
+    my_data <- generateDataset(cluster_means, cluster_sds, n, p_signal, pi)
+    data_sd <- sd(my_data$data)
+  }
+
+  # If irrelevant features are desired, generate such data
+  if (p_noisy > 0) {
+    noisy_data <- lapply(1:p_noisy, function(x) {
+      rnorm(n, sd = data_sd)
+    }) %>%
+      unlist() %>%
+      matrix(ncol = p_noisy) %>%
+      set_colnames(paste0("Noise_", 1:p_noisy))
+
+    if (p_signal > 0) {
+      my_data$data <- cbind(my_data$data, noisy_data)
+    } else {
+      my_data$data <- noisy_data %>%
+        set_rownames(paste0("Person_", 1:n))
+
+      my_data$cluster_IDs <- rep(1, n)
+    }
+  }
+
+  my_data
+}
+
+# Badly named heatmapping function
+plotData <- function(x, cluster_IDs,
+                     col_pal = colorRampPalette(c("#146EB4", "white", "#FF9900"))(100),
+                     my_breaks = defineDataBreaks(x, col_pal, mid_point = 0),
+                     main = "gen_dataset",
+                     ...) {
+  anno_row <- data.frame(Cluster = factor(paste("Cluster", cluster_IDs))) %>%
+    set_rownames(rownames(x))
+
+  K <- length(unique(cluster_IDs))
+
+  ann_colours <- list(Cluster = viridis(K) %>%
+    set_names(paste("Cluster", sort(unique(cluster_IDs)))))
+
+  ph <- pheatmap(x,
+    color = col_pal,
+    breaks = my_breaks,
+    annotation_row = anno_row,
+    annotation_colors = ann_colours,
+    main = main,
+    ...
+  )
+
+  ph
+}
+```
+
+## General model
+
+For data $X=(x_1, \ldots, x_N)$, where each item $x_i = (x_{i1}, \ldots, x_{iP})$, we use a $K$-component mixture-model paramaterised by $\theta$ to describe the data:
+
+\[
+p(x_i | \theta, \pi) = \sum_{k=1}^K \pi_k f(x | \theta_k).
+\]
+
+Here $\pi=(\pi_1, \ldots, \pi_K)$ is the proportion of items assigned to each component and $\theta_k$ is the component specific parameters.
+
+We assume that there is a common probability density function, $f(\cdot)$, associated with each component (e.g. Gaussian). Independence is assumed between the $P$ features, thus:
+
+\[
+p(x_i | \theta, \pi) = \sum_{k=1}^K \pi_k \prod_{p=1}^P f(x | \theta_{kp}),
+\]
+
+where $\theta_{kp}$ is the parameters for the $p^{th}$ feature within the $k^{th}$ component (e.g. if we are using a \emph{Gaussian mixture model}, then $\theta_{kp}=(\mu_{kp}, \sigma^2_{kp})$, the mean and standard deviation of the items in the $k^{th}$ component within the $p^{th}$ feature).
+
+In the language of @law2003feature, we assume that a subset of the features are \emph{irrelevant}. By this we mean that for a given item $x_i$,
+
+\[
+f(x_i|\theta_{kp}) = f(x_i|\theta_{lp}) = g(x_i | \lambda_p) \hspace{1.5mm} \forall \hspace{1.5mm} k, l \in \{1, \ldots, K\}.
+\]
+
+Thus an irrelevant feature does not contribute any component specific information and is irrelevant to uncovering structure within the data. Let $\Phi=(\phi_1, \ldots, \phi_P)$ be a binary variable indicating the relevance of a feature (i.e. $\phi_p = 1$ if the $p^{th}$ feature is relevant and $0$ otherwise). Then our model can be written:
+
+\begin{equation} 
+p(x_i | \theta, \pi, \Phi) = \sum_{k=1}^K \pi_k \prod_{p=1}^P f(x_i | \theta_{kp})^{\phi_p} g(x_i | \lambda_p)^{(1 - \phi_p)}.
+\end{equation} 
+
+# Simulations
+
+In our simulations we are interested in testing how *consensus inference* compares to Bayesian inference of mixture models in various circumstances. In each simulation we will assume a generative model that can be described by 
+
+\begin{equation} 
+p(x_i | \theta, \pi, \Phi) = \sum_{k=1}^K \pi_k \prod_{p=1}^P f(x_i | \theta_{kp})^{\phi_p} g(x_i | \lambda_p)^{(1 - \phi_p)},
+\end{equation} 
+
+where $f(\cdot)$ describes the Gaussian pdf and thus $\theta=(\mu, \sigma^2)$.  Let $P_n=\sum_{p=1}^P\phi_p$ be the number of irrelevant features present, and $P_s = P - P_n$ be the number of relevant features present. Then in each simulation we will change various variables associated with this model:
+
+* $N$: the number of items being clustered;
+* $P_s$: the number of *relevant* features present;
+* $P_n$: the number of *irrelevant* features present;
+* $K$: the number of components being modeled;
+* $\pi$: the proportion of points associated with each component;
+* $\Delta_{\mu}$: the difference between the means associated with each component in each feature; 
+* $\sigma^2$: the standard deviation within each feature for each component; and
+* $alpha$: the concentration of the Dirichlet distribution $\pi$ might be generated from (only relevant when $\pi$ is sampled as explained below).
+
+$\pi$ will be chosen in one of two ways:
+
+* "Even": a $K$-vector with all entries equal to $\frac{1}{K}$; or
+* "Varying": sampled from a Dirichlet distribution with concetration of $alpha$.
+
+In the second case we will explain our choice of $\alpha$ each time.
+
+I would expect that there is some function of the number of samples, the number of informative features, the number of clusters, the distance between component means and the value of $\sigma^2$ used that explains how easy it is to resolve the clutering structure. If $C'$ is the true clustering and $C^*$ is that predicted by the model, then I expect there to be some relationship of the nature
+
+\[
+\begin{aligned}
+ARI(C^*, C') &\propto N \\
+ARI(C^*, C') &\propto P_S \\
+ARI(C^*, C') &\propto \frac{1}{K} \\
+ARI(C^*, C') &\propto \Delta_{\mu} \\
+ARI(C^*, C') &\propto \frac{1}{\sigma^2} \\
+\end{aligned}
+\]
+
+I do not expect that the linear nature of these relationships is true, but the directionality of these relationships is expected to hold. These expectations also convey that for many of the variables it is relative valus that matter; for instance if $\Delta_{\mu}$ increases but $\sigma^2$ also grows proportionally, then we would not expect the clustering structure to resolve particularly well; similarly we expect that the number of items present contributes as a function of the number of clusters present.
+
+## Simulation 1: 2D Gaussian
+
+This is a sense-test case. It is the easiest to judge how well sensible the final clustering is as we can visualise the data fully in a 2D setting.
+
+* $N$ = 100;
+* $P_s$ = 2;
+* $P_n$ = 0;
+* $K$ = 5;
+* $\pi = (0.2, 0.2, 0.2, 0.2, 0.2)^T$;
+* $\Delta_{\mu} = 2$; and
+* $\sigma^2_{kp} = 1$.
+
+```{r sim_1_2d_gaussian, echo = F}
+
+# Generate data based upon inputs
+gaussian_means <- matrix(
+  c(-3, -3, -3, 3, 3, -3, 3, 3, 0, 0),
+  nrow = 2
+)
+
+# 
+k <- ncol(gaussian_means)
+n <- 100
+p <- nrow(gaussian_means)
+
+Sigma <- diag(1, nrow = p)
+
+for (i in 1:k) {
+  cluster_data <- mvrnorm(n / k, gaussian_means[, i], Sigma)
+
+  if (i == 1) {
+    my_data <- cluster_data
+  } else {
+    my_data <- rbind(my_data, cluster_data)
+  }
+}
+
+my_data <- data.frame(
+  Gene_1 = my_data[, 1],
+  Gene_2 = my_data[, 2]
+) %>% set_rownames(paste0("Person_", 1:n))
+
+plot_data <- my_data
+plot_data$Cluster <- as.factor(rep(1:k, each = n / k))
+
+ggplot(plot_data, aes(x = Gene_1, y = Gene_2, colour = Cluster)) +
+  geom_point(alpha = 0.4) +
+  labs(
+    title = "Simple mixture of Gaussians",
+    x = "Gene 1",
+    y = "Gene 2"
+  ) +
+  scale_colour_viridis_d()
+
+
+plotData(my_data, rep(1:k, each = n / k),
+  main = "Simulation 1: 2D Gaussian",
+  show_rownames = F,
+  show_colnames = F,
+  cluster_rows = F,
+  cluster_cols = T
+)
+
+
+```
+
+## Simulation 2: No structure
+
+We wish to test the case when there is no structure present (i.e. all items are generated from the same Gaussian distirbution). In this scenario there are no subpopulations present so all items should be allocated to the same component.
+
+* $N$ = 100;
+* $P_s$ = 0;
+* $P_n$ = 2;
+* $K$ = 1;
+* $\pi = 1$;
+* $\Delta_{\mu} = 0$; and
+* $\sigma^2_{kp} = 1$.
+
+
+```{r simulation_2_1_gaussian, echo = F}
+# Generate data based upon inputs
+N <- 100
+P_s <- 0
+P_n <- 2
+K <- 1
+pi <- "even"
+delta_mu <- 0
+sigma <- 1
+alpha <- 1
+
+my_data <- generateFullDataset(
+  K,
+  N,
+  P_s,
+  delta_mu,
+  sigma,
+  pi,
+  P_n,
+  alpha
+)
+
+# PCA analysis
+pc_1 <- prcomp(my_data$data)
+
+# Visualise the first two components
+autoplot(pc_1, data = my_data$data) +
+  geom_point(aes(colour = as.factor(my_data$cluster_IDs)), alpha = 0.4) +
+  labs(
+    title = "PCA of generated data",
+    subtitle = "Coloured by cluster IDs",
+    colour = "Cluster"
+  ) +
+  scale_colour_viridis_d()
+
+# Heatmap the data, annotated by cluster ID
+ph <- plotData(my_data$data, my_data$cluster_IDs,
+  cluster_rows = F,
+  main = "Simulation 2",
+  show_rownames = F,
+  show_colnames = F,
+  silent = F
+)
+```
+
+## Simulation 3: Large, informative dataset
+
+This case is intended to be more representative of real data. We increase the sample size and the number of features.
+
+* $N$ = 1000;
+* $P_s$ = 100;
+* $P_n$ = 0;
+* $K$ = 5;
+* $\pi = vec(\frac{1}{5})$;
+* $\Delta_{\mu} = 1$; and
+* $\sigma^2_{kp} = 1$.
+
+```{r simulation_3_large_informed, echo = F}
+# Generate data based upon inputs
+N <- 1000
+P_s <- 100
+P_n <- 0
+K <- 5
+pi <- "even"
+delta_mu <- 1
+sigma <- 1
+alpha <- 1
+
+my_data <- generateFullDataset(
+  K,
+  N,
+  P_s,
+  delta_mu,
+  sigma,
+  pi,
+  P_n,
+  alpha
+)
+
+# PCA analysis
+pc_1 <- prcomp(my_data$data)
+
+# Visualise the first two components
+autoplot(pc_1, data = my_data$data) +
+  geom_point(aes(colour = as.factor(my_data$cluster_IDs)), alpha = 0.4) +
+  labs(
+    title = "PCA of generated data",
+    subtitle = "Coloured by cluster IDs",
+    colour = "Cluster"
+  ) +
+  scale_colour_viridis_d()
+
+# Heatmap the data, annotated by cluster ID
+ph <- plotData(my_data$data, my_data$cluster_IDs,
+  cluster_rows = F,
+  main = "Simulation 3",
+  show_rownames = F,
+  show_colnames = F,
+  silent = F
+)
+```
+
+## Simulation 4: Large, informative dataset, large $\sigma^2$
+
+We test the ratio of $\mu$ to $\sigma^2$ required for structure to be successfully uncovered.
+
+* $N$ = 1000;
+* $P_s$ = 100;
+* $P_n$ = 0;
+* $K$ = 5;
+* $\pi = vec(\frac{1}{5})$;
+* $\Delta_{\mu} = 1$; and
+* $\sigma^2_{kp} = 3$.
+
+```{r simulation_4_large_informed_small_sd, echo = F}
+# Generate data based upon inputs
+N <- 1000
+P_s <- 100
+P_n <- 0
+K <- 5
+pi <- "even"
+delta_mu <- 1
+sigma <- 3
+alpha <- 1
+
+my_data <- generateFullDataset(
+  K,
+  N,
+  P_s,
+  delta_mu,
+  sigma,
+  pi,
+  P_n,
+  alpha
+)
+
+# PCA analysis
+pc_1 <- prcomp(my_data$data)
+
+# Visualise the first two components
+autoplot(pc_1, data = my_data$data) +
+  geom_point(aes(colour = as.factor(my_data$cluster_IDs)), alpha = 0.4) +
+  labs(
+    title = "PCA of generated data",
+    subtitle = "Coloured by cluster IDs",
+    colour = "Cluster"
+  ) +
+  scale_colour_viridis_d()
+
+# Heatmap the data, annotated by cluster ID
+ph <- plotData(my_data$data, my_data$cluster_IDs,
+  cluster_rows = F,
+  main = "Simulation 4",
+  show_rownames = F,
+  show_colnames = F,
+  silent = F
+)
+```
+
+## Simulation 5: Large, noisy dataset
+
+This case is intended to test how well structure can be uncovered as $P_n$ increases. We test for:
+
+\[
+\begin{aligned}
+P_n &= 0.1 \times P_s \\
+P_n &= 0.5 \times P_s \\
+P_n &= P_s \\
+P_n &= 5 \times P_s \\
+P_n &= 10 \times P_s
+\end{aligned}
+\]
+
+### Simulation 5a: Large, slightly noisy dataset
+
+* $N$ = 1000;
+* $P_s$ = 20;
+* $P_n$ = 2;
+* $K$ = 5;
+* $\pi = vec(\frac{1}{5})$;
+* $\Delta_{\mu} = 1$; and
+* $\sigma^2_{kp} = 1$.
+
+```{r simulation_5a_noise, echo = F}
+# Generate data based upon inputs
+N <- 1000
+P_s <- 20
+P_n <- 2
+K <- 5
+pi <- "even"
+delta_mu <- 1
+sigma <- 1
+alpha <- 1
+
+my_data <- generateFullDataset(
+  K,
+  N,
+  P_s,
+  delta_mu,
+  sigma,
+  pi,
+  P_n,
+  alpha
+)
+
+# PCA analysis
+pc_1 <- prcomp(my_data$data)
+
+# Visualise the first two components
+autoplot(pc_1, data = my_data$data) +
+  geom_point(aes(colour = as.factor(my_data$cluster_IDs)), alpha = 0.4) +
+  labs(
+    title = "PCA of simulation 5a: slightly noisy dataset",
+    subtitle = "Coloured by cluster IDs",
+    colour = "Cluster"
+  ) +
+  scale_colour_viridis_d()
+
+# Heatmap the data, annotated by cluster ID
+ph <- plotData(my_data$data, my_data$cluster_IDs,
+  cluster_rows = F,
+  main = "Simulation 5a: slightly noisy dataset",
+  show_rownames = F,
+  show_colnames = F,
+  silent = F
+)
+```
+
+### Simulation 5b: Large, mildly noisy dataset
+
+* $N$ = 1000;
+* $P_s$ = 20;
+* $P_n$ = 10;
+* $K$ = 5;
+* $\pi = vec(\frac{1}{5})$;
+* $\Delta_{\mu} = 1$; and
+* $\sigma^2_{kp} = 1$.
+
+```{r simulation_5b_noise, echo = F}
+# Generate data based upon inputs
+N <- 1000
+P_s <- 20
+P_n <- 10
+K <- 5
+pi <- "even"
+delta_mu <- 1
+sigma <- 1
+alpha <- 1
+
+my_data <- generateFullDataset(
+  K,
+  N,
+  P_s,
+  delta_mu,
+  sigma,
+  pi,
+  P_n,
+  alpha
+)
+
+# PCA analysis
+pc_1 <- prcomp(my_data$data)
+
+# Visualise the first two components
+autoplot(pc_1, data = my_data$data) +
+  geom_point(aes(colour = as.factor(my_data$cluster_IDs)), alpha = 0.4) +
+  labs(
+    title = "PCA of simulation 5b: mildly noisy dataset",
+    subtitle = "Coloured by cluster IDs",
+    colour = "Cluster"
+  ) +
+  scale_colour_viridis_d()
+
+# Heatmap the data, annotated by cluster ID
+ph <- plotData(my_data$data, my_data$cluster_IDs,
+  cluster_rows = F,
+  main = "Simulation 5b: Mildly noisy dataset",
+  show_rownames = F,
+  show_colnames = F,
+  silent = F
+)
+```
+
+### Simulation 5c: Large, noisy dataset
+
+* $N$ = 1000;
+* $P_s$ = 20;
+* $P_n$ = 20;
+* $K$ = 5;
+* $\pi = vec(\frac{1}{5})$;
+* $\Delta_{\mu} = 1$; and
+* $\sigma^2_{kp} = 1$.
+
+```{r simulation_5c_noise, echo = F}
+# Generate data based upon inputs
+N <- 1000
+P_s <- 20
+P_n <- 20
+K <- 5
+pi <- "even"
+delta_mu <- 1
+sigma <- 1
+alpha <- 1
+
+my_data <- generateFullDataset(
+  K,
+  N,
+  P_s,
+  delta_mu,
+  sigma,
+  pi,
+  P_n,
+  alpha
+)
+
+# PCA analysis
+pc_1 <- prcomp(my_data$data)
+
+# Visualise the first two components
+autoplot(pc_1, data = my_data$data) +
+  geom_point(aes(colour = as.factor(my_data$cluster_IDs)), alpha = 0.4) +
+  labs(
+    title = "PCA of simulation 5c: noisy dataset",
+    subtitle = "Coloured by cluster IDs",
+    colour = "Cluster"
+  ) +
+  scale_colour_viridis_d()
+
+# Heatmap the data, annotated by cluster ID
+ph <- plotData(my_data$data, my_data$cluster_IDs,
+  cluster_rows = F,
+  main = "Simulation 5c: Noisy dataset",
+  show_rownames = F,
+  show_colnames = F,
+  silent = F
+)
+```
+### Simulation 5d: Large, very noisy dataset
+
+* $N$ = 1000;
+* $P_s$ = 20;
+* $P_n$ = 100;
+* $K$ = 5;
+* $\pi = vec(\frac{1}{5})$;
+* $\Delta_{\mu} = 1$; and
+* $\sigma^2_{kp} = 1$.
+
+```{r simulation_5d_noise, echo = F}
+# Generate data based upon inputs
+N <- 1000
+P_s <- 20
+P_n <- 100
+K <- 5
+pi <- "even"
+delta_mu <- 1
+sigma <- 1
+alpha <- 1
+
+my_data <- generateFullDataset(
+  K,
+  N,
+  P_s,
+  delta_mu,
+  sigma,
+  pi,
+  P_n,
+  alpha
+)
+
+# PCA analysis
+pc_1 <- prcomp(my_data$data)
+
+# Visualise the first two components
+autoplot(pc_1, data = my_data$data) +
+  geom_point(aes(colour = as.factor(my_data$cluster_IDs)), alpha = 0.4) +
+  labs(
+    title = "PCA of simulation 5d: very noisy data",
+    subtitle = "Coloured by cluster IDs",
+    colour = "Cluster"
+  ) +
+  scale_colour_viridis_d()
+
+# Heatmap the data, annotated by cluster ID
+ph <- plotData(my_data$data, my_data$cluster_IDs,
+  cluster_rows = F,
+  main = "Simulation 5d: Very noisy data",
+  show_rownames = F,
+  show_colnames = F,
+  silent = F
+)
+```
+
+### Simulation 5e: Large, extremely noisy dataset
+
+* $N$ = 1000;
+* $P_s$ = 20;
+* $P_n$ = 200;
+* $K$ = 5;
+* $\pi = vec(\frac{1}{5})$;
+* $\Delta_{\mu} = 1$; and
+* $\sigma^2_{kp} = 1$.
+
+```{r simulation_5e_noise, echo = F}
+# Generate data based upon inputs
+N <- 1000
+P_s <- 20
+P_n <- 200
+K <- 5
+pi <- "even"
+delta_mu <- 1
+sigma <- 1
+alpha <- 1
+
+my_data <- generateFullDataset(
+  K,
+  N,
+  P_s,
+  delta_mu,
+  sigma,
+  pi,
+  P_n,
+  alpha
+)
+
+# PCA analysis
+pc_1 <- prcomp(my_data$data)
+
+# Visualise the first two components
+autoplot(pc_1, data = my_data$data) +
+  geom_point(aes(colour = as.factor(my_data$cluster_IDs)), alpha = 0.4) +
+  labs(
+    title = "PCA of simulation 5e: extremely noisy data",
+    subtitle = "Coloured by cluster IDs",
+    colour = "Cluster"
+  ) +
+  scale_colour_viridis_d()
+
+# Heatmap the data, annotated by cluster ID
+ph <- plotData(my_data$data, my_data$cluster_IDs,
+  cluster_rows = F,
+  main = "Simulation 5e: Extremely noisy data",
+  show_rownames = F,
+  show_colnames = F,
+  silent = F
+)
+```
+
+## References
