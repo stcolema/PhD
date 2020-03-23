@@ -268,6 +268,22 @@ ui <- fluidPage(
                   value = 2,
                   width = "400px"
       ),
+      
+      numericInput("PCa",
+                  "Principal component displayed in X-axis:",
+                  min = 1,
+                  max = 100,
+                  value = 1,
+                  step = 1
+      ),
+      
+      numericInput("PCb",
+                   "Principal component displayed in Y-axis:",
+                   min = 1,
+                   max = 100,
+                   value = 2,
+                   step = 1
+      ),
 
       checkboxInput(
         "plotDensity",
@@ -325,7 +341,7 @@ server <- function(input, output) {
 
     if (input$K < 10) {
       if (input$plotDensity) {
-        autoplot(pc_1, data = my_data$data) + # , colour = my_data$cluster_IDs) +
+        autoplot(pc_1, data = my_data$data, x = input$PCa, y = input$PCb) + # , colour = my_data$cluster_IDs) +
           geom_point(aes(colour = as.factor(my_data$cluster_IDs))) +
           geom_density_2d(aes(colour = as.factor(my_data$cluster_IDs))) +
           labs(
@@ -335,7 +351,7 @@ server <- function(input, output) {
           ) +
           scale_colour_viridis_d()
       } else {
-        autoplot(pc_1, data = my_data$data) + # , colour = my_data$cluster_IDs) +
+        autoplot(pc_1, data = my_data$data, x = input$PCa, y = input$PCb) + # , colour = my_data$cluster_IDs) +
           geom_point(aes(colour = as.factor(my_data$cluster_IDs))) +
           labs(
             title = "PCA of generated data",
@@ -346,7 +362,7 @@ server <- function(input, output) {
       }
     } else {
       if (input$plotDensity) {
-        autoplot(pc_1, data = my_data$data) + # , colour = my_data$cluster_IDs) +
+        autoplot(pc_1, data = my_data$data, x = input$PCa, y = input$PCb) + # , colour = my_data$cluster_IDs) +
           geom_point(aes(colour = as.factor(my_data$cluster_IDs))) +
           geom_density_2d(aes(colour = as.factor(my_data$cluster_IDs))) +
           labs(
@@ -357,7 +373,7 @@ server <- function(input, output) {
           scale_colour_viridis_d() +
           theme(legend.position = "none")
       } else {
-        autoplot(pc_1, data = my_data$data) + # , colour = my_data$cluster_IDs) +
+        autoplot(pc_1, data = my_data$data, x = input$PCa, y = input$PCb) + # , colour = my_data$cluster_IDs) +
           geom_point(aes(colour = as.factor(my_data$cluster_IDs))) +
           labs(
             title = "PCA of generated data",
@@ -397,7 +413,7 @@ server <- function(input, output) {
     # plot(ph$gtable)
   })
 
-  # Downloadable csv of selected dataset ----
+  # Downloadable csv of selected dataset
   output$downloadData <- downloadHandler(
     filename = "generated_data.csv",
     content = function(file) {
