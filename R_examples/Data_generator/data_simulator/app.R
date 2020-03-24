@@ -205,15 +205,16 @@ ui <- fluidPage(
         "Random seed used to generate data:",
         min = 1,
         max = 1e5,
-        value = 1, #sample(1:1e5, 1),
+        value = 1,
         step = 1
       ),
 
-      sliderInput("N",
+      numericInput("N",
         "Number of samples:",
-        min = 10,
-        max = 1000,
-        value = 100
+        min = 2,
+        max = 10000,
+        value = 100,
+        step = 1
       ),
 
       numericInput("P",
@@ -236,7 +237,8 @@ ui <- fluidPage(
         "Number of clusters:",
         min = 1,
         max = 50,
-        value = 5
+        value = 5,
+        step = 1
       ),
 
 
@@ -258,36 +260,43 @@ ui <- fluidPage(
         "Standard deviation for each feature:",
         min = 0.1,
         max = 5,
-        value = 1
+        value = 1,
+        step = 0.1
       ),
-      
+
       sliderInput("alpha",
-                  "Concentration parameter for the Dirichlet distribution (only used if class proportions are set to ``varying''):",
-                  min = 0.1,
-                  max = 5,
-                  value = 2,
-                  width = "400px"
+        "Concentration parameter for the Dirichlet distribution (only used if class proportions are set to ``varying''):",
+        min = 0.1,
+        max = 5,
+        value = 2,
+        width = "400px",
+        step = 0.05
       ),
-      
+
       numericInput("PCa",
-                  "Principal component displayed in X-axis:",
-                  min = 1,
-                  max = 100,
-                  value = 1,
-                  step = 1
+        "Principal component displayed in X-axis:",
+        min = 1,
+        max = 100,
+        value = 1,
+        step = 1
       ),
-      
+
       numericInput("PCb",
-                   "Principal component displayed in Y-axis:",
-                   min = 1,
-                   max = 100,
-                   value = 2,
-                   step = 1
+        "Principal component displayed in Y-axis:",
+        min = 1,
+        max = 100,
+        value = 2,
+        step = 1
       ),
 
       checkboxInput(
         "plotDensity",
-        "Plot density of cluster members in PCA plot:"
+        "Plot density of cluster members in PCA plot."
+      ),
+      
+      checkboxInput(
+        "clusterRows",
+        "Cluster rows in heatmap."
       )
     ),
 
@@ -401,14 +410,22 @@ server <- function(input, output) {
     }
 
 
+    annotation_legend <- T
+    if(input$K > 20){
+      annotation_legend <- F
+    }
+    
     # Heatmap the data, annotated by cluster ID
     ph <- plotData(my_data$data, my_data$cluster_IDs,
-      cluster_rows = F,
+      cluster_rows = input$clusterRows,
       main = "Generated data",
       show_rownames = show_rownames,
       show_colnames = show_colnames,
+      annotation_legend = annotation_legend,
       silent = F
     )
+    
+    
 
     # plot(ph$gtable)
   })

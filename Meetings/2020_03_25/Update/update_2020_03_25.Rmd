@@ -226,24 +226,35 @@ Thus an irrelevant feature does not contribute any component specific informatio
 p(x_i | \theta, \pi, \Phi) = \sum_{k=1}^K \pi_k \prod_{p=1}^P f(x_i | \theta_{kp})^{\phi_p} g(x_i | \lambda_p)^{(1 - \phi_p)}.
 \end{equation} 
 
+If we use an allocation variable $z=(z_1,\ldots,z_N)$ to indicate which component the items belong to, we may write:
+
+\[
+\begin{aligned} 
+p(x_i | z_i = k, \theta, \pi, \Phi) &= \prod_{p=1}^P f(x_i | z_i = k, \theta_{kp})^{\phi_p} g(x_i | \lambda_p)^{(1 - \phi_p)} \\
+p(x | z, \theta, \pi, \Phi) &= \prod_{i=1}^N \prod_{p=1}^P f(x_i | z_i = k, \theta_{kp})^{\phi_p} g(x_i | \lambda_p)^{(1 - \phi_p)}
+\end{aligned} 
+\]
+
+<!-- Let $Z$ be the allocation matrix (i.e. a $N \times K$ binary matrix where each row contains only one non-zero entry; a value of 1 in the $(i, k)^{th}$ entry indicates that $z_i = k$).  -->
+
 # Simulations
 
-In our simulations we are interested in testing how *consensus inference* compares to Bayesian inference of mixture models in various circumstances. In each simulation we will assume a generative model that can be described by 
+In our simulations we are interested in testing how *consensus inference* compares to Bayesian inference of mixture models in various circumstances. In each simulation we will assume a generative model that can be described by a finite mixture of Gaussian models.
 
 \begin{equation} 
-p(x_i | \theta, \pi, \Phi) = \sum_{k=1}^K \pi_k \prod_{p=1}^P f(x_i | \theta_{kp})^{\phi_p} g(x_i | \lambda_p)^{(1 - \phi_p)},
+p(x_i | z_i = k, \theta, \pi, \Phi) = \prod_{p=1}^P f(x_i | z_i = k, \theta_{kp})^{\phi_p} f(x_i | \theta_p)^{(1 - \phi_p)}.
 \end{equation} 
 
-where $f(\cdot)$ describes the Gaussian pdf and thus $\theta=(\mu, \sigma^2)$.  Let $P_n=\sum_{p=1}^P\phi_p$ be the number of irrelevant features present, and $P_s = P - P_n$ be the number of relevant features present. Then in each simulation we will change various variables associated with this model:
+where $f(\cdot)$ describes the Gaussian pdf and thus $\theta=(\mu, \sigma^2)$. We assume that the irrelevant variables will be Gaussian in form and that the observed values will be drawn from the same Gaussian distribution for the entire population. Let $P_n=\sum_{p=1}^P\phi_p$ be the number of irrelevant features present, and $P_s = P - P_n$ be the number of relevant features present. Then in each simulation we will change various variables associated with this model:
 
 * $N$: the number of items being clustered;
 * $P_s$: the number of *relevant* features present;
 * $P_n$: the number of *irrelevant* features present;
-* $K$: the number of components being modeled;
-* $\pi$: the proportion of points associated with each component;
+* $K$: the true number of subpopulations present;
+* $\pi$: the proportion of points sampled from each component;
 * $\Delta_{\mu}$: the difference between the means associated with each component in each feature; 
 * $\sigma^2$: the standard deviation within each feature for each component; and
-* $alpha$: the concentration of the Dirichlet distribution $\pi$ might be generated from (only relevant when $\pi$ is sampled as explained below).
+* $\alpha$: the concentration of the Dirichlet distribution $\pi$ might be generated from (only relevant when $\pi$ is sampled as explained below).
 
 $\pi$ will be chosen in one of two ways:
 
@@ -252,19 +263,30 @@ $\pi$ will be chosen in one of two ways:
 
 In the second case we will explain our choice of $\alpha$ each time.
 
-I would expect that there is some function of the number of samples, the number of informative features, the number of clusters, the distance between component means and the value of $\sigma^2$ used that explains how easy it is to resolve the clutering structure. If $C'$ is the true clustering and $C^*$ is that predicted by the model, then I expect there to be some relationship of the nature
+I would expect that there is some function of the number of samples, the number of informative features, the number of clusters, the distance between component means and the value of $\sigma^2$ used that explains how easy it is to resolve the clutering structure. If $C'$ is the true clustering and $C^*$ is that predicted by the model, and $ARI(X, Y)$ is the adjusted rand index between partitions $X$ and $Y$, then I expect there to be some relationship of the nature:
 
 \[
 \begin{aligned}
-ARI(C^*, C') &\propto N \\
-ARI(C^*, C') &\propto P_S \\
-ARI(C^*, C') &\propto \frac{1}{K} \\
+ARI(C^*, C') &\propto \log(N) \\
+ARI(C^*, C') &\propto \sqrt{P_S} \\
+ARI(C^*, C') &\propto -K \log(K) \\
 ARI(C^*, C') &\propto \Delta_{\mu} \\
-ARI(C^*, C') &\propto \frac{1}{\sigma^2} \\
+ARI(C^*, C') &\propto \frac{1}{\sigma} \\
+ARI(C^*, C') &\propto \frac{\Delta_{\mu}K\log\left({\frac{N}{K}}\right) \sqrt{P_S}}{\sigma} 
 \end{aligned}
 \]
 
-I do not expect that the linear nature of these relationships is true, but the directionality of these relationships is expected to hold. These expectations also convey that for many of the variables it is relative valus that matter; for instance if $\Delta_{\mu}$ increases but $\sigma^2$ also grows proportionally, then we would not expect the clustering structure to resolve particularly well; similarly we expect that the number of items present contributes as a function of the number of clusters present.
+I do not expect that the stated nature of these relationships is true, but the directionality of these relationships is expected to hold and something of the relative speed of improvement in resolving the true structure is intended to be indicated by the use of $\log(\cdot)$ and $\sqrt{\cdot}$. Note that the positive linear dependence on $K$ is due to how I am defining $\Delta_{\mu}$. These statements also convey that for many of the variables it is relative values that matter; for instance if $\Delta_{\mu}$ increases we expect improved resolution of clusters, but if $\sigma^2$ also grows proportionally, then we would not expect the improvement to be at all as significant.
+
+We will test:
+
+1. The 2D Gaussian case (this is a sense-check);
+2. The lack-of-structure case in 2 dimensions;
+3. The large $N$, small $P$ paradigm;
+4. Increasing $\sigma^2$;
+5. Increasing the number of irrelevant features;
+6. The small $N$, large $P$ case; and
+7. Varying the proportion of the total population assigned to each sub-population.
 
 ## Simulation 1: 2D Gaussian
 
@@ -312,7 +334,7 @@ plot_data <- my_data
 plot_data$Cluster <- as.factor(rep(1:k, each = n / k))
 
 ggplot(plot_data, aes(x = Gene_1, y = Gene_2, colour = Cluster)) +
-  geom_point(alpha = 0.4) +
+  geom_point(alpha = 1) +
   labs(
     title = "Simple mixture of Gaussians",
     x = "Gene 1",
@@ -372,7 +394,7 @@ pc_1 <- prcomp(my_data$data)
 
 # Visualise the first two components
 autoplot(pc_1, data = my_data$data) +
-  geom_point(aes(colour = as.factor(my_data$cluster_IDs)), alpha = 0.4) +
+  geom_point(aes(colour = as.factor(my_data$cluster_IDs)), alpha = 1) +
   labs(
     title = "PCA of generated data",
     subtitle = "Coloured by cluster IDs",
@@ -390,22 +412,26 @@ ph <- plotData(my_data$data, my_data$cluster_IDs,
 )
 ```
 
-## Simulation 3: Large, informative dataset
+## Simulation 3: Large $N$, Small $P$
 
-This case is intended to be more representative of real data. We increase the sample size and the number of features.
+Test performance within the large $N$, small $P$ paradigm such as is encountered in flow cytometry. Many points will be confidently allocated, but as the number of features is small some items are liable to be on the border of several clusters and therefore harder to allocate (although even $P_S=4$ might be sufficient for high performance).
 
-* $N$ = 1000;
-* $P_s$ = 100;
+### Simulation 3a: Large $N$, Small $P$ dataset
+
+We use a large sample size and a small number of features to investigate the *large $N$, small $P$* case.
+
+* $N$ = 10,000;
+* $P_s$ = 4;
 * $P_n$ = 0;
 * $K$ = 5;
 * $\pi = vec(\frac{1}{5})$;
 * $\Delta_{\mu} = 1$; and
 * $\sigma^2_{kp} = 1$.
 
-```{r simulation_3_large_informed, echo = F}
+```{r simulation_3a_large_N_small_P, echo = F}
 # Generate data based upon inputs
-N <- 1000
-P_s <- 100
+N <- 10000
+P_s <- 4
 P_n <- 0
 K <- 5
 pi <- "even"
@@ -440,34 +466,34 @@ autoplot(pc_1, data = my_data$data) +
 # Heatmap the data, annotated by cluster ID
 ph <- plotData(my_data$data, my_data$cluster_IDs,
   cluster_rows = F,
-  main = "Simulation 3",
+  main = "Simulation 3a: Large N, small P",
   show_rownames = F,
   show_colnames = F,
   silent = F
 )
 ```
 
-## Simulation 4: Large, informative dataset, large $\sigma^2$
+### Simulation 3b: Large $N$, large $K$, small $P$ dataset
 
-We test the ratio of $\mu$ to $\sigma^2$ required for structure to be successfully uncovered.
+Similarly to 3a, we use a large $N$ and small $P$ but also grow $K$:
 
-* $N$ = 1000;
-* $P_s$ = 100;
+* $N$ = 10,000;
+* $P_s$ = 4;
 * $P_n$ = 0;
-* $K$ = 5;
-* $\pi = vec(\frac{1}{5})$;
+* $K$ = 50;
+* $\pi = vec(\frac{1}{50})$;
 * $\Delta_{\mu} = 1$; and
-* $\sigma^2_{kp} = 3$.
+* $\sigma^2_{kp} = 1$.
 
-```{r simulation_4_large_informed_small_sd, echo = F}
+```{r simulation_3b_large_N_small_P_large_K, echo = F}
 # Generate data based upon inputs
-N <- 1000
-P_s <- 100
+N <- 10000
+P_s <- 4
 P_n <- 0
-K <- 5
+K <- 50
 pi <- "even"
 delta_mu <- 1
-sigma <- 3
+sigma <- 1
 alpha <- 1
 
 my_data <- generateFullDataset(
@@ -497,11 +523,262 @@ autoplot(pc_1, data = my_data$data) +
 # Heatmap the data, annotated by cluster ID
 ph <- plotData(my_data$data, my_data$cluster_IDs,
   cluster_rows = F,
-  main = "Simulation 4",
+  main = "Simulation 3b: Large N, small P, large K",
+  show_rownames = F,
+  show_colnames = F,
+  silent = F,
+  annotation_legend = F
+)
+```
+
+### Simulation 3c: Large $N$, large $K$, small $P$, small $\Delta_{\mu}$ dataset
+
+Similar to 3b but now the distance between means is decreased. This should be very hard to cluster well as many of the components overlap on the small number of features. It might be an interesting case to compare many short chains to a single long chain. I suspect that with the small number of features that the Bayesian inference should be less liable to becoming trapped (however, if a cluster is emptied it may struggle to include a previously emptied component). If consensus inference behaves comparatively well here I think that's a good indication of robustness as my a priori expectations are that a long chain would perform better as it explores the different probable clusterings (basically, small number of features but high uncertainty in the clustering structure should favour a long chain I think).
+
+To be clear, *no method will find the large number of ``true'' subpopulations present*, but there is structure present as well as many valid possible partitions.
+
+* $N$ = 10,000;
+* $P_s$ = 4;
+* $P_n$ = 0;
+* $K$ = 50;
+* $\pi = vec(\frac{1}{50})$;
+* $\Delta_{\mu} = 0.5$; and
+* $\sigma^2_{kp} = 1$.
+
+```{r simulation_3c_large_N_small_P_large_K_close_means, echo = F}
+# Generate data based upon inputs
+N <- 10000
+P_s <- 4
+P_n <- 0
+K <- 50
+pi <- "even"
+delta_mu <- 0.2
+sigma <- 1
+alpha <- 1
+
+my_data <- generateFullDataset(
+  K,
+  N,
+  P_s,
+  delta_mu,
+  sigma,
+  pi,
+  P_n,
+  alpha
+)
+
+# PCA analysis
+pc_1 <- prcomp(my_data$data)
+
+# Visualise the first two components
+autoplot(pc_1, data = my_data$data) +
+  geom_point(aes(colour = as.factor(my_data$cluster_IDs)), alpha = 0.4) +
+  labs(
+    title = "PCA of generated data",
+    subtitle = "Coloured by cluster IDs",
+    colour = "Cluster"
+  ) +
+  scale_colour_viridis_d()
+
+# Heatmap the data, annotated by cluster ID
+ph <- plotData(my_data$data, my_data$cluster_IDs,
+  cluster_rows = F,
+  main = "Simulation 3c: Large N, small P, large K, close means",
+  show_rownames = F,
+  show_colnames = F,
+  silent = F,
+  annotation_legend = F
+)
+
+# Heatmap the data, annotated by cluster ID
+ph <- plotData(my_data$data, my_data$cluster_IDs,
+  cluster_rows = T,
+  main = "Simulation 3c: Large N, small P, large K, close means (clustered)",
+  show_rownames = F,
+  show_colnames = F,
+  silent = F,
+  annotation_legend = F
+)
+
+```
+
+## Simulation 4: Increasing $\sigma^2$
+
+We test the ratio of $\mu$ to $\sigma^2$ required for structure to be successfully uncovered in a feature-rich dataset.
+
+### Simulation 4a: Large, informative dataset, medium $\sigma^2$
+
+* $N$ = 100;
+* $P_s$ = 500;
+* $P_n$ = 0;
+* $K$ = 5;
+* $\pi = vec(\frac{1}{5})$;
+* $\Delta_{\mu} = 1$; and
+* $\sigma^2_{kp} = 5$.
+
+```{r simulation_4_large_informed_large_sd, echo = F}
+# Generate data based upon inputs
+N <- 100
+P_s <- 500
+P_n <- 0
+K <- 5
+pi <- "even"
+delta_mu <- 1
+sigma <- sqrt(5)
+alpha <- 1
+
+my_data <- generateFullDataset(
+  K,
+  N,
+  P_s,
+  delta_mu,
+  sigma,
+  pi,
+  P_n,
+  alpha
+)
+
+# PCA analysis
+pc_1 <- prcomp(my_data$data)
+
+# Visualise the first two components
+autoplot(pc_1, data = my_data$data) +
+  geom_point(aes(colour = as.factor(my_data$cluster_IDs)), alpha = 0.4) +
+  labs(
+    title = "PCA of simulation 4a: Above-average standard deviation",
+    subtitle = "Coloured by cluster IDs",
+    colour = "Cluster"
+  ) +
+  scale_colour_viridis_d()
+
+# Heatmap the data, annotated by cluster ID
+ph <- plotData(my_data$data, my_data$cluster_IDs,
+  cluster_rows = F,
+  main = "Simulation 4a: Above-average standard deviation",
   show_rownames = F,
   show_colnames = F,
   silent = F
 )
+```
+
+### Simulation 4b: Large, informative dataset, larger $\sigma^2$
+
+* $N$ = 100;
+* $P_s$ = 500;
+* $P_n$ = 0;
+* $K$ = 5;
+* $\pi = vec(\frac{1}{5})$;
+* $\Delta_{\mu} = 1$; and
+* $\sigma^2_{kp} = 30$.
+
+```{r simulation_4b_large_informed_larger_sd, echo = F}
+# Generate data based upon inputs
+N <- 100
+P_s <- 500
+P_n <- 0
+K <- 5
+pi <- "even"
+delta_mu <- 1
+sigma <- sqrt(30)
+alpha <- 1
+
+my_data <- generateFullDataset(
+  K,
+  N,
+  P_s,
+  delta_mu,
+  sigma,
+  pi,
+  P_n,
+  alpha
+)
+
+# PCA analysis
+pc_1 <- prcomp(my_data$data)
+
+# Visualise the first two components
+autoplot(pc_1, data = my_data$data) +
+  geom_point(aes(colour = as.factor(my_data$cluster_IDs)), alpha = 0.4) +
+  labs(
+    title = "PCA of simulation 4b: Large standard deviation",
+    subtitle = "Coloured by cluster IDs",
+    colour = "Cluster"
+  ) +
+  scale_colour_viridis_d()
+
+# Heatmap the data, annotated by cluster ID
+ph <- plotData(my_data$data, my_data$cluster_IDs,
+  cluster_rows = F,
+  main = "Simulation 4b: Large standard deviation",
+  show_rownames = F,
+  show_colnames = F,
+  silent = F
+)
+```
+
+### Simulation 4c: Large, informative dataset, largest $\sigma^2$
+
+* $N$ = 100;
+* $P_s$ = 500;
+* $P_n$ = 0;
+* $K$ = 5;
+* $\pi = vec(\frac{1}{5})$;
+* $\Delta_{\mu} = 1$; and
+* $\sigma^2_{kp} = 100$.
+
+```{r simulation_4c_large_informed_largest_sd, echo = F}
+# Generate data based upon inputs
+N <- 100
+P_s <- 500
+P_n <- 0
+K <- 5
+pi <- "even"
+delta_mu <- 1
+sigma <- sqrt(100)
+alpha <- 1
+
+my_data <- generateFullDataset(
+  K,
+  N,
+  P_s,
+  delta_mu,
+  sigma,
+  pi,
+  P_n,
+  alpha
+)
+
+# PCA analysis
+pc_1 <- prcomp(my_data$data)
+
+# Visualise the first two components
+autoplot(pc_1, data = my_data$data) +
+  geom_point(aes(colour = as.factor(my_data$cluster_IDs)), alpha = 0.4) +
+  labs(
+    title = "PCA of simulation 4c: Very large standard deviation",
+    subtitle = "Coloured by cluster IDs",
+    colour = "Cluster"
+  ) +
+  scale_colour_viridis_d()
+
+# Heatmap the data, annotated by cluster ID
+ph <- plotData(my_data$data, my_data$cluster_IDs,
+  cluster_rows = F,
+  main = "Simulation 4c: Very large standard deviation",
+  show_rownames = F,
+  show_colnames = F,
+  silent = F
+)
+
+
+ph <- plotData(my_data$data, my_data$cluster_IDs,
+  cluster_rows = T,
+  main = "Simulation 4c: Very large standard deviation (ordered)",
+  show_rownames = F,
+  show_colnames = F,
+  silent = F
+)
+
 ```
 
 ## Simulation 5: Large, noisy dataset
@@ -520,7 +797,7 @@ P_n &= 10 \times P_s
 
 ### Simulation 5a: Large, slightly noisy dataset
 
-* $N$ = 1000;
+* $N$ = 100;
 * $P_s$ = 20;
 * $P_n$ = 2;
 * $K$ = 5;
@@ -530,7 +807,7 @@ P_n &= 10 \times P_s
 
 ```{r simulation_5a_noise, echo = F}
 # Generate data based upon inputs
-N <- 1000
+N <- 100
 P_s <- 20
 P_n <- 2
 K <- 5
@@ -575,7 +852,7 @@ ph <- plotData(my_data$data, my_data$cluster_IDs,
 
 ### Simulation 5b: Large, mildly noisy dataset
 
-* $N$ = 1000;
+* $N$ = 100;
 * $P_s$ = 20;
 * $P_n$ = 10;
 * $K$ = 5;
@@ -585,7 +862,7 @@ ph <- plotData(my_data$data, my_data$cluster_IDs,
 
 ```{r simulation_5b_noise, echo = F}
 # Generate data based upon inputs
-N <- 1000
+N <- 100
 P_s <- 20
 P_n <- 10
 K <- 5
@@ -630,7 +907,7 @@ ph <- plotData(my_data$data, my_data$cluster_IDs,
 
 ### Simulation 5c: Large, noisy dataset
 
-* $N$ = 1000;
+* $N$ = 100;
 * $P_s$ = 20;
 * $P_n$ = 20;
 * $K$ = 5;
@@ -640,7 +917,7 @@ ph <- plotData(my_data$data, my_data$cluster_IDs,
 
 ```{r simulation_5c_noise, echo = F}
 # Generate data based upon inputs
-N <- 1000
+N <- 100
 P_s <- 20
 P_n <- 20
 K <- 5
@@ -682,9 +959,10 @@ ph <- plotData(my_data$data, my_data$cluster_IDs,
   silent = F
 )
 ```
+
 ### Simulation 5d: Large, very noisy dataset
 
-* $N$ = 1000;
+* $N$ = 100;
 * $P_s$ = 20;
 * $P_n$ = 100;
 * $K$ = 5;
@@ -694,7 +972,7 @@ ph <- plotData(my_data$data, my_data$cluster_IDs,
 
 ```{r simulation_5d_noise, echo = F}
 # Generate data based upon inputs
-N <- 1000
+N <- 100
 P_s <- 20
 P_n <- 100
 K <- 5
@@ -739,7 +1017,7 @@ ph <- plotData(my_data$data, my_data$cluster_IDs,
 
 ### Simulation 5e: Large, extremely noisy dataset
 
-* $N$ = 1000;
+* $N$ = 100;
 * $P_s$ = 20;
 * $P_n$ = 200;
 * $K$ = 5;
@@ -749,7 +1027,7 @@ ph <- plotData(my_data$data, my_data$cluster_IDs,
 
 ```{r simulation_5e_noise, echo = F}
 # Generate data based upon inputs
-N <- 1000
+N <- 100
 P_s <- 20
 P_n <- 200
 K <- 5
@@ -790,6 +1068,198 @@ ph <- plotData(my_data$data, my_data$cluster_IDs,
   show_colnames = F,
   silent = F
 )
+
+ph <- plotData(my_data$data, my_data$cluster_IDs,
+  cluster_rows = T,
+  main = "Simulation 5e: Extremely noisy data (ordered)",
+  show_rownames = F,
+  show_colnames = F,
+  silent = F
+)
+```
+
+## Simulation 6: Small $N$, large $P$
+
+To test the paradigm that gene expression data often fits into. If the features are relevant than as $P$ grows so too does the resolution of the clustering and thus structure can be discovered even as $\Delta_{\mu}$ decreases.
+
+### Simulation 6a: Small $N$, large $P$ dataset
+
+We test the small $N$, large $P$ case.
+
+* $N$ = 50;
+* $P_s$ = 500;
+* $P_n$ = 0;
+* $K$ = 5;
+* $\pi = vec(\frac{1}{5})$;
+* $\Delta_{\mu} = 1$; and
+* $\sigma^2_{kp} = 1$.
+
+```{r simulation_6_small_N_large_p, echo = F}
+# Generate data based upon inputs
+N <- 50
+P_s <- 500
+P_n <- 0
+K <- 5
+pi <- "even"
+delta_mu <- 1
+sigma <- 1
+alpha <- 1
+
+my_data <- generateFullDataset(
+  K,
+  N,
+  P_s,
+  delta_mu,
+  sigma,
+  pi,
+  P_n,
+  alpha
+)
+
+# PCA analysis
+pc_1 <- prcomp(my_data$data)
+
+# Visualise the first two components
+autoplot(pc_1, data = my_data$data) +
+  geom_point(aes(colour = as.factor(my_data$cluster_IDs)), alpha = 0.4) +
+  labs(
+    title = "PCA of generated data",
+    subtitle = "Coloured by cluster IDs",
+    colour = "Cluster"
+  ) +
+  scale_colour_viridis_d()
+
+# Heatmap the data, annotated by cluster ID
+ph <- plotData(my_data$data, my_data$cluster_IDs,
+  cluster_rows = F,
+  main = "Simulation 6a: Small N, large P",
+  show_rownames = F,
+  show_colnames = F,
+  silent = F
+)
+```
+
+### Simulation 6b: Small $N$, large $P$, close means dataset
+
+We test how small the $\Delta_{\mu}$ can be for the clustering structure to still be possible to resolve. To a degree, the level to which $\Delta_{\mu}$ can shrink without structure disappearing is a function of both $P_s$. 
+
+* $N$ = 50;
+* $P_s$ = 500;
+* $P_n$ = 0;
+* $K$ = 5;
+* $\pi = vec(\frac{1}{5})$;
+* $\Delta_{\mu} = 0.2$; and
+* $\sigma^2_{kp} = 1$.
+
+```{r simulation_6a_small_N_large_p_close_means, echo = F}
+# Generate data based upon inputs
+N <- 50
+P_s <- 500
+P_n <- 0
+K <- 5
+pi <- "even"
+delta_mu <- 0.2
+sigma <- 1
+alpha <- 1
+
+my_data <- generateFullDataset(
+  K,
+  N,
+  P_s,
+  delta_mu,
+  sigma,
+  pi,
+  P_n,
+  alpha
+)
+
+# PCA analysis
+pc_1 <- prcomp(my_data$data)
+
+# Visualise the first two components
+autoplot(pc_1, data = my_data$data) +
+  geom_point(aes(colour = as.factor(my_data$cluster_IDs)), alpha = 0.4) +
+  labs(
+    title = "PCA of generated data",
+    subtitle = "Coloured by cluster IDs",
+    colour = "Cluster"
+  ) +
+  scale_colour_viridis_d()
+
+# Heatmap the data, annotated by cluster ID
+ph <- plotData(my_data$data, my_data$cluster_IDs,
+  cluster_rows = F,
+  main = "Simulation 6b: Small N, large P, close means",
+  show_rownames = F,
+  show_colnames = F,
+  silent = F
+)
+
+ph <- plotData(my_data$data, my_data$cluster_IDs,
+  cluster_rows = T,
+  main = "Simulation 6b: Small N, large P, close means (ordered)",
+  show_rownames = F,
+  show_colnames = F,
+  silent = F
+)
+```
+
+
+## Simulation 7: varying subpoputlation proportions
+
+* $N$ = 200;
+* $P_s$ = 20;
+* $P_n$ = 0;
+* $K$ = 5;
+* $\pi \sim Dirichlet(0.5)$;
+* $\Delta_{\mu} = 1$; and
+* $\sigma^2_{kp} = 1$.
+
+```{r simulation_7, echo = F}
+# Generate data based upon inputs
+N <- 200
+P_s <- 20
+P_n <- 2
+K <- 5
+pi <- "varying"
+delta_mu <- 1
+sigma <- 1
+alpha <- 0.5
+
+my_data <- generateFullDataset(
+  K,
+  N,
+  P_s,
+  delta_mu,
+  sigma,
+  pi,
+  P_n,
+  alpha
+)
+
+# PCA analysis
+pc_1 <- prcomp(my_data$data)
+
+# Visualise the first two components
+autoplot(pc_1, data = my_data$data) +
+  geom_point(aes(colour = as.factor(my_data$cluster_IDs)), alpha = 0.4) +
+  labs(
+    title = "PCA of simulation 7: varying subpopulation proportions",
+    subtitle = "Coloured by cluster IDs",
+    colour = "Cluster"
+  ) +
+  scale_colour_viridis_d()
+
+# Heatmap the data, annotated by cluster ID
+ph <- plotData(my_data$data, my_data$cluster_IDs,
+  cluster_rows = F,
+  main = "Simulation 7: varying subpopulation proportions",
+  show_rownames = F,
+  show_colnames = F,
+  silent = F
+)
 ```
 
 ## References
+
+

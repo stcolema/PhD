@@ -5,8 +5,8 @@ account: stcolema
 server: shinyapps.io
 hostUrl: https://api.shinyapps.io/v1
 appId: 1971772
-bundleId: 2913899
+bundleId: 2918470
 url: https://stcolema.shinyapps.io/data_simulator/
-when: 1584984207.58515
+when: 1585062041.80516
 asMultiple: FALSE
 asStatic: FALSE
