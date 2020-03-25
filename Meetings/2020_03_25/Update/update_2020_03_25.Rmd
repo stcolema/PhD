@@ -110,7 +110,7 @@ generateDataset <- function(cluster_means, cluster_sds, n, p, pi,
 generateFullDataset <- function(K, n, p,
                                 delta_mu = 1,
                                 cluster_sd = 1,
-                                pi_method = "even",
+                                pi = rep(1/K, K),
                                 p_noisy = 0,
                                 alpha = 2) {
   my_data <- list(
@@ -129,12 +129,12 @@ generateFullDataset <- function(K, n, p,
   # Generate some cluster standard deviations
   cluster_sds <- rep(cluster_sd, K)
 
-  if (pi_method == "even") {
-    pi <- rep(1, K)
-  } else {
-    pi <- rgamma(K, alpha)
-    pi <- pi / sum(pi)
-  }
+  # if (pi_method == "even") {
+  #   pi <- rep(1, K)
+  # } else {
+  #   pi <- rgamma(K, alpha)
+  #   pi <- pi / sum(pi)
+  # }
 
   # Find the number of requested informative features
   p_signal <- p # max(0, (p - p_noisy))
@@ -194,6 +194,24 @@ plotData <- function(x, cluster_IDs,
 
   ph
 }
+
+
+pcaScatterPlot <- function(pca_mat, labels, n_comp = 10){
+  
+  plt_pca_data <- pca_mat %>% 
+    as.data.frame(row.names = row.names(.)) %>% 
+    tibble::add_column(Cluster = as.factor(labels)) %>% 
+    tidyr::gather(key = "Component", value = "Loading", -Cluster, factor_key = T)
+  
+  p <- ggplot(plt_pca_data, aes(x = Component, y = Loading, colour = Cluster)) +
+    geom_point() +
+    scale_color_viridis_d() +
+    # theme(axis.text.x = element_text(angle = 30)) +
+    xlim(paste0("PC", 1:n_comp))
+  
+  p
+}
+
 ```
 
 ## General model
@@ -373,7 +391,7 @@ N <- 100
 P_s <- 0
 P_n <- 2
 K <- 1
-pi <- "even"
+pi <- rep(1/K, K)
 delta_mu <- 0
 sigma <- 1
 alpha <- 1
@@ -434,7 +452,7 @@ N <- 10000
 P_s <- 4
 P_n <- 0
 K <- 5
-pi <- "even"
+pi <- rep(1/K, K)
 delta_mu <- 1
 sigma <- 1
 alpha <- 1
@@ -457,11 +475,18 @@ pc_1 <- prcomp(my_data$data)
 autoplot(pc_1, data = my_data$data) +
   geom_point(aes(colour = as.factor(my_data$cluster_IDs)), alpha = 0.4) +
   labs(
-    title = "PCA of generated data",
+    title = "PCA of simulation 3a: large N, small P",
     subtitle = "Coloured by cluster IDs",
     colour = "Cluster"
   ) +
   scale_colour_viridis_d()
+
+p_pca <- pcaScatterPlot(pc_1$x, my_data$cluster_IDs, n_comp = 4) +
+  labs(
+    title = "PCA for simulation 3a: large N, small P"
+  )
+
+p_pca
 
 # Heatmap the data, annotated by cluster ID
 ph <- plotData(my_data$data, my_data$cluster_IDs,
@@ -491,7 +516,7 @@ N <- 10000
 P_s <- 4
 P_n <- 0
 K <- 50
-pi <- "even"
+pi <- rep(1/K, K)
 delta_mu <- 1
 sigma <- 1
 alpha <- 1
@@ -514,11 +539,18 @@ pc_1 <- prcomp(my_data$data)
 autoplot(pc_1, data = my_data$data) +
   geom_point(aes(colour = as.factor(my_data$cluster_IDs)), alpha = 0.4) +
   labs(
-    title = "PCA of generated data",
+    title = "PCA of simulation 3b: large N, small P, large K",
     subtitle = "Coloured by cluster IDs",
     colour = "Cluster"
   ) +
   scale_colour_viridis_d()
+
+p_pca <- pcaScatterPlot(pc_1$x, my_data$cluster_IDs, n_comp = 4) +
+  labs(
+    title = "PCA for simulation 3b: large N, small P, large K"
+  )
+
+p_pca
 
 # Heatmap the data, annotated by cluster ID
 ph <- plotData(my_data$data, my_data$cluster_IDs,
@@ -551,7 +583,7 @@ N <- 10000
 P_s <- 4
 P_n <- 0
 K <- 50
-pi <- "even"
+pi <- rep(1/K, K)
 delta_mu <- 0.2
 sigma <- 1
 alpha <- 1
@@ -574,11 +606,18 @@ pc_1 <- prcomp(my_data$data)
 autoplot(pc_1, data = my_data$data) +
   geom_point(aes(colour = as.factor(my_data$cluster_IDs)), alpha = 0.4) +
   labs(
-    title = "PCA of generated data",
+    title = "PCA of simulation 3c: large N, small P, large K, close means",
     subtitle = "Coloured by cluster IDs",
     colour = "Cluster"
   ) +
   scale_colour_viridis_d()
+
+p_pca <- pcaScatterPlot(pc_1$x, my_data$cluster_IDs, n_comp = 4) +
+  labs(
+    title = "PCA for simulation 3c: large N, small P, large K, close means"
+  )
+
+p_pca
 
 # Heatmap the data, annotated by cluster ID
 ph <- plotData(my_data$data, my_data$cluster_IDs,
@@ -622,9 +661,9 @@ N <- 100
 P_s <- 500
 P_n <- 0
 K <- 5
-pi <- "even"
+pi <- rep(1/K, K)
 delta_mu <- 1
-sigma <- sqrt(5)
+sigma <- 3
 alpha <- 1
 
 my_data <- generateFullDataset(
@@ -650,6 +689,13 @@ autoplot(pc_1, data = my_data$data) +
     colour = "Cluster"
   ) +
   scale_colour_viridis_d()
+
+p_pca <- pcaScatterPlot(pc_1$x, my_data$cluster_IDs, n_comp = 10) +
+  labs(
+    title = "PCA for simulation 4a: Above-average standard deviation"
+  )
+
+p_pca
 
 # Heatmap the data, annotated by cluster ID
 ph <- plotData(my_data$data, my_data$cluster_IDs,
@@ -677,9 +723,9 @@ N <- 100
 P_s <- 500
 P_n <- 0
 K <- 5
-pi <- "even"
+pi <- rep(1/K, K)
 delta_mu <- 1
-sigma <- sqrt(30)
+sigma <- 5
 alpha <- 1
 
 my_data <- generateFullDataset(
@@ -706,6 +752,13 @@ autoplot(pc_1, data = my_data$data) +
   ) +
   scale_colour_viridis_d()
 
+p_pca <- pcaScatterPlot(pc_1$x, my_data$cluster_IDs, n_comp = 10) +
+  labs(
+    title = "PCA for simulation 4b: Large standard deviation"
+  )
+
+p_pca
+
 # Heatmap the data, annotated by cluster ID
 ph <- plotData(my_data$data, my_data$cluster_IDs,
   cluster_rows = F,
@@ -724,7 +777,7 @@ ph <- plotData(my_data$data, my_data$cluster_IDs,
 * $K$ = 5;
 * $\pi = vec(\frac{1}{5})$;
 * $\Delta_{\mu} = 1$; and
-* $\sigma^2_{kp} = 100$.
+* $\sigma^2_{kp} = 10$.
 
 ```{r simulation_4c_large_informed_largest_sd, echo = F}
 # Generate data based upon inputs
@@ -732,9 +785,9 @@ N <- 100
 P_s <- 500
 P_n <- 0
 K <- 5
-pi <- "even"
+pi <- rep(1/K, K)
 delta_mu <- 1
-sigma <- sqrt(100)
+sigma <- 10
 alpha <- 1
 
 my_data <- generateFullDataset(
@@ -760,6 +813,13 @@ autoplot(pc_1, data = my_data$data) +
     colour = "Cluster"
   ) +
   scale_colour_viridis_d()
+
+p_pca <- pcaScatterPlot(pc_1$x, my_data$cluster_IDs, n_comp = 10) +
+  labs(
+    title = "PCA for simulation 4c: Very large standard deviation"
+  )
+
+p_pca
 
 # Heatmap the data, annotated by cluster ID
 ph <- plotData(my_data$data, my_data$cluster_IDs,
@@ -811,7 +871,7 @@ N <- 100
 P_s <- 20
 P_n <- 2
 K <- 5
-pi <- "even"
+pi <- rep(1/K, K)
 delta_mu <- 1
 sigma <- 1
 alpha <- 1
@@ -840,6 +900,13 @@ autoplot(pc_1, data = my_data$data) +
   ) +
   scale_colour_viridis_d()
 
+p_pca <- pcaScatterPlot(pc_1$x, my_data$cluster_IDs, n_comp = 10) +
+  labs(
+    title = "PCA for simulation 5a: slightly noisy dataset"
+  )
+
+p_pca
+
 # Heatmap the data, annotated by cluster ID
 ph <- plotData(my_data$data, my_data$cluster_IDs,
   cluster_rows = F,
@@ -866,7 +933,7 @@ N <- 100
 P_s <- 20
 P_n <- 10
 K <- 5
-pi <- "even"
+pi <- rep(1/K, K)
 delta_mu <- 1
 sigma <- 1
 alpha <- 1
@@ -895,6 +962,13 @@ autoplot(pc_1, data = my_data$data) +
   ) +
   scale_colour_viridis_d()
 
+p_pca <- pcaScatterPlot(pc_1$x, my_data$cluster_IDs, n_comp = 10) +
+  labs(
+    title = "PCA for simulation 5b: mildly noisy dataset"
+  )
+
+p_pca
+
 # Heatmap the data, annotated by cluster ID
 ph <- plotData(my_data$data, my_data$cluster_IDs,
   cluster_rows = F,
@@ -921,7 +995,7 @@ N <- 100
 P_s <- 20
 P_n <- 20
 K <- 5
-pi <- "even"
+pi <- rep(1/K, K)
 delta_mu <- 1
 sigma <- 1
 alpha <- 1
@@ -950,6 +1024,13 @@ autoplot(pc_1, data = my_data$data) +
   ) +
   scale_colour_viridis_d()
 
+p_pca <- pcaScatterPlot(pc_1$x, my_data$cluster_IDs, n_comp = 10) +
+  labs(
+    title = "PCA for simulation 5c: noisy dataset"
+  )
+
+p_pca
+
 # Heatmap the data, annotated by cluster ID
 ph <- plotData(my_data$data, my_data$cluster_IDs,
   cluster_rows = F,
@@ -976,7 +1057,7 @@ N <- 100
 P_s <- 20
 P_n <- 100
 K <- 5
-pi <- "even"
+pi <- rep(1/K, K)
 delta_mu <- 1
 sigma <- 1
 alpha <- 1
@@ -1005,6 +1086,13 @@ autoplot(pc_1, data = my_data$data) +
   ) +
   scale_colour_viridis_d()
 
+p_pca <- pcaScatterPlot(pc_1$x, my_data$cluster_IDs, n_comp = 10) +
+  labs(
+    title = "PCA for simulation 5d: very noisy data"
+  )
+
+p_pca
+
 # Heatmap the data, annotated by cluster ID
 ph <- plotData(my_data$data, my_data$cluster_IDs,
   cluster_rows = F,
@@ -1031,7 +1119,7 @@ N <- 100
 P_s <- 20
 P_n <- 200
 K <- 5
-pi <- "even"
+pi <- rep(1/K, K)
 delta_mu <- 1
 sigma <- 1
 alpha <- 1
@@ -1059,6 +1147,13 @@ autoplot(pc_1, data = my_data$data) +
     colour = "Cluster"
   ) +
   scale_colour_viridis_d()
+
+p_pca <- pcaScatterPlot(pc_1$x, my_data$cluster_IDs, n_comp = 10) +
+  labs(
+    title = "PCA for simulation 5e: extremely noisy data"
+  )
+
+p_pca
 
 # Heatmap the data, annotated by cluster ID
 ph <- plotData(my_data$data, my_data$cluster_IDs,
@@ -1100,7 +1195,7 @@ N <- 50
 P_s <- 500
 P_n <- 0
 K <- 5
-pi <- "even"
+pi <- rep(1/K, K)
 delta_mu <- 1
 sigma <- 1
 alpha <- 1
@@ -1123,11 +1218,18 @@ pc_1 <- prcomp(my_data$data)
 autoplot(pc_1, data = my_data$data) +
   geom_point(aes(colour = as.factor(my_data$cluster_IDs)), alpha = 0.4) +
   labs(
-    title = "PCA of generated data",
+    title = "PCA of simulation 6a: Small N, large P",
     subtitle = "Coloured by cluster IDs",
     colour = "Cluster"
   ) +
   scale_colour_viridis_d()
+
+p_pca <- pcaScatterPlot(pc_1$x, my_data$cluster_IDs, n_comp = 10) +
+  labs(
+    title = "PCA for simulation 6a: Small N, large P"
+  )
+
+p_pca
 
 # Heatmap the data, annotated by cluster ID
 ph <- plotData(my_data$data, my_data$cluster_IDs,
@@ -1157,7 +1259,7 @@ N <- 50
 P_s <- 500
 P_n <- 0
 K <- 5
-pi <- "even"
+pi <- rep(1/K, K)
 delta_mu <- 0.2
 sigma <- 1
 alpha <- 1
@@ -1180,11 +1282,18 @@ pc_1 <- prcomp(my_data$data)
 autoplot(pc_1, data = my_data$data) +
   geom_point(aes(colour = as.factor(my_data$cluster_IDs)), alpha = 0.4) +
   labs(
-    title = "PCA of generated data",
+    title = "PCA of simulation 6b: Small N, large P, close means",
     subtitle = "Coloured by cluster IDs",
     colour = "Cluster"
   ) +
   scale_colour_viridis_d()
+
+p_pca <- pcaScatterPlot(pc_1$x, my_data$cluster_IDs, n_comp = 10) +
+  labs(
+    title = "PCA for simulation 6b: Small N, large P, close means"
+  )
+
+p_pca
 
 # Heatmap the data, annotated by cluster ID
 ph <- plotData(my_data$data, my_data$cluster_IDs,
@@ -1211,7 +1320,7 @@ ph <- plotData(my_data$data, my_data$cluster_IDs,
 * $P_s$ = 20;
 * $P_n$ = 0;
 * $K$ = 5;
-* $\pi \sim Dirichlet(0.5)$;
+* $\pi = (0.5, 0.25, 0.125, 0.675, 0.675)^T$;
 * $\Delta_{\mu} = 1$; and
 * $\sigma^2_{kp} = 1$.
 
@@ -1221,7 +1330,7 @@ N <- 200
 P_s <- 20
 P_n <- 2
 K <- 5
-pi <- "varying"
+pi <- c(0.5, 0.25, 0.125, 0.0675, 0.0675)
 delta_mu <- 1
 sigma <- 1
 alpha <- 0.5
@@ -1249,6 +1358,13 @@ autoplot(pc_1, data = my_data$data) +
     colour = "Cluster"
   ) +
   scale_colour_viridis_d()
+
+p_pca <- pcaScatterPlot(pc_1$x, my_data$cluster_IDs, n_comp = 10) +
+  labs(
+    title = "PCA for simulation 7: varying subpopulation proportions"
+  )
+
+p_pca
 
 # Heatmap the data, annotated by cluster ID
 ph <- plotData(my_data$data, my_data$cluster_IDs,

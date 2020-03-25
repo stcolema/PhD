@@ -15,7 +15,8 @@ library(viridis)
 library(magrittr)
 # library(mdiHelpR)
 library(ggfortify)
-
+library(tidyr)
+library(tibble)
 
 # define our ggplot2 theme of choice
 theme_set(theme_bw() +
@@ -77,13 +78,14 @@ generateDataset <- function(cluster_means, cluster_sds, n, p, pi,
   for (j in 1:p)
   {
     reordered_cluster_means <- sample(cluster_means)
-    reordered_cluster_sds <- sample(cluster_sds)
+    # reordered_cluster_sds <- sample(cluster_sds)
 
     # Draw n points from the K univariate Gaussians defined by the permuted means.
     for (i in 1:n) {
       my_data[i, j] <- rnorm(1,
         mean = reordered_cluster_means[cluster_IDs[i]],
-        sd = reordered_cluster_sds[cluster_IDs[i]]
+        sd = cluster_sds
+        # sd = reordered_cluster_sds[cluster_IDs[i]]
       )
     }
   }
@@ -123,7 +125,7 @@ generateFullDataset <- function(K, n, p,
   }
 
   # Generate some cluster standard deviations
-  cluster_sds <- rep(cluster_sd, K)
+  # cluster_sds <- rep(cluster_sd, K)
 
   if (pi_method == "even") {
     pi <- rep(1, K)
@@ -139,7 +141,7 @@ generateFullDataset <- function(K, n, p,
 
   # Generate data
   if (p_signal > 0) {
-    my_data <- generateDataset(cluster_means, cluster_sds, n, p_signal, pi)
+    my_data <- generateDataset(cluster_means, cluster_sd, n, p_signal, pi)
     data_sd <- sd(my_data$data)
   }
 
@@ -191,6 +193,22 @@ plotData <- function(x, cluster_IDs,
   ph
 }
 
+
+pcaScatterPlot <- function(pca_mat, labels, n_comp = 10){
+  
+  plt_pca_data <- pca_mat %>% 
+    as.data.frame(row.names = row.names(.)) %>% 
+    tibble::add_column(Cluster = as.factor(labels)) %>% 
+    tidyr::gather(key = "Component", value = "Loading", -Cluster, factor_key = T)
+  
+  p <- ggplot(plt_pca_data, aes(x = Component, y = Loading, colour = Cluster)) +
+    geom_point() +
+    scale_color_viridis_d() +
+    # theme(axis.text.x = element_text(angle = 30)) +
+    xlim(paste0("PC", 1:n_comp))
+  
+  p
+}
 
 # Define UI for application that draws a histogram
 ui <- fluidPage(
@@ -288,6 +306,14 @@ ui <- fluidPage(
         value = 2,
         step = 1
       ),
+      
+      numericInput("nComp",
+                   "Number of prinicpal components displayed on x-axis:",
+                   min = 1,
+                   max = 100,
+                   value = 2,
+                   step = 1
+      ),
 
       checkboxInput(
         "plotDensity",
@@ -305,6 +331,9 @@ ui <- fluidPage(
 
       # Plot first two PCs
       plotOutput("distPlot"),
+      
+      # Plot PCs
+      plotOutput("pcaPlot"),
 
       # PLot annotated heatmap of data
       plotOutput("themap"),
@@ -342,11 +371,20 @@ server <- function(input, output) {
   })
 
 
+  pca <- reactive({
+    my_data <- a()
+    
+    pc_1 <- prcomp(my_data$data)
+  }
+  )
+  
+  
   # Create a plot of the first two PCs
   output$distPlot <- renderPlot({
     my_data <- a()
 
-    pc_1 <- prcomp(my_data$data)
+    pc_1 <- pca()
+    # pc_1 <- prcomp(my_data$data)
 
     if (input$K < 10) {
       if (input$plotDensity) {
@@ -395,6 +433,20 @@ server <- function(input, output) {
     }
   })
 
+  output$pcaPlot <- renderPlot({
+    
+    pc_1 <- pca()
+    my_data <- a()
+    
+    # oldw <- getOption("warn")
+    # options(warn = -1)abc%123
+    
+    pcaScatterPlot(pc_1$x, my_data$cluster_IDs, n_comp = input$nComp)
+    
+    # options(warn = oldw)
+  }
+  )
+  
   # Render a heatmap of the data
   output$themap <- renderPlot({
     my_data <- a()
