@@ -274,13 +274,6 @@ where $f(\cdot)$ describes the Gaussian pdf and thus $\theta=(\mu, \sigma^2)$. W
 * $\sigma^2$: the standard deviation within each feature for each component; and
 * $\alpha$: the concentration of the Dirichlet distribution $\pi$ might be generated from (only relevant when $\pi$ is sampled as explained below).
 
-$\pi$ will be chosen in one of two ways:
-
-* "Even": a $K$-vector with all entries equal to $\frac{1}{K}$; or
-* "Varying": sampled from a Dirichlet distribution with concetration of $alpha$.
-
-In the second case we will explain our choice of $\alpha$ each time.
-
 I would expect that there is some function of the number of samples, the number of informative features, the number of clusters, the distance between component means and the value of $\sigma^2$ used that explains how easy it is to resolve the clutering structure. If $C'$ is the true clustering and $C^*$ is that predicted by the model, and $ARI(X, Y)$ is the adjusted rand index between partitions $X$ and $Y$, then I expect there to be some relationship of the nature:
 
 \[
