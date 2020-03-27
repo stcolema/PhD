@@ -1,0 +1,447 @@
+---
+title: "Update 27/03/2020"
+author: "Stephen Coleman"
+date: "27/03/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(mdiHelpR)
+library(tidyr)
+library(plot3D)
+library(plotly)
+library(magrittr)
+library(ggplot2)
+library(tibble)
+library(dplyr)
+library(patchwork)
+
+# devtools::install_github("sarawade/mcclust.ext")
+library(mcclust.ext)
+
+# Function for converting surfaces for 3D plot to long data for ggplot2
+surface2Df <- function(x, n_seeds, n_iter){
+  data.frame(x) %>% 
+    set_colnames(1:n_seeds) %>% 
+    add_column(N_iter = as.factor(1:n_iter)) %>% 
+    pivot_longer(1:n_seeds,
+                 names_to = "N_chains",
+                 values_to = "ARI",
+                 names_ptypes = list(N_chains=factor()),
+                 values_ptypes = list(ARI=numeric()))
+  
+  
+}
+
+setMyTheme()
+col_pal <- dataColPal()
+sim_col_pal <- simColPal()
+
+fracTrue <- log(1:1e4) / log(1e4)
+nReq <- length(fracTrue)
+
+ggplot(data.frame(fracTrue =fracTrue, Iter=1:1e4), aes(x=Iter,y=fracTrue))+
+  geom_line()+
+  labs(
+    title="Fraction of items allocated correctly",
+    caption = "Within generated clusterings, the fraction of items allocated correctly as a function of the ``chain length''. ",
+    x = "Number of iterations",
+    y = "Fraction of items correctly allocated"
+  )
+
+# Generate an example clustering
+ciSim <- function(true_labels, n_iter, K,
+                  truth_at = 1e4){
+
+  # The number of samples present
+  n <- length(true_labels)
+
+  # The number of samples clustered truly
+  n_true <- floor(1 + n * fracTrue[min(floor(1 + nReq * n_iter / truth_at), nReq)])
+
+  # The index of these samples
+  true_ind <- sample(1:n, n_true, replace = F)
+
+  # Random partition
+  out <- sample(1:K, size = n, replace = T)
+
+  # Set the truly clustered correctly
+  out[true_ind] <- true_labels[true_ind]
+
+  out
+}
+
+
+```
+
+## Simulation study
+
+##Layout
+
+Below is some pseudo-code describing my current plan for the simulations.
+
+Question: do I need to save the datasets? If I set a seed we can re-create them, and I'm not sure why we would need them.
+
+```{r, eval=F}
+
+# Inputs:
+# Scenarios:  Scenarios defining datasets within each simulation
+# nSim:       The number of simulations within each scenario
+# nChains:    The number of chains used for CI       
+# nIter:      The numbeer of iterations within each chain
+# nBayes:     The numbeer of chains run for the Bayesian method
+# bayesIter:  The number of iterations to run for each Bayesian model chain
+# nFreq:      The numbeer of different seeds used for the Frequentist method
+runSimulations(Scenarios, nSim, nChains, nIter, nBayes, nFreq){
+  
+  # Loop over scenarios
+  for scn in Scenarios{
+  
+    # The various parameters that define the current scenario
+    (N, P, K, delta_mu, sigma2, pi, P_n) = scn$Parameters
+    
+    # Objects to hold model performance score
+    ciScore             = array(0, dim = c(nIter, nChains, nSim))
+    bayesScore          = matrix(0, nrow = nBayes, ncol = nSim)
+    freqScore           = matrix(0, nrow = nFreq, ncol = nSim)
+    
+    # Matrices to hold the upper and lower bounds on the number of clusters 
+    # present based upon samples recorded
+    nClustLower = array(0, dim = c(nIter, nChains, nSim))
+    nClustUpper = array(0, dim = c(nIter, nChains, nSim))
+    bayesNClustLower = matrix(0, nrow = nBayes, ncol = nSim)
+    bayesNClustUpper = matrix(0, nrow = nBayes, ncol = nSim)
+
+    # Loop over the number of simulations
+    for l in 1:nSim{
+      
+      # Generate a new dataset for the current simulation based upon the scenario
+      set.seed(l)
+      dataset, trueClusters = generateSimulationDataset(N, P, K, delta_mu, sigma2, pi, P_n)
+      
+      # Create an array to hold the predicted clusterings
+      predClustering      = array(0, dim = c(nIter, N, nChains))
+      bayesClustering     = matrix(0, nrow = nBayes, ncol = N)
+      freqClustering      = matrix(0, nrow = nFreq, ncol = N)
+      
+      # Loop over the number of chains
+      for i in 1:nChains{
+        
+        # set the seed to differentiate chains
+        set.seed(i)
+        
+        # run nBayes Bayesian models
+        if(i <= nBayes){
+          bayesModel = bayesianMixtureModel(dataset, bayesIter)
+          ciModel = bayesModel[1:nIter, ]
+          
+          # Create the PSM
+          posteriorSimilarityMatrix = makePSM(bayesModel$clusterings)
+          
+          # Create a summary clustering
+          bayesClustering[i, ] = clustering(posteriorSimilarityMatrix)
+          
+          # Uncertainty on the number of clusters present based upon MCMC samples
+          # (see Sara Wade and Zoubin Ghahramani, 2015).
+          bayesCredibleBall = credibleball(
+            bayesClustering[i, ],
+            bayesModel$clusterings
+          )
+          
+          # Record the score of the current Bayesian model
+          bayesScore[i, l] = ARI(bayesClustering[i, ], trueClusters) 
+            
+          bayesPredK = numberClusters(bayesClustering[i, ])
+          
+          # Record the the uncertainty on the number of clusters present
+          bayesNClustLower[i, l] = bayesCredibleBall$lower - bayesPredK
+          bayesNClustUpper[i, l] = bayesCredibleBall$upper - bayesPredK
+      
+        } else {
+          ciModel = bayesianMixtureModel(dataset, nIter)
+        }
+        
+        # Initialise the consensus matrix
+        consensusMatrix = matrix(0, nrow = N, ncol = N)
+        for j in 1:nIter{
+          
+          currConsensusMatrix = makeConsensusMatrix(ciModel$clusterings[1:j,])
+          consensusMatrix = currConsensusMatrix * (1 / i) + consensusMatrix * ((i - 1) / i)
+          
+          # Need some way of doing this - Paul doesn't agree with use of 
+          # ``mcclust::maxpear``, I have to think about this
+          predClustering[j, , i] = clustering(consensusMatrix)
+          
+          # calculate how well the model has performed in uncovering the true 
+          # structure
+          ciScore[j, i, l] = ARI(predClustering[j, , i], trueClusters)
+    
+          # The predicted number of cluters present
+          ciPredK = numberClusters(predClustering[j, , i])
+          
+          # Not sure that this is appropriate either for the same reasons as 
+          # ``mcclust::maxpear`` might not be; I have to look into this properly.
+          credibleBallClusters = credibleball(
+            predClustering[j, , i],
+            ciModel$clustering[1:j, ]
+          )
+          
+          # Record the lower and upper bounds on the number of clusters present
+          nClustLower[j, i, l] = credibleBallClusters$lower - ciPredK
+          nClustUpper[j, i, l] = credibleBallClusters$upper - ciPredK
+          
+        }
+
+        # run nFreq frequentist models and record the predicted clustering
+        if(i <= nFreq){
+          freqModel = frequentistMixtureModel(dataset)
+          freqclustering[i, ] = freqModel$clustering
+          freqScore[i, l] = ARI(freqModel$clustering, trueClusters)
+        }
+      
+      }
+
+      medCIScore = apply(ciScore[, , l], )
+      
+    }
+
+    # Make a 3D surface plot of the median score of the consensus inference 
+    # results as a function of (nIter, nChains)
+    plot3D(ciScore)
+    
+    # Make line plots of the median score bounded by the interquartile range over 
+    # simulations for a subset of number of chains as a funciton of number of 
+    # iterations and for a subset of number of iterations as a funciton of 
+    # number of chains.
+    subsetChains  = c(1, 10, 50, 100)
+    subsetIter    = c(1, 100, 500, 5000)
+    nChainSubsets = length(subsetChains)
+    nIterSubsets  = length(subsetIter)
+    
+    facetLinePlot(ciScore, ~nChains:nIter, subsetChains, subsetIter)
+    
+    # The scores for the subset of interest
+    ciSubsetScores = ciScore[subsetIter, subsetChains, ]
+
+    ###Not sure about comparing yet - 
+    ###Also, add test (coda::gelman.diag()) for convergence in Bayesian case
+    # # Compare the median score of the models over simulations:
+    # for(i in 1:nChainSubsets){
+    #   medCIScoreChain = ciSubsetScores[ , i, ] %>%
+    #     apply(1, median)
+    # }
+    # 
+    # for(j in 1:nIterSubsets){
+    #   medCiScoreIter = ciSubsetScores[j, , ] %>%
+    #     apply(1, median)
+    # }
+    # 
+    # medBayesScore = bayesScore %>%
+    #   apply(1, median)
+    # 
+    # medFreqScore = freqScore %>%
+    #   apply(1, median)
+    #   
+    # # Compare median score over simulations
+    # boxplot(medCIScoreIter, medCIScoreIter, medBayesScore, medFreqScore)
+    
+    
+  }
+
+}
+
+```
+
+## Example
+
+My idea.
+
+```{r pipeline_example_ci, cache=T}
+K <- 5
+n <- 100
+n_sim <- 10
+n_seeds <- 50
+n_iter <- 500
+
+score_ci <- array(dim = c(n_sim, n_seeds, n_iter))
+
+true_labels <- matrix(sample(1:K, size = n_sim * n, replace = T), nrow = n_sim)
+
+for(l in 1:n_sim){
+true_labels_l <-true_labels[l, ]
+
+
+ci_out <- list()
+ci_cm <- list()
+pred_ci <- c()
+
+pred_ci <- matrix(nrow = n_iter, ncol = n)
+
+score_ci_l <- matrix(nrow = n_iter, ncol = n_seeds)
+
+for(j in 1:n_iter){
+
+  .old_cm <- matrix(0, nrow=n, ncol=n)
+  ci_out_j <- matrix(0, nrow = n_seeds, ncol = n)
+
+  for(i in 1:n_seeds){
+    set.seed(i)
+    ci_out_j[i, ] <- ciSim(true_labels_l, j, K, truth_at = 1500)
+    
+    # Create coclustering matrix (technically cltoSim creates a posterior similarity
+    # matrix from a clustering vector, but the effect in *this* case is the same)
+    .curr_cm_i <- mcclust::cltoSim(ci_out_j[i, ])
+    
+    
+    # .curr_cm_i <- makePSM(ci_out_j[i, ])
+    
+    .curr_cm <- .curr_cm_i * (1/i) + .old_cm * ((i - 1) / i)
+    
+    score_ci[l, i, j] <- .curr_cm %>%
+      mcclust::maxpear() %>%
+      .$cl %>%
+      mcclust::arandi(true_labels_l)
+    
+    .old_cm <- .curr_cm
+
+  }
+
+  ci_out[[j]] <- ci_out_j
+  ci_cm[[j]] <- ci_cm_j <- .curr_cm # makePSM(ci_out_j)
+  pred_ci[j,] <- ci_cl_j <- mcclust::maxpear(ci_cm_j)$cl
+  # score_ci[j] <- mcclust::arandi(ci_cl_j, true_labels)
+}
+
+# score_ci[[l]] <- score_ci_l
+
+}
+
+```
+
+Visualisations of results.
+
+```{r plot3d_ci, cache=T}
+probs <- seq(0., 1, 0.25)
+
+for(i in 1:n_iter){
+  if(i == 1){
+    surfaces <- apply(score_ci[, , i], 2, quantile,  probs = probs)
+  } else {
+    surfaces <- cbind(surfaces, apply(score_ci[, , i], 2, quantile,  probs = probs))
+  }
+}
+surfaces[,1:4]
+
+z1 <- surfaces[1, ] %>% matrix(nrow = n_iter, ncol = n_seeds, byrow = T)
+z2 <- surfaces[2, ] %>% matrix(nrow = n_iter, ncol = n_seeds, byrow = T)
+z3 <- surfaces[3, ] %>% matrix(nrow = n_iter, ncol = n_seeds, byrow = T)
+z4 <- surfaces[4, ] %>% matrix(nrow = n_iter, ncol = n_seeds, byrow = T)
+z5 <- surfaces[5, ] %>% matrix(nrow = n_iter, ncol = n_seeds, byrow = T)
+
+# col_pal <- colorRampPalette(c("#146EB4", "white", "#FF9900"))(100)
+
+plot_ly(colors = col_pal) %>%
+  add_surface(x = ~1:n_seeds, y = ~1:n_iter, z = ~z2, coloraxis = 'coloraxis', opacity = 0.6) %>%
+  add_surface(x = ~1:n_seeds, y = ~1:n_iter, z = ~z3, coloraxis = 'coloraxis') %>%
+  add_surface(x = ~1:n_seeds, y = ~1:n_iter, z = ~z4, coloraxis = 'coloraxis', opacity = 0.6) %>%
+  layout(
+    scene = list(
+      xaxis = list(title = "Number of chains"),
+      yaxis = list(title = "Number of iterations"),
+      zaxis = list(title = "ARI predicted clustering to truth")
+    ),
+    coloraxis= list(colorscale='Viridis') #,
+    # surfacecolor = list(col_pal),
+  ) %>%
+  colorbar(title = "ARI")
+
+```
+
+Facet line plot
+
+```{r facetlineplot}
+plt_z2 <- surface2Df(z2, n_seeds, n_iter)
+plt_z3 <- surface2Df(z3, n_seeds, n_iter)
+plt_z4 <- surface2Df(z4, n_seeds, n_iter)
+
+plt_data <- dplyr::bind_cols(
+  plt_z3, 
+  plt_z2 %>% dplyr::select(ARI),
+  plt_z4 %>% dplyr::select(ARI)
+  ) %>% 
+  set_colnames(c("N_iter", "N_chains", "ARI", "ARI_lb", "ARI_ub"))
+
+chains_used <- c(1, 5, 15, 30)
+iter_used <- c(1, 10, 50, 100)
+N_chain_labs <- c(paste0("Number of chains ", chains_used)) %>% 
+  set_names(chains_used)
+# names(cluster_labs) <- 1:5
+
+# Create the plot
+p1 <- ggplot(
+  plt_data %>% filter(N_chains %in% chains_used),
+  aes(x = as.numeric(N_iter), y = ARI, group = N_chains)
+  ) +
+  geom_line()+
+  geom_ribbon(aes(ymin = ARI_lb, ymax = ARI_ub, group = N_chains), colour = NA, alpha =0.3) +
+  facet_wrap(~N_chains, ncol =1)+
+  labs(
+    x = "Number of iterations",
+    title = "Number of chains"
+  )
+
+p2 <- ggplot(
+  plt_data %>% filter(N_iter %in% iter_used),
+  aes(x = as.numeric(N_chains), y = ARI, group = N_iter)
+) +
+  geom_line()+
+  geom_ribbon(aes(ymin = ARI_lb, ymax = ARI_ub, group = N_iter), colour = NA, alpha =0.3) +
+  facet_wrap(~N_iter, ncol =1) +
+  labs(
+    x = "Number of chains",
+    title = "Number of iterations"
+  )
+
+
+p1+p2
+
+```
+
+## Model validation
+
+I was thinking (for the real data) of plotting PCA "time series" (is there a nice term for a series over an ordered variable?). Example:
+
+```{r pca_vis}
+
+
+# Parameters defining generated data
+K <- 5
+n <- 100
+p <- 20
+
+# Generate a dataset
+my_data <- generateSimulationDataset(K = K, p = p, n = n)
+
+# PCA
+pc1 <- prcomp(my_data$data)
+
+# Include a ribbon about the inter-quantile range
+p3 <- pcaSeriesPlot(pc1$x,
+  labels = my_data$cluster_IDs,
+  include_area = T,
+  n_comp = 6
+)
+
+# New facet label names for cluster variable
+cluster_labs <- c(paste0("Cluster ", 1:5))
+names(cluster_labs) <- 1:5
+
+# Create the plot
+p3 +
+  facet_wrap(~Cluster, labeller = labeller(Cluster = cluster_labs)) +
+  labs(title = "PCA plot including medians and inter-quartile range") + 
+  theme(legend.position="none")
+
+```

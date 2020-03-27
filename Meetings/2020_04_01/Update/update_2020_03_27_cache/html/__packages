@@ -1,0 +1,13 @@
+base
+mdiHelpR
+tidyr
+plot3D
+ggplot2
+plotly
+magrittr
+tibble
+dplyr
+patchwork
+lpSolve
+mcclust
+mcclust.ext
