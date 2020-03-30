@@ -194,20 +194,140 @@ plotData <- function(x, cluster_IDs,
 }
 
 
-pcaScatterPlot <- function(pca_mat, labels, n_comp = 10){
-  
-  plt_pca_data <- pca_mat %>% 
-    as.data.frame(row.names = row.names(.)) %>% 
-    tibble::add_column(Cluster = as.factor(labels)) %>% 
-    tidyr::gather(key = "Component", value = "Loading", -Cluster, factor_key = T)
-  
-  p <- ggplot(plt_pca_data, aes(x = Component, y = Loading, colour = Cluster)) +
-    geom_point() +
-    scale_color_viridis_d() +
-    # theme(axis.text.x = element_text(angle = 30)) +
-    xlim(paste0("PC", 1:n_comp))
+#!/usr/bin/env Rscript
+
+#' @title PCA plot
+#' @description Plot the items loadings along the principal components.
+#' @param x A matrix of the loadings of each item upon each component (the "x"
+#' part of the prcomp() output).
+#' @param labels A vector of the labels associated with the rows of x.
+#' @param n_comp The number of components to plot.
+#' @return A ``ggplot2'' object.
+#' @importFrom ggplot2 ggplot geom_point scale_color_viridis_d xlim aes
+#' @importFrom tibble add_column
+#' @importFrom tidyr pivot_longer
+#' @export
+pcaPlot <- function(x, labels = NA, n_comp = 10) {
+  if (all(is.na(labels)) & length(labels) == 1) {
+    
+    # Gather the data from wide to long format and convert to a data.frame ready
+    # for ggplot
+    plt_pca_data <- x %>%
+      as.data.frame(row.names = row.names(.)) %>%
+      tibble::add_column(Item = as.factor(row.names(.))) %>%
+      tidyr::pivot_longer(-Item,
+                          names_to = "Component",
+                          values_to = "Loadings",
+                          names_ptypes = list(Component = factor()),
+                          values_ptypes = list(Loadings = numeric()),
+      ) %>%
+      suppressWarnings()
+    
+    
+    # plot the data along the components
+    p <- suppressWarnings(
+      ggplot2::ggplot(plt_pca_data, ggplot2::aes(x = Component, y = Loadings)) +
+        ggplot2::geom_point() +
+        ggplot2::xlim(paste0("PC", 1:n_comp))
+    )
+    
+  } else {
+    
+    # Gather the data from wide to long format and convert to a data.frame ready
+    # for ggplot and include the labels as a factor
+    plt_pca_data <- x %>%
+      as.data.frame(row.names = row.names(.)) %>% 
+      tibble::add_column(
+        Cluster = as.factor(labels), 
+        Item = as.factor(row.names(.))
+      ) %>%
+      tidyr::pivot_longer(-c(Cluster, Item),
+                          names_to = "Component",
+                          values_to = "Loadings",
+                          names_ptypes = list(Component = factor()),
+                          values_ptypes = list(Loadings = numeric())
+      ) 
+    
+    # plot the data along the components colouring by the labels
+    p <- ggplot2::ggplot(
+      plt_pca_data, 
+      ggplot2::aes(x = Component, y = Loadings, colour = Cluster)
+    ) +
+      ggplot2::geom_point() +
+      ggplot2::scale_color_viridis_d() +
+      ggplot2::xlim(paste0("PC", 1:n_comp))
+  }
   
   p
+}
+
+#' @title PCA series plot
+#' @description Plot the median loadings for each cluster along the principal
+#' components as a series, with an option to include a ribbon describing the 
+#' range from the first ot the third quartile around this.
+#' @param x A matrix of the loadings of each item upon each component (the "x"
+#' part of the prcomp() output).
+#' @param labels A vector of the labels associated with the rows of x.
+#' @param n_comp The number of components to plot.
+#' @param include_area Logical indicating inclusion of [quartile_1, quartile_3]
+#' about the median value of the clusters across components.
+#' @param ribbon_alpha The alpha used on the ribbon geom describing the range 
+#' about the median of the clusters.
+#' @param ribbon_lty The linetype used on the ribbon geom describing the range 
+#' about the median of the clusters.
+#' @return A ``ggplot2'' plot.
+#' @importFrom ggplot2 ggplot geom_line scale_color_viridis_d xlim aes
+#' @importFrom dplyr group_by summarise
+#' @export
+pcaSeriesPlot <- function(x, labels,
+                          alpha = 0.8,
+                          lty = 3,
+                          n_comp = 10,
+                          include_area = F,
+                          ribbon_alpha = 0.2,
+                          ribbon_lty = 4) {
+  p1 <- pcaPlot(x, labels = labels, n_comp = n_comp)
+  
+  
+  sum_data <- p1$data %>%
+    dplyr::group_by(Cluster, Component) %>%
+    dplyr::summarise(
+      Median_value = median(Loadings),
+      q1 = quantile(Loadings, probs = 0.25),
+      q3 = quantile(Loadings, probs = 0.75),
+      q0 = quantile(Loadings, probs = 0),
+      q4 = quantile(Loadings, probs = 1)
+    )
+  
+  
+  p2 <- p1 +
+    ggplot2::geom_line(ggplot2::aes(group = Item), alpha = alpha, lty = lty) +
+    ggplot2::geom_line(
+      data = sum_data,
+      ggplot2::aes(x = Component, y = Median_value, group = Cluster),
+      size = 1
+    )
+  
+  if (include_area) {
+    p2 <- p2 +
+      scale_fill_viridis_d() +
+      geom_ribbon(
+        data = sum_data,
+        aes(
+          x = Component,
+          y = Median_value,
+          ymin = q1,
+          ymax = q3,
+          group = Cluster,
+          fill = Cluster
+        ),
+        alpha = ribbon_alpha,
+        lty = ribbon_lty,
+        colour = NA
+      )
+  }
+  
+  p2
 }
 
 # Define UI for application that draws a histogram
@@ -323,7 +443,13 @@ ui <- fluidPage(
       checkboxInput(
         "clusterRows",
         "Cluster rows in heatmap."
+      ),
+      
+      checkboxInput(
+        "facetWrap",
+        "Facet by cluster number in PCA series plot."
       )
+      
     ),
 
     # Show a plot of the generated distribution
@@ -441,8 +567,24 @@ server <- function(input, output) {
     # oldw <- getOption("warn")
     # options(warn = -1)abc%123
     
-    pcaScatterPlot(pc_1$x, my_data$cluster_IDs, n_comp = input$nComp)
+    # pcaScatterPlot(pc_1$x, my_data$cluster_IDs, n_comp = input$nComp)
+    pca_plot <- pcaSeriesPlot(pc_1$x, my_data$cluster_IDs,
+                  n_comp = input$nComp,
+                  include_area = T)
     
+    if(input$facetWrap){
+    # New facet label names for cluster variable
+    cluster_labs <- c(paste0("Cluster ", 1:input$K))
+    names(cluster_labs) <- 1:input$K
+    
+    # Create the plot
+    pca_plot <- pca_plot +
+      facet_wrap(~Cluster, labeller = labeller(Cluster = cluster_labs)) +
+      # labs(title = "PCA plot including medians and inter-quartile range") + 
+      theme(legend.position="none", strip.text.x = element_text(size = 12) )
+    }
+    
+    pca_plot
     # options(warn = oldw)
   }
   )
