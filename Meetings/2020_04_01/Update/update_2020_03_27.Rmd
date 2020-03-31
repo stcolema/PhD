@@ -178,7 +178,7 @@ The aim of each model is uncovering the true clustering of the data, $C'$. The p
 
 Robustness may be judged by the uncertainty on this estimate, but also across-model agreement (for Bayesian and Frequentist inference, but not Consensus inference). This needs thought. If Bayesian / frequentist have disagreement on predicted clustering within a simulation across model starts, or common clustering and different uncertainty? Measure Byaeisan convergence using gelman-rubin (across-chains) and autocorrelation (within-chain).
 
-Time may be measured in seconds - relative time taken in each simulation? e.g. min(time_freq_l) = t_0l, delta_t = t_ml - t_0l for the lth sim. Boxplot.  
+Time may be measured in seconds - relative time taken in each simulation? e.g. $\min(t_{freq_l}) = t_{0l}$, $\Delta t_{ml} = t_{ml} - t_{0l}$ for the lth sim. Boxplot.  
 
 ## Layout
 
@@ -581,3 +581,17 @@ p3 +
   theme(legend.position="none")
 
 ```
+
+This is a way of visualising the different clusters and the `signatures` that define them; I think the visualisation of the median this way makes it easier to see that all of the clusters do separate out sensibly even if plotting it as a process across components might be misleading.
+
+## Half-baked thoughts
+
+Thinking about possible extensions (not for now):
+
+1. randomising the order of rows (as collapsed Gibbs sampler, probably not necessary with random initialisations);
+2. sampling items clustered (test robustness of clusters formed); and
+3. sampling features used (moving towards multi-view clustering). This would help find the different features contributing, and would involve some more thought about how to combine different chains (possibly chains with no structure found, i.e. singletons or all in one cluster, might be dismissed and if there are many chains with this look at ignoring some of the features used; this moves towards different problems such as feature selection and does not need work for now as it complicates the problem).
+
+Also, would combining 2. and 3. go some way to making this a biclustering method? As some items would cluster together under some features but not others we would have some information for clustering items and features.
+
+## References
