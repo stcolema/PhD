@@ -1,0 +1,90 @@
+---
+title: "Cluster analysis"
+author: "Stephen Coleman"
+date: "01/04/2020"
+output: html_document
+bibliography: cluster_analysis_intro.bib
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Introduction
+
+Cluster analysis – also known as unsupervised learning – is used in multivariate
+statistics to uncover useful latent groups suspected in the data or to discover 
+interesting groups of homogeneous observations through partitioning of the data.
+These groups are referred to as clusters.
+
+This is an ill-posed problem. How is one to formally define what is meant by 
+"useful" or "interesting"? How does one choose which clustering solution is 
+"best" or most "natural"? The answer to these questions is inherently domain or
+dataset specific. Certain qualities might be generally desireable, for example 
+it is often ideal that the clusters are as dissimilar as possible and that the 
+observations within the same cluster are as similar as possible, however the 
+broader statement of "best solution" is not generic; consider that the
+definition of useful (and hence the best solution) when clustering genes in
+patients with Type 1 Diabetes is unlikely to be relevant when attempting to 
+define animal taxonomies. 
+
+There have been efforts made to address this question of "best solution", and
+remove the subjectivity present in cluster analysis. However, these often rely
+upon ranking of solutions by some "objective" score. This merely shifts the 
+subjectivity to choice of score itself!
+
+> "For every score preferring one clustering over the other one can invent 
+another score which does the opposite. A unique, global, objective score for all
+clustering problems does not exist."
+`r tufte::quote_footer('@von2012clustering')`
+
+This is not to dismiss the different measures of cluster analysis; these scores
+can contribute useful information, but one should avoid overstating their value.
+
+From this is may be realised that there does not exist a single unique
+clustering solution; different aims imply different solutions [@hennig2015true].
+Thus, thinking clearly about the aims and making an explicit statement of these
+is integral to good practice of cluster analysis. Having stated one's aims, one
+may avoid the problem of defining a generic "best" or a "natural" solution, one
+may instead focus on one's specific problem. 
+
+> "The nature of the classification that we make . . . must have direct regard 
+to the purpose for which the classification is required. In as far as it serves
+the purpose, the classification is a good classification, however ‘artificial’ 
+it may be. In as far as it does not serve this purpose, it is a bad 
+classification, however ‘natural’ it may be." 
+`r tufte::quote_footer('@mercier1912formal')`
+
+The purpose of the analysis is inherently subjective; whether this subjectivity
+enters the analysis through the analyst, the domain in question or the 
+combination of these is immaterial - it is always present. A clear analysis
+plan stated before the data is seen (i.e. explicit aims, model choice, data
+pre-processing, choice of priors, etc.), helps to alleviate some problems 
+associated with subjecitivty, improving the recreatibility and significance of
+a cluster analysis. In practice, however, there are many decisions that will not 
+be forseeable. The large degrees of freedom a researcher has in making decisions
+in the course of the analysis is problematic. It contributes to the importance 
+of avoiding exagerrating the meaning of the clusters found (the logic here is 
+based upon that described by @gelman2013garden, but applied to cluster 
+analysis). This does not mean the analysis is not useful or does not have 
+implications beyond the dataset analysed, but a measure of the broader 
+significance of results, often an aim in statistical analyses, is not possible. 
+
+<!-- ## Other bits not included -->
+
+<!-- Based upon the doman-specifc nature of some aims, @von2012clustering argue that  -->
+<!-- clustering methods need to become more domain specific rather than generic  -->
+<!-- models that can be applied in any context; arguably Bayesian methods begin to -->
+<!-- solve this problem through the incorporation of priors that enable one to  -->
+<!-- incorporate dataset and domain specific knowledge into the model. -->
+
+<!-- Methods such as Profile Regression [@molitor2010bayesian] attempt to address  -->
+<!-- this lack of objectivity in defining what is meant by useful by introducing some -->
+<!-- known variable(s) of interest to help inform the clustering. -->
+
+<!-- Furthermore, many datasets may have different clustering structures present  -->
+<!-- within the data depending on which features are used - this is an active area of  -->
+<!-- research known as *multiview clustering*. -->
+
+
+## References
