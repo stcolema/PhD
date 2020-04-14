@@ -1,0 +1,96 @@
+# Introduction {#introduction}
+
+I want to create a simulation study to do two things:
+
+1. absolute evaluation of consensus inference as a inferential technique for mixture models; and 
+2. comparative evaluation of consensus, Bayesian and frequentist inference of mixture models.
+
+I am interested in evaluating:
+
+* Performance - how well each method predicts the true clustering (metric: *Adjusted Rand Index* [@hubert1985comparing] between the predicted clustering from each method and the true clustering);
+* Robustness - how well each method explores the model space (metric: *Frobenius product* between the consensus / posterior similarity matrices and the true coclustering matrix); and
+* Speed - how long each method takes to run (metric: *seconds*).
+
+## Data generating mechanism
+
+I refer to the objects being clustered as *items* and the variables being used to cluster them as *features*. I use the language of @law2003feature and refer to *relevant* and *irrelevant* features referring to features that provide component specific information and thus contribute to the clustering and those that do not.
+
+* $N$: the number of items generated;
+* $P$: the number of relevant features used;
+* $P_n$: the number of irrelevant features used;
+* $K$: the true number of clusters present;
+* $X = (x_1, \ldots, x_N)$: the items generated;
+* $\pi=(\pi_1, \ldots, \pi_K)$: the expected proportions of the population belonging to each cluster;
+* $z=(z_1, \ldots, z_n)$: the allocation variable for each item;
+* $\theta=(\theta_1, \ldots, \theta_K)$: the parameters associated with each component; and
+* $\phi=(\phi_1,\ldots, \phi_P)$: the indicator variable of feature relevance.
+
+Our data generating model is a finite mixture model with $P_n$ irrelevant features and independent features:
+
+\[
+\begin{aligned}
+p(x, z, \theta, \pi) &= \prod_{i=1}^N p(x_i | z_i, \theta_{z_i}) \prod_{i=1}^N p (z_i | \pi) p(\pi) p(\theta) \\
+  &= \prod_{i=1}^N \prod_{p=1}^P p(x_{ip} | z_i, \theta_{z_ip})^{(1 - \phi_p)} p(x_{ip} | \theta_p) ^ {\phi_p} \prod_{i=1}^N p (z_i | \pi) p(\pi) p(\theta)
+\end{aligned}
+\]
+
+During my simulations I assume that the model in question is a mixture of *Gaussians* and thus $\theta_{kp}=(\mu_{kp}, \sigma^2_{kp})$.
+
+As each method of inference uses a common model, this data-generating mechanism is not expected to favour any one method over another.
+
+I test seven different scenarios that change various parameters in this model. I will define the component parameters by $\Delta_{\mu}$, the distance between the possible means in each feature, and $\sigma^2$, a common standard deviation across all components and features. The scenarios tested are:
+
+1. The 2D Gaussian case (this is a sense-check);
+2. The lack-of-structure case in 2 dimensions;
+3. The base case for which scenarios 4-6 are variations;
+4. Increasing $\sigma^2$;
+5. Increasing the number of irrelevant features;
+6. Varying the expected proportion of the total population assigned to each sub-population;
+7. The large $N$, small $P$ paradigm; and
+8. The small $N$, large $P$ case.
+
+
+A more detailed description of each scenario and various sub-scenarios is given in the below table.
+
+```{r scenario_table, echo=F}
+scn_table <- data.frame(
+  Scenario = c("Simple 2D", "No structure", "Base Case", rep("Large N, small P", 3), rep("Large standard deviation", 3), rep("Irrelevant features", 5), rep("Small N, large P", 2), "Varying proportions"),
+  N = c(100, 100, 2e2, 1e4, 1e4, 1e4, 2e2, 2e2, 2e2, 2e2, 2e2, 2e2, 2e2, 2e2, 50, 50, 200),
+  P_s = c(2, 0, 20, 4, 4, 4, 20, 20, 20, 20, 20, 20, 20, 20, 500, 500, 20),
+  P_n = c(0, 2, 0, 0, 0, 0, 0, 0, 0, 2, 10, 20, 100, 200, 0, 0, 0),
+  K = c(5, 1, 5, 5, 50, 50, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5),
+  Delta_mu = c(3, 0, 1, 1, 1, 0.5, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0.2, 1),
+  sigma2 = c(1, 1, 1, 1, 1, 1, 3, 5, 10, 1, 1, 1, 1, 1, 1, 1, 1),
+  Pi = c(rep("vec(1/K)", 16), "(0.5, 0.25, 0.125, 0.0675, 0.0675)")
+  )
+
+colnames(scn_table) <- c(
+  "Scenario",
+"$N$",
+"$P_s$",
+"$P_n$",
+"$K$",
+"$\\Delta_{\\mu}$",
+"$\\sigma^2$",
+"$\\pi$"
+)
+
+sims_used <- scn_table[c(1:3, 7, 8, 11:13, 17, 4:6, 15:16),] %>% 
+  set_rownames(1:nrow(.))
+
+knitr::kable(sims_used, row.names = T, escape = F) #, "latex", longtable = T, booktabs = T, caption = "Longtable")
+
+```
+
+<!-- \begin{center} -->
+<!-- \captionof{table}{Multirow Table.} -->
+<!-- \begin{tabular}{l|l|r} -->
+<!-- \textbf{Value 1} & \textbf{Value 2} & \textbf{Value 3} \\ -->
+<!-- $\alpha$ & $\beta$ & $\gamma$ \\ \hline -->
+<!-- \multirow{2}{*}{12} & 1110.1 & a \\ -->
+<!--  & 10.1 & b \\ \hline -->
+<!-- 3 & 23.113231 & c \\ -->
+<!-- 4 & 25.113231 & d -->
+<!-- \end{tabular} -->
+<!-- \end{center} -->
+
