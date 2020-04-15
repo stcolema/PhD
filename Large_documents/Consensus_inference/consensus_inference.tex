@@ -1,0 +1,381 @@
+% Options for packages loaded elsewhere
+\PassOptionsToPackage{unicode}{hyperref}
+\PassOptionsToPackage{hyphens}{url}
+%
+\documentclass[
+]{book}
+\usepackage{lmodern}
+\usepackage{amssymb,amsmath}
+\usepackage{ifxetex,ifluatex}
+\ifnum 0\ifxetex 1\fi\ifluatex 1\fi=0 % if pdftex
+  \usepackage[T1]{fontenc}
+  \usepackage[utf8]{inputenc}
+  \usepackage{textcomp} % provide euro and other symbols
+\else % if luatex or xetex
+  \usepackage{unicode-math}
+  \defaultfontfeatures{Scale=MatchLowercase}
+  \defaultfontfeatures[\rmfamily]{Ligatures=TeX,Scale=1}
+\fi
+% Use upquote if available, for straight quotes in verbatim environments
+\IfFileExists{upquote.sty}{\usepackage{upquote}}{}
+\IfFileExists{microtype.sty}{% use microtype if available
+  \usepackage[]{microtype}
+  \UseMicrotypeSet[protrusion]{basicmath} % disable protrusion for tt fonts
+}{}
+\makeatletter
+\@ifundefined{KOMAClassName}{% if non-KOMA class
+  \IfFileExists{parskip.sty}{%
+    \usepackage{parskip}
+  }{% else
+    \setlength{\parindent}{0pt}
+    \setlength{\parskip}{6pt plus 2pt minus 1pt}}
+}{% if KOMA class
+  \KOMAoptions{parskip=half}}
+\makeatother
+\usepackage{xcolor}
+\IfFileExists{xurl.sty}{\usepackage{xurl}}{} % add URL line breaks if available
+\IfFileExists{bookmark.sty}{\usepackage{bookmark}}{\usepackage{hyperref}}
+\hypersetup{
+  pdftitle={Consensus inference},
+  pdfauthor={Stephen Coleman},
+  hidelinks,
+  pdfcreator={LaTeX via pandoc}}
+\urlstyle{same} % disable monospaced font for URLs
+\usepackage{longtable,booktabs}
+% Correct order of tables after \paragraph or \subparagraph
+\usepackage{etoolbox}
+\makeatletter
+\patchcmd\longtable{\par}{\if@noskipsec\mbox{}\fi\par}{}{}
+\makeatother
+% Allow footnotes in longtable head/foot
+\IfFileExists{footnotehyper.sty}{\usepackage{footnotehyper}}{\usepackage{footnote}}
+\makesavenoteenv{longtable}
+\usepackage{graphicx,grffile}
+\makeatletter
+\def\maxwidth{\ifdim\Gin@nat@width>\linewidth\linewidth\else\Gin@nat@width\fi}
+\def\maxheight{\ifdim\Gin@nat@height>\textheight\textheight\else\Gin@nat@height\fi}
+\makeatother
+% Scale images if necessary, so that they will not overflow the page
+% margins by default, and it is still possible to overwrite the defaults
+% using explicit options in \includegraphics[width, height, ...]{}
+\setkeys{Gin}{width=\maxwidth,height=\maxheight,keepaspectratio}
+% Set default figure placement to htbp
+\makeatletter
+\def\fps@figure{htbp}
+\makeatother
+\setlength{\emergencystretch}{3em} % prevent overfull lines
+\providecommand{\tightlist}{%
+  \setlength{\itemsep}{0pt}\setlength{\parskip}{0pt}}
+\setcounter{secnumdepth}{5}
+\usepackage{booktabs}
+\usepackage{amsthm}
+\makeatletter
+\def\thm@space@setup{%
+  \thm@preskip=8pt plus 2pt minus 4pt
+  \thm@postskip=\thm@preskip
+}
+\makeatother
+\usepackage{caption}
+\usepackage{multirow}
+\usepackage{amsmaths}
+\usepackage{booktabs}
+\usepackage{longtable}
+\usepackage{array}
+\usepackage{wrapfig}
+\usepackage[normalem]{ulem}
+\usepackage{makecell}
+\usepackage{xcolor}
+\usepackage[]{natbib}
+\bibliographystyle{apalike}
+
+\title{Consensus inference}
+\author{Stephen Coleman}
+\date{2020-04-15}
+
+\begin{document}
+\maketitle
+
+{
+\setcounter{tocdepth}{1}
+\tableofcontents
+}
+\hypertarget{abstract}{%
+\chapter*{Abstract}\label{abstract}}
+\addcontentsline{toc}{chapter}{Abstract}
+
+I propose Consensus inference as an alternative to Bayesian or Frequentist inference of clustering methods. It requires that methods are sampling-based (such as using Markov-Chain Monte Carlo methods). Consensus inference is proposed as MCMC methods can be slow and often fail to converge in finite time in large clustering problems; particularly when performing integrative clustering across many datasets. There exist clever implementations of MCMC methods that attempt to overcome this problem of convergence in clustering (for instance split-merge moves), but this methods remain very slow to run. I propose Consensus inference as a general solution to these problems. In clustering problems, partially due to the discrete nature of clustering labels, Gibbs sampling normally is quick to find a local mode (often within 10's of iterations). However, the sampler then remains trapped there for a very large number of iterations. This means that there is no variation in samples after burn-in. As a result of this, taking only a single sample from the chain after it becomes trapped is equivalent to taking all of the samples in terms of the inference performed. Consensus inference uses this behaviour to both acquire impressive reducitons in runtime, but also to attempt better exploration of possible clusterings. I propose running many short chains using many different random initialisations to try and explore the model space. Taking the first sample after burn-in from each of many chains and translating these into a \emph{consensus matrix} offers a more robust exploration of realistic clusterings possible in the data than using a single long chain. Furthermore, as the chains can be very short (often on the scale of 10's or 100's of iterations) and are independent of one another, one can take advantage of a parallel environment to drastically reduce runtime. I do not offer any guarantees that consensus inference is sampling the posterior space, rather than attempting to approximate Bayesian inference, this should be thought of as ensemble method combining many weak models into one more powerful, more robust model. I offer empirical evidence from simulations and real data from the Cancer Genome Atlas to show that Consensus inference does perform comparably to Bayesian and Frequentist inference in many scenarios, even outperforming these approaches in some.
+
+\hypertarget{introduction}{%
+\chapter{Introduction}\label{introduction}}
+
+I want to create a simulation study to do two things:
+
+\begin{enumerate}
+\def\labelenumi{\arabic{enumi}.}
+\tightlist
+\item
+  absolute evaluation of consensus inference as a inferential technique for mixture models; and
+\item
+  comparative evaluation of consensus, Bayesian and frequentist inference of mixture models.
+\end{enumerate}
+
+I am interested in evaluating:
+
+\begin{itemize}
+\tightlist
+\item
+  Performance - how well each method predicts the true clustering (metric: \emph{Adjusted Rand Index} \citep{hubert1985comparing} between the predicted clustering from each method and the true clustering);
+\item
+  Robustness - how well each method explores the model space (metric: \emph{Frobenius product} between the consensus / posterior similarity matrices and the true coclustering matrix); and
+\item
+  Speed - how long each method takes to run (metric: \emph{seconds}).
+\end{itemize}
+
+\hypertarget{data-generating-mechanism}{%
+\section{Data generating mechanism}\label{data-generating-mechanism}}
+
+I refer to the objects being clustered as \emph{items} and the variables being used to cluster them as \emph{features}. I use the language of \citet{law2003feature} and refer to \emph{relevant} and \emph{irrelevant} features referring to features that provide component specific information and thus contribute to the clustering and those that do not.
+
+\begin{itemize}
+\tightlist
+\item
+  \(N\): the number of items generated;
+\item
+  \(P\): the number of relevant features used;
+\item
+  \(P_n\): the number of irrelevant features used;
+\item
+  \(K\): the true number of clusters present;
+\item
+  \(X = (x_1, \ldots, x_N)\): the items generated;
+\item
+  \(\pi=(\pi_1, \ldots, \pi_K)\): the expected proportions of the population belonging to each cluster;
+\item
+  \(z=(z_1, \ldots, z_n)\): the allocation variable for each item;
+\item
+  \(\theta=(\theta_1, \ldots, \theta_K)\): the parameters associated with each component; and
+\item
+  \(\phi=(\phi_1,\ldots, \phi_P)\): the indicator variable of feature relevance.
+\end{itemize}
+
+Our data generating model is a finite mixture model with \(P_n\) irrelevant features and independent features:
+
+\[
+\begin{aligned}
+p(x, z, \theta, \pi) &= \prod_{i=1}^N p(x_i | z_i, \theta_{z_i}) \prod_{i=1}^N p (z_i | \pi) p(\pi) p(\theta) \\
+  &= \prod_{i=1}^N \prod_{p=1}^P p(x_{ip} | z_i, \theta_{z_ip})^{(1 - \phi_p)} p(x_{ip} | \theta_p) ^ {\phi_p} \prod_{i=1}^N p (z_i | \pi) p(\pi) p(\theta)
+\end{aligned}
+\]
+
+During my simulations I assume that the model in question is a mixture of \emph{Gaussians} and thus \(\theta_{kp}=(\mu_{kp}, \sigma^2_{kp})\).
+
+As each method of inference uses a common model, this data-generating mechanism is not expected to favour any one method over another.
+
+I test seven different scenarios that change various parameters in this model. I will define the component parameters by \(\Delta_{\mu}\), the distance between the possible means in each feature, and \(\sigma^2\), a common standard deviation across all components and features. The scenarios tested are:
+
+\begin{enumerate}
+\def\labelenumi{\arabic{enumi}.}
+\tightlist
+\item
+  The 2D Gaussian case (this is a sense-check);
+\item
+  The lack-of-structure case in 2 dimensions;
+\item
+  The base case for which scenarios 4-6 are variations;
+\item
+  Increasing \(\sigma^2\);
+\item
+  Increasing the number of irrelevant features;
+\item
+  Varying the expected proportion of the total population assigned to each sub-population;
+\item
+  The large \(N\), small \(P\) paradigm; and
+\item
+  The small \(N\), large \(P\) case.
+\end{enumerate}
+
+A more detailed description of each scenario and various sub-scenarios is given in the below table.
+
+\begin{tabular}{l|l|r|r|r|r|r|r|l}
+\hline
+  & Scenario & $N$ & $P_s$ & $P_n$ & $K$ & $\Delta_{\mu}$ & $\sigma^2$ & $\pi$\\
+\hline
+1 & Simple 2D & 100 & 2 & 0 & 5 & 3.0 & 1 & vec(1/K)\\
+\hline
+2 & No structure & 100 & 0 & 2 & 1 & 0.0 & 1 & vec(1/K)\\
+\hline
+3 & Base Case & 200 & 20 & 0 & 5 & 1.0 & 1 & vec(1/K)\\
+\hline
+4 & Large standard deviation & 200 & 20 & 0 & 5 & 1.0 & 3 & vec(1/K)\\
+\hline
+5 & Large standard deviation & 200 & 20 & 0 & 5 & 1.0 & 5 & vec(1/K)\\
+\hline
+6 & Irrelevant features & 200 & 20 & 10 & 5 & 1.0 & 1 & vec(1/K)\\
+\hline
+7 & Irrelevant features & 200 & 20 & 20 & 5 & 1.0 & 1 & vec(1/K)\\
+\hline
+8 & Irrelevant features & 200 & 20 & 100 & 5 & 1.0 & 1 & vec(1/K)\\
+\hline
+9 & Varying proportions & 200 & 20 & 0 & 5 & 1.0 & 1 & (0.5, 0.25, 0.125, 0.0675, 0.0675)\\
+\hline
+10 & Large N, small P & 10000 & 4 & 0 & 5 & 1.0 & 1 & vec(1/K)\\
+\hline
+11 & Large N, small P & 10000 & 4 & 0 & 50 & 1.0 & 1 & vec(1/K)\\
+\hline
+12 & Large N, small P & 10000 & 4 & 0 & 50 & 0.5 & 1 & vec(1/K)\\
+\hline
+13 & Small N, large P & 50 & 500 & 0 & 5 & 1.0 & 1 & vec(1/K)\\
+\hline
+14 & Small N, large P & 50 & 500 & 0 & 5 & 0.2 & 1 & vec(1/K)\\
+\hline
+\end{tabular}
+
+\hypertarget{metrics}{%
+\chapter{Metrics}\label{metrics}}
+
+In this study we will be considering both within-simulation and across-simulation performance for the \(N_{sim}\) simulations run under each scenario.
+
+The aim of each model is uncovering the true clustering of the data, \(C'\). The performance of each model may be judged by compaing the predicted clustering, \(C^*\), to \(C'\) using the adjusted rand index (\textbf{\({ARI(C^*, C')}\)}).
+
+Robustness may be judged by the uncertainty on this estimate. I compare the Frobenius product between the coclustering matrix of the true clustering with the posterior similarity matrix (from the Bayesian inferene) and the consensus matrix (from the Consensus inference). For the Bayesian models I also will record the Gelman-Rubin shrinkage parameter (\(\hat{R}\)) and the Geweke statistic as measures of model convergence.
+
+Each model will be timed in milliseconds.
+
+\hypertarget{the-adjusted-rand-index}{%
+\section{The Adjusted Rand Index}\label{the-adjusted-rand-index}}
+
+\hypertarget{rand-index}{%
+\subsection{Rand Index}\label{rand-index}}
+
+A popular metric for comparing the similarity of two clusterings of the data is the \emph{Rand index} \citep{rand1971objective}. Let \(X=(x_1,\ldots,x_N)\) be a dataset of \(N\) items. Define two partitions of \(X\) into subsets, \(Y=\{Y_1,\ldots,Y_K\}\) and \(Y'=\{Y_1',\ldots, Y_{K'}'\}\), let \(C=(c_1,\ldots,c_N)\) and \(C'=(c_1'\ldots,c_N')\) denote the allocation of each item in \(X\) to one of these subsets; then each allocation label pair, \((c_i, c_i') \in [(1, 1),\ldots, (1, K'), (2, 1), \ldots, (K, K')] \forall i \in [1, N]\). For any two points \(x_i\) and \(x_j\) there can exist one of three possible scenarios regarding their allocation under each partition. Let \(\gamma_{ij}\) be a measure between the two points \(x_i\) and \(x_j\). For the two points, they can have
+
+\begin{enumerate}
+\def\labelenumi{\arabic{enumi}.}
+\tightlist
+\item
+  The same label in both clusterings (\(c_i = c_j \land c'_i = c'_j\)) (\(\gamma_{ij}=1\));
+\item
+  Different labels in both (\(c_i \neq c_j \land c'_i \neq c'_j\)) (\(\gamma_{ij}=1\)); or
+\item
+  The same label in one but not in the other (\(c_i \neq c_j \land c'_i = c'_j \lor c_i = c_j \land c'_i \neq c'_j\)) (\(\gamma_{ij}=0\)).
+\end{enumerate}
+
+Thus \citet{rand1971objective} proposed counting the number of times any two points have the relationship described by points 1 and 2 from the above list and finding the proportion of these compared to the number of all possible combinations. More formally, this is:
+
+\begin{eqnarray}
+A \binom{N}{2}^{-1} & = & \frac{1}{\binom{N}{2}} \sum_{i=1}^{N-1}\sum_{j=i + 1}^N\gamma_{ij}
+\label{eq:randIndex}
+\end{eqnarray}
+
+This can be envisioned as a \(K \times K'\) contingency table of the count of overlapping points, as shown in table \ref{tab:randContingency}. Table \ref{tab:randContingency} uses the following notation:
+
+\begin{enumerate}
+\def\labelenumi{\arabic{enumi}.}
+\tightlist
+\item
+  \(n_{ij}\) is the number of points that have membership in \(Y_i\) in clustering \(Y\) and \(Y'_j\) in clustering \(Y'\);
+\item
+  \(n_{\cdot j}\) is the number of points in cluster \(Y'_j\) in clustering \(Y'\);
+\item
+  \(n_{i \cdot}\) is the number of points in cluster \(Y_i\) in clustering \(Y\); and
+\item
+  \(n_{\cdot \cdot} = n\) is the number of points in clusterings \(Y\) and \(Y'\).
+\end{enumerate}
+
+\begin{table}
+
+\caption{\label{tab:randContingency}Contingency table to calculate a measure of similarity between clusterings $Y$ and $Y'$ as used by @rand1971objective.}
+\centering
+\begin{tabular}[t]{llllll}
+\toprule
+  & $Y_1'$ & $Y_2'$ & $\cdots$ & $Y_{K'}'$ & Sums\\
+\midrule
+$Y_1$ & $n_{11}$ & $n_{12}$ & $\cdots$ & $n_{1K'}$ & $n_{1 \cdot}$\\
+$Y_2$ & $n_{21}$ & $n_{22}$ & $\cdots$ & $n_{2K'}$ & $n_{2 \cdot}$\\
+$\vdots$ & $\vdots$ & $\vdots$ & $\ddots$ & $\vdots$ & $\vdots$\\
+$Y_K$ & $n_{K1}$ & $n_{K2}$ & $\cdots$ & $n_{KK'}$ & $n_{K \cdot}$\\
+**Sums** & $n_{\cdot 1}$ & $n_{\cdot 2}$ & $\cdots$ & $n_{\cdot K'}$ & $n_{\cdot \cdot}$\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+One can restate equation \eqref{eq:randIndex} in terms of the notation from table \ref{tab:randContingency} \citep{brennan1974measuring}:
+
+\begin{eqnarray}
+    A &=& \binom{n}{2} + \sum_{i=1}^K\sum_{j=1}^{K'}n_{ij}^2 - \frac{1}{2}\left(\sum_{i=1}^K n_{i\cdot}^2 + \sum_{j=1}^{K'}n_{\cdot j}^2  \right) \\
+    &=& \binom{n}{2} + 2 \sum_{i=1}^{K}\sum_{j=1}^{K'}\binom{n_{ij}}{2} - \left[\sum_{i=1}^{K}\binom{n_{i \cdot}}{2} + \sum_{j=1}^{K'}\binom{n_{\cdot j}}{2}\right]% \binom{n}{2} ^{-1}
+    \label{eq:randIndex2}
+\end{eqnarray}
+
+\citet{hubert1985comparing} extend the Rand index to account for chance. They include a null hypothesis and assume that there is a probability of some points having a \(\gamma\) value of 1 by chance. It can be shown that the expected number of points with common membership in both clusters is non-zero. Specifically:
+
+\begin{eqnarray}
+    \mathbb{E}\left[\sum_{i=1}^K \sum_{j=1}^K\binom{n_{ij}}{2}\right] = \frac{\sum_{i=1}^K \binom{n_{i\cdot}}{2} \sum_{j=1}^K \binom{n_{\cdot j}}{2}}{\binom{n}{2}}
+\end{eqnarray}
+
+This is the product of the number of distinct pairs that can be formed from rows and the number of distinct pairs that can be constructed from columns, divided by the total number of pairs.
+
+The expected number of items with the same label in both partitions can be calculated from table \ref{tab:randContingency}. Say for paired labelling such that items belong to both \(\{Y_i, Y_j'\}\) is the product of number of pairs the \(i^{th}\) row and the \(j^{th}\) column divided by the total number of possible pairings:
+
+\begin{eqnarray} 
+    \mathbb{E}\left[\binom{n_{ij}}{2}\right] = \frac{\binom{n_{i\cdot}}{2}\binom{n_{\cdot j}}{2}}{\binom{n}{2}}
+    \label{eq:expectedNij}
+    \end{eqnarray}
+
+One can see that as each component of equation \eqref{eq:randIndex2} is some transformation of \(\sum_{i,j}\binom{n_{ij}}{2}\), one can directly state the expected value of the Rand index by combining equations \eqref{eq:randIndex2} and \eqref{eq:expectedNij}:
+
+\begin{eqnarray}
+    \mathbb{E}\left[A \binom{n}{2}^{-1}\right] = 1 + 2 \sum_{i=1}^{K} \binom{n_{i \cdot}}{2} \sum_{j=1}^{K'} \binom{n_{\cdot j}}{2} \binom{n}{2}^{-2} - \left[\sum_{i=1}^{K} \binom{n_{i \cdot}}{2} + \sum_{j=1}^{K'} \binom{n_{\cdot j}}{2}\right] \binom{n}{2}^{-1}
+\end{eqnarray}
+
+Defining an index corrected for chance as:
+\begin{eqnarray}
+    \text{Corrected index} = \frac{\text{Index} - \text{Expected index}}{\text{Maximum index} - \text{Expected index}}
+\end{eqnarray}
+
+Assuming a maximum value of 1 for the Rand index then gives a corrected Rand index:
+\begin{eqnarray} 
+    AR(Y, Y') &= \frac{\sum_{i=1}^{K}\sum_{j=1}^{K'} \binom{n_{ij}}{2} - \sum_{i=1}^{K} \binom{n_{i \cdot}}{2} \sum_{j=1}^{K'} \binom{n_{\cdot j}}{2} \binom{n}{2}^{-1}}{\frac{1}{2} \left[\sum_{i=1}^{K} \binom{n_{i \cdot}}{2} + \sum_{j=1}^{K'} \binom{n_{\cdot j}}{2}\right] - \sum_{i=1}^{K} \binom{n_{i \cdot}}{2} \sum_{j=1}^{K'} \binom{n_{\cdot j}}{2} \binom{n}{2}^{-1}}
+    \label{eq:adjustedRandIndex}
+\end{eqnarray}
+
+This quantity is defined as the \emph{adjusted Rand index} and I use it as my measure of choice for similarity between clusterings.
+
+\hypertarget{posterior-expected-adjusted-rand-index}{%
+\subsection{Posterior expected adjusted Rand index}\label{posterior-expected-adjusted-rand-index}}
+
+Define this quantity
+
+One can estimate the posterior expected adjusted Rand (\textbf{PEAR}) index from the recorded MCMC samples. \citet{fritsch2009improved} suggest choosing the clustering \(c^*\) that maximises the posterior expected adjusted Rand index. This is approximated from \(n_{iter}\) MCMC samples by:
+\begin{align}
+    \frac{1}{n_{iter}}\sum_{i=1}^{n_{iter}} AR(c^*, c^i)
+        \label{eq:PEAR}
+    \end{align}
+
+Where \(c^i\) is the \(i^{th}\) recorded clustering. The R package \texttt{mcclust} \citep{fritsch2009improved} includes a calculation of this quantity based upon the PSM.
+
+\hypertarget{frobenius-product}{%
+\section{Frobenius product}\label{frobenius-product}}
+
+For two \(m \times n\) matrices \(A\) and \(B\), the \emph{Frobenius inner product} is defined as:
+
+\begin{eqnarray}
+\langle A, B \rangle _F = \sum_{i=1}^m \sum_{j=i}^n a_{ij}b_{ij}
+\label{eq:frobeniusProduct}
+\end{eqnarray}
+
+We use this to compare the true coclustering matrix to both the posterior similarity matrix (\textbf{PSM}) produced by Bayesian inference and the consensus matrix (\textbf{CM}) produced by the Consensus inference. (Note: I will use the phrase \emph{similarity matrix} is the contexts that apply to both the PSM and CM).
+
+Consider an item \(x_i\) that truthfully has allocation label \(c_i\). Now say that our similarity matrix has \(x_i\) allocated correctly (i.e.~with the other items that have allocation \(c_i\)) with a score of 0.4, but misallocated to some \(c_j\) with a score of 0.6. In the predicted clustering calculated from our similarity matrix we will misallocate \(x_i\) and this will lessen the ARI between the truth and the predicted clustering. However, the model has been uncertain about \(x_i\)'s allocation. The Frobenius inner product will capture this uncertainty and (in this case) reward the model with a higher score. Thus the Frobenius product more accurately describes the model performance.
+
+In practice I use a normalised score defined by the Frobenius product. For some similarity matrix \(S\) and the true coclustering matrix \(T\):
+
+\begin{eqnarray}
+f(S, T) = 1 - \frac{\langle S, T \rangle _F}{\langle T, T \rangle _F}
+\end{eqnarray}
+
+This is to give a common scale across all simulation scenairos. The change from a distance to a similarity measure is to ensure that a positive increase in the score represents a positive increase in performance.
+
+  \bibliography{sim\_plan.bib,packages.bib}
+
+\end{document}

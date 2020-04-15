@@ -8,7 +8,7 @@ Robustness may be judged by the uncertainty on this estimate. I compare the Frob
 
 Each model will be timed in milliseconds.
 
-## The Adjusted Rand Index
+## Clustering performance
 
 ### Rand Index
 
@@ -85,6 +85,7 @@ One can restate equation \@ref(eq:randIndex) in terms of the notation from table
 <!--   2. $1 - c$ is a distance measure; -->
 <!--   3. if one assumes a distribution to describe $X$, then $c$ is a random variable. -->
 
+### The Adjusted Rand Index
 
 @hubert1985comparing extend the Rand index to account for chance. They include a null hypothesis and assume that there is a probability of some points having a $\gamma$ value of 1 by chance. It can be shown that the expected number of points with common membership in both clusters is non-zero. Specifically:
 
@@ -130,9 +131,9 @@ One can estimate the posterior expected adjusted Rand (**PEAR**) index from the 
 		(\#eq:PEAR)
 	\end{align}
 
-Where $c^i$ is the $i^{th}$ recorded clustering. The R package ``mcclust`` [@fritsch2009improved] includes a calculation of this quantity based upon the PSM.
+Where $c^i$ is the $i^{th}$ recorded clustering. The R package ``mcclust`` [@R-mcclust] includes a calculation of this quantity based upon the PSM.
 
-## Frobenius product
+### Frobenius product
 
 For two $m \times n$ matrices $A$ and $B$, the _Frobenius inner product_ is defined as:
 
@@ -141,9 +142,9 @@ For two $m \times n$ matrices $A$ and $B$, the _Frobenius inner product_ is defi
 (\#eq:frobeniusProduct)
 \end{eqnarray}
 
-We use this to compare the true coclustering matrix to both the posterior similarity matrix (**PSM**) produced by Bayesian inference and the consensus matrix (**CM**) produced by the Consensus inference. (Note: I will use the phrase _similarity matrix_ is the contexts that apply to both the PSM and CM).
+We use this to compare the true coclustering matrix to both the posterior similarity matrix (**PSM**) produced by Bayesian inference and the consensus matrix (**CM**) produced by the Consensus inference. (Note: I will use the phrase _similarity matrix_ in the contexts that apply to both the PSM and CM).
 
-Consider an item $x_i$ that truthfully has allocation label $c_i$. Now say that our similarity matrix has $x_i$ allocated correctly (i.e. with the other items that have allocation $c_i$) with a score of 0.4, but misallocated to some $c_j$ with a score of 0.6. In the predicted clustering calculated from our similarity matrix we will misallocate $x_i$ and this will lessen the ARI between the truth and the predicted clustering. However, the model has been uncertain about $x_i$'s allocation. The Frobenius inner product will capture this uncertainty and (in this case) reward the model with a higher score. Thus the Frobenius product more accurately describes the model performance.
+Consider an item $x_i$ that truthfully has allocation label $c_i$. Now say that our similarity matrix has $x_i$ allocated correctly (i.e. with the other items that have allocation $c_i$) with a score of 0.4, but misallocated to some $c_j \neq c_i$ with a score of 0.6. In the predicted clustering calculated from our similarity matrix we will allocate $x_i$ to the wrong cluster and this will lessen the ARI between the truth and the predicted clustering. However, the model has been uncertain about $x_i$'s allocation. The Frobenius inner product will capture this uncertainty and (in this case) reward the model with a higher score. Thus the Frobenius product more accurately describes the model performance.
 
 In practice I use a normalised score defined by the Frobenius product. For some similarity matrix $S$ and the true coclustering matrix $T$:
 
@@ -152,3 +153,13 @@ f(S, T) = 1 - \frac{\langle S, T \rangle _F}{\langle T, T \rangle _F}
 \end{eqnarray}
 
 This is to give a common scale across all simulation scenairos. The change from a distance to a similarity measure is to ensure that a positive increase in the score represents a positive increase in performance. 
+
+## Bayesian model convergence
+
+### Geweke standardised scores
+
+Everyone's favourite $Z$ [@geweke1992evaluating].
+
+### Gelman-Rubin shrinkage factor
+
+Eveyone's favourite $\hat{R}$ [@gelman1992inference].
