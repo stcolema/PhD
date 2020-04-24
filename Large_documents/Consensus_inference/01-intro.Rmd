@@ -21,12 +21,13 @@ and why I am suggesting Consensus inference as a solution to these.
 
 ## Cluster analysis {#clusterAnalysis}
 
-Cluster analysis – also known as unsupervised learning – constists of defining
-partitions of items into homogeneous, separable groups known as clusters. It is 
-used in multivariate statistics to uncover _useful_ latent groups suspected in 
-the data or to discover _interesting_ groups of homogeneous observations. In 
-large datasets, such as modern 'omics datasets, estimation of clusters is often
-necessary for improved understanding and interpretation [@meinshausen2010stability]. 
+Cluster analysis – also known as unsupervised learning – consists of defining
+partitions of the items within a dataset such that the resulting sets are 
+homogeneous and distinct from one another. These groups are known as clusters. 
+Clustering is used in multivariate statistics to uncover _useful_ latent groups
+suspected in the data or to discover _interesting_ groups of homogeneous 
+observations. In large datasets, such as modern 'omics datasets, estimation of
+clusters is often necessary for improved understanding and interpretation [@meinshausen2010stability]. 
 
 Cluster analysis has a myriad of applications. These include data mining, 
 which started from the search for groupings of customers and products in massive
