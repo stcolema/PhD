@@ -1,15 +1,14 @@
 # Theory {#introduction}
 
 * Clustering
-  * Ill-posed problem
-  * Mixture models
-    * Frequentist 
-      * EM
-    * Bayesian
-      * Gibbs sampling
-  * Consensus clustering
-  * Integrative clustering
-    * Integrative Bayesian clustering 
+ * Mixture models
+ * Frequentist 
+ * EM
+ * Bayesian
+ * Gibbs sampling
+ * Consensus clustering
+ * Integrative clustering
+ * Integrative Bayesian clustering 
 * Problems
 
 In this section I explain some of the reasons one may wish to do a cluster 
@@ -20,81 +19,109 @@ some examples of relevant methods and the results they have delivered. This
 background is necessary to understand some of the problems that currently exist, 
 and why I am suggesting Consensus inference as a solution to these.
 
-## Cluster analysis
-Cluster analysis – also known as unsupervised learning – is used in multivariate
-statistics to uncover useful latent groups suspected in the data or to discover 
-interesting groups of homogeneous observations through partitioning of the data.
-These groups are referred to as clusters. In large datasets, such as modern 
-'omics datasets, estimation of clusters is often necessary for improved 
-understanding and interpretation [@meinshausen2010stability]. 
+## Cluster analysis {#clusterAnalysis}
 
-### Ill-posed problem
-Clustering is an ill-posed problem. How is one to formally define what is meant by 
-"useful" or "interesting"? How does one choose which clustering solution is 
-"best" or most "natural"? The answer to these questions is inherently domain or
-dataset specific. Certain qualities might be generally desireable, for example 
-it is often ideal that the clusters are as dissimilar as possible and that the 
-observations within the same cluster are as similar as possible, however the 
-broader statement of "best solution" is not generic; consider that the
-definition of useful (and hence the best solution) when clustering genes in
-patients with Type 1 Diabetes is unlikely to be relevant when attempting to 
-define animal taxonomies. 
+Cluster analysis – also known as unsupervised learning – constists of defining
+partitions of items into homogeneous, separable groups known as clusters. It is 
+used in multivariate statistics to uncover _useful_ latent groups suspected in 
+the data or to discover _interesting_ groups of homogeneous observations. In 
+large datasets, such as modern 'omics datasets, estimation of clusters is often
+necessary for improved understanding and interpretation [@meinshausen2010stability]. 
 
-There have been efforts made to address this question of "best solution", and
-remove the subjectivity present in cluster analysis. However, these often rely
-upon ranking of solutions by some "objective" score. This merely shifts the 
-subjectivity to choice of score itself!
+Cluster analysis has a myriad of applications. These include data mining, 
+which started from the search for groupings of customers and products in massive
+retail datasets [@fraley2002model]; document clustering and the analysis of 
+internet use data; spatial proteomics [@crook2018bayesian] where subcellular
+localisation of proteins is predicted by clustering-based methods; and image
+analysis, where clustering is used for image segmentation and quantization. The
+area of interest for me is in clustering 'omics data to 
+improve understanding of disease aetiology and (ideally) help clinical practice
+through identifying driving biological mechanisms or in defining subtypes within
+given diseases. Defining subtypes based upon behaviour at the 
+subcellular level rather than on phenotypic patterns can enable more effective 
+treatment. Examples where cluster analysis has been used to propose new subtypes
+include Breast cancer [@cancer2012comprehensive; @berger2018comprehensive], 
+Coronary artery disease [@guo2017cluster], tinnitus [@van2017cluster] and asthma
+[@ortega2014cluster]. Another interesting application is the defining of subpopulations of 
+patients; this application is integral to _Precision medicine_, which relies 
+upon "the classification of people into subpopulations using their common 
+genetic patterns, lifestyles, drug responses, and environmental and cultural
+factors" [@gameiro2018precision].
 
-> "For every score preferring one clustering over the other one can invent 
-another score which does the opposite. A unique, global, objective score for all
-clustering problems does not exist."
-`r tufte::quote_footer('@von2012clustering')`
+Within cluster analysis there exists a large number of possible methods. 
+Traditional approaches [as taught in many textbooks, see for e.g. @fidell2001using; @manly2016multivariate; @stevens2012applied] include hierarchical and non-hierarchical (normally $k$-means) 
+clustering. These methods are heuristic in nature; they are not based upon a 
+formal model and what guidance there is for solving important practical 
+questions that arise in every cluster analysis (such as the number of clusters
+present, which clustering method to, etc.) is subjective and informal. Despite 
+this, most of the clustering that is done in practive is based upon these 
+methods; they are intuitively reasonable and, perhaps more importantly, most 
+clustering methods available in commercial software are of this type 
+[@fraley2002model]. However, I am interested in _model-based cluster analysis_. 
+This embeds the cluster analysis within a statistical framework and offers a
+principled approach to many issues associated with cluster analysis. 
+Speicifcally, my interest is in _mixture models_ where each subpopulation is 
+described within the model by a probability distribution. In this setting, the
+problems of determining the number of clusters and of choosing an appropriate 
+clustering method can be recast as statistical model choice problems, and 
+models that differ in numbers of components and/or in component distributions 
+can be compared. Outliers are handled by adding one or more components representing a different distribution for outlying data [@fraley2002model; see an example in @crook2018bayesian].
 
-This is not to dismiss the different measures of cluster analysis; these scores
-can contribute useful information, but one should avoid overstating their value.
+Mathematical description of mixture models.
 
-From this is may be realised that there does not exist a single unique
-clustering solution; different aims imply different solutions [@hennig2015true].
-Thus, thinking clearly about the aims and making an explicit statement of these
-is integral to good practice of cluster analysis. Having stated one's aims, one
-may avoid the problem of defining a generic "best" or a "natural" solution, one
-may instead focus on one's specific problem. 
-
-> "The nature of the classification that we make . . . must have direct regard 
-to the purpose for which the classification is required. In as far as it serves
-the purpose, the classification is a good classification, however ‘artificial’ 
-it may be. In as far as it does not serve this purpose, it is a bad 
-classification, however ‘natural’ it may be." 
-`r tufte::quote_footer('@mercier1912formal')`
-
-The purpose of the analysis is inherently subjective; whether this subjectivity
-enters the analysis through the analyst, the domain in question or the 
-combination of these is immaterial - it is always present. A clear analysis
-plan stated before the data is seen (i.e. explicit aims, model choice, data
-pre-processing, choice of priors, etc.), helps to alleviate some problems 
-associated with subjecitivty, improving the recreatibility and significance of
-a cluster analysis. In practice, however, there are many decisions that will not 
-be forseeable. The large degrees of freedom a researcher has in making decisions
-in the course of the analysis is problematic. It contributes to the importance 
-of avoiding exagerrating the meaning of the clusters found (the logic here is 
-based upon that described by @gelman2013garden, but applied to cluster 
-analysis). This does not mean the analysis is not useful or does not have 
-implications beyond the dataset analysed, but a measure of the broader 
-significance of results, often an aim in statistical analyses, is not possible.
-
-## Mixture models
-
-A way 
 
 ### Frequentist inference
 
-F
+The most common form of inference, traditionally, is Frequentist; specifically Maximum Likelihood (*ML*) based. In mixture models, this inference is normally implemented using Expectation-Maximisation (*EM*), a two-step iterative process. This inference is very quick but suffers from several problems:
+
+1. Difficult to include prior beliefs or data;
+2. Sensitive to initialisation, prone to finding local maxima;
+3. Difficulty in converging - as the covariacne matrix has to be computed and inverted, this method often fails.
 
 #### Expectation maximisation
 
 Perform inference
 
 ### Bayesian inference
+
+An alternative to the Frequentist paradigm is Bayesian inference. This relies upon a number of statements:
+
+* Conditional probability:
+
+\begin{eqnarray}
+p(A, B | C) &=& p(B | A, C) p (A | C)
+(\#eq:condProb) 
+\end{eqnarray}
+
+* The law of total probability:
+
+\begin{eqnarray}
+p(A | C) &=& \int_B p(A | B', C) p(B' | C) dB' 
+(\#eq:totalProb)
+\end{eqnarray}
+
+* Bayes' Theorem (combining \@ref(eq:condProb) and \@ref(eq:totalProb)):
+
+\begin{eqnarray}
+p(A|B, C) &=& \frac{p(A, B | C)}{P(B|C)} \notag \\
+&=& \frac{p(B | A, C) p (A | C)}{P(B|C)}
+(\#eq:bayesTheorem) 
+\end{eqnarray}
+
+Bayesian inference is focuses upon the concept of updating one's beliefs via equation \@ref(eq:bayesTheorem). If one has a prior belief about the behaviour of some 
+parameter $\theta$, captured in the distribution $p(\theta)$, and then
+observe some data $X$, then one describes the change in one's belief about $\theta$ given the observed variable $X$ by:
+
+\begin{eqnarray}
+p(\theta | X) = \frac{p(X | \theta) p(\theta)}{p(X)}.
+(\#eq:posteriorDistribution)
+\end{eqnarray}
+
+In this case the following terminology is used:
+
+* $p(\theta)$ is the _prior distribution_ of $\theta$ (so-called as it encompasses one beliefs prior to observing $X$);
+* $p(X)$ is the _marginal likelihood_ of $X$ as it is the likelihood with $\theta$ marginalised out; and
+* $p(\theta | X)$ is the _posterior distribution_ of $\theta$ (as it denotes the belief about $\theta$ one has _a posteriori_, that is after observing empirical fact).
 
 Analytical vs sampling based.
 
@@ -138,51 +165,27 @@ Consider Gibbs sampling performed upon a mixture model of $K$ components cluster
 \tikzstyle{main}=[circle, minimum size = 10mm, thick, draw =black!80, node distance = 22mm]
 \tikzstyle{connect}=[-latex, thick]
 \tikzstyle{box}=[rectangle, draw=black!100]
-  \node[main] (pi) {$\pi_k$ };
-  \node[main] (z_i) [below right=of pi] {$z_i$};
-  \node[main, fill = black!10] (x_i) [right=of z_i] {$x_i$};
-  \node[main] (theta) [above left=of x_i] {$\theta_k$};
-  \path (pi) edge [connect] (z_i)
+ \node[main] (pi) {$\pi_k$ };
+ \node[main] (z_i) [below right=of pi] {$z_i$};
+ \node[main, fill = black!10] (x_i) [right=of z_i] {$x_i$};
+ \node[main] (theta) [above left=of x_i] {$\theta_k$};
+ \path (pi) edge [connect] (z_i)
 		(z_i) edge [connect] (x_i)
 		(theta) edge [connect] (x_i);
-  \node[rectangle, inner sep=-0.5mm, fit= (z_i) (x_i),label=above right:$N$, xshift=14mm] {};
-  \node[rectangle, inner sep=4.8mm,draw=black!100, fill=blue! 25, fill opacity=0.2, fit= (z_i) (x_i)] {};
+ \node[rectangle, inner sep=-0.5mm, fit= (z_i) (x_i),label=above right:$N$, xshift=14mm] {};
+ \node[rectangle, inner sep=4.8mm,draw=black!100, fill=blue! 25, fill opacity=0.2, fit= (z_i) (x_i)] {};
  \node[rectangle, inner sep=-0.8mm, fit= (theta) (pi),label=above right:$K$, xshift=14mm] {};
-  \node[rectangle, inner sep=4.8mm, draw=black! 100, fit= (theta)(pi)] {};
-  \node[main] (pi) {$\pi_k$ };
-  \node[main, fill = white!1] (z_i) [below right=of pi] {$z_i$};
-  \node[main, fill = black!10] (x_i) [right=of z_i] {$x_i$};
-  \node[main] (theta) [above left=of x_i] {$\theta_k$};
-  \path (pi) edge [connect] (z_i)
+ \node[rectangle, inner sep=4.8mm, draw=black! 100, fit= (theta)(pi)] {};
+ \node[main] (pi) {$\pi_k$ };
+ \node[main, fill = white!1] (z_i) [below right=of pi] {$z_i$};
+ \node[main, fill = black!10] (x_i) [right=of z_i] {$x_i$};
+ \node[main] (theta) [above left=of x_i] {$\theta_k$};
+ \path (pi) edge [connect] (z_i)
 		(z_i) edge [connect] (x_i)
 		(theta) edge [connect] (x_i);
 \end{tikzpicture}
 
 ```
-
-Before I begin the derivations, please recall:
-
-* Conditional probability:
-
-\begin{eqnarray}
-p(A, B | C) &=& p(B | A, C) p (A | C)
-(\#eq:condProb) 
-\end{eqnarray}
-
-* The law of total probability:
-
-\begin{eqnarray}
-p(A | C) &=& \int_B p(A | B', C) p(B' | C) dB' 
-(\#eq:totalProb)
-\end{eqnarray}
-
-* Bayes' Theorem (combining \@ref(eq:condProb) and \@ref(eq:totalProb)):
-
-\begin{eqnarray}
-p(A|B, C) &=& \frac{p(A, B | C)}{P(B|C)} \notag \\
-&=& \frac{p(B | A, C) p (A | C)}{P(B|C)}
-(\#eq:bayesTheorem) 
-\end{eqnarray}
 
 In the case of a mixture model, often the *only* variables of interest are the unseen allocation variables, $z$. This means that we are not interested in the samples produced for the other variables.
 
@@ -191,22 +194,22 @@ can consider the probability for each possible $k$. Based upon the relationships
 
 \begin{eqnarray}
 		p(z_i = k | x, z_{-i}, \pi) &=& \frac{p(z_i = k | \pi, x_{-i}, z_{-i}, \pi) p(x_i | z, x_{-i}, \pi)}{p(x_i | x_{-i}, z_{-i}, \pi)} \\
-		&\propto& p(z_i = k | \pi_k) \int_{\theta} p(x_i | \theta,  z, x_{-i}, \pi) p(\theta | z, x_{-i}, \pi) d \theta \\
+		&\propto& p(z_i = k | \pi_k) \int_{\theta} p(x_i | \theta, z, x_{-i}, \pi) p(\theta | z, x_{-i}, \pi) d \theta \\
 		&=& \pi_k \int_{\theta} p(x_i | \theta) p(\theta | z, x_{-i}) d \theta
 	(\#eq:ziCondProb) 
 \end{eqnarray}
 
-Note that the term in the denominator, $p(x_i | x_{-i}, z_{-i}, \pi)$ is independent of $z_i$ and thus the same for all values of $k$. The integral in \@ref(eq:ziCondProb) is the posterior predictive probability for $x_i$ given the items in the component;  thus one may consider \@ref(eq:ziCondProb) as how well does each component predict $x_i$, or as a model comparison problem.
+Note that the term in the denominator, $p(x_i | x_{-i}, z_{-i}, \pi)$ is independent of $z_i$ and thus the same for all values of $k$. The integral in \@ref(eq:ziCondProb) is the posterior predictive probability for $x_i$ given the items in the component; thus one may consider \@ref(eq:ziCondProb) as how well does each component predict $x_i$, or as a model comparison problem.
 
  An alternative way of describing this involves the ratio of marginal likelihoods. As we are component specific (given $z_i = k$), I drop the $z$ and $\pi$ from my conditional and assume we are referring only to the $x_j$ for which $z_j = k$.
-    
+ 
 \begin{eqnarray}
 p(x_i | z, x_{-i}, \pi) &=& \frac{p(x | z)}{p(x_{-i} | z)} \\
 &=& \frac{\int_\theta p(x | \theta) p(\theta) d\theta}{\int_\theta p(x_{-i} | \theta) p(\theta) d\theta}
 \end{eqnarray}
 
 Therefore we can write the posterior predictive distribution as this ratio of marginal likelihoods:
-    
+ 
 \begin{eqnarray}
 p(z_i = k | x, z_{-i}, \pi) \propto \pi_k \frac{p(x)}{p(x_{-i})}
 \end{eqnarray}
@@ -248,10 +251,10 @@ The conjugate prior for this model is the \emph{Normal-Gamma} distribution. This
 	
 \begin{eqnarray}
 	NG(\mu, \lambda | \mu_0, \kappa_0, \alpha_0, \beta_0) &\coloneqq& \mathcal{N}(\mu | \mu_0, (\kappa_0 \lambda)^{-1})Ga(\lambda | \alpha_0, \beta_0) \\
-	&=&  \sqrt{\frac{\kappa_0 \lambda}{2\pi}} \exp \left(- \frac{\kappa_0 \lambda}{2}(\mu - \mu_0) ^ 2\right) \\
+	&=& \sqrt{\frac{\kappa_0 \lambda}{2\pi}} \exp \left(- \frac{\kappa_0 \lambda}{2}(\mu - \mu_0) ^ 2\right) \\
 	& & \hspace{3mm} \times \hspace{3mm} \frac{\beta_0 ^{\alpha_0}}{\Gamma(\alpha_0)} \lambda ^{\alpha_0 - 1} \exp(-\beta_0 \lambda) \\
 	&=& \sqrt{\frac{\kappa_0}{2\pi}} \frac{\beta_0 ^ {\alpha_0}}{\Gamma(\alpha_0)} \\
-	& & \hspace{3mm} \times \hspace{3mm}  \lambda^{\alpha_0 - \frac{1}{2}} \exp\left(-\frac{\lambda}{2}\left[\kappa_0 (\mu - \mu_0)^2 + 2 \beta_0\right]\right) 
+	& & \hspace{3mm} \times \hspace{3mm} \lambda^{\alpha_0 - \frac{1}{2}} \exp\left(-\frac{\lambda}{2}\left[\kappa_0 (\mu - \mu_0)^2 + 2 \beta_0\right]\right) 
 (\#eq:priorPDF)
 \end{eqnarray}
 
@@ -261,7 +264,7 @@ Here the normalising constant is:
 Z_0^{-1} = \sqrt{\frac{\kappa_0}{2\pi}} \frac{\beta_0 ^ {\alpha_0}}{\Gamma(\alpha_0)}
 \end{eqnarray}
 
-One can see that this function in equation \@ref(eq:priorPDF) will naturally complement the likelihood described in equation \@ref(eq:likelihood).  
+One can see that this function in equation \@ref(eq:priorPDF) will naturally complement the likelihood described in equation \@ref(eq:likelihood). 
 
 To derive the poisterior probability, we apply Bayes' theorem (equation \@ref(eq:bayesTheorem)):
 	
@@ -269,12 +272,12 @@ To derive the poisterior probability, we apply Bayes' theorem (equation \@ref(eq
 	p(\mu, \lambda | x) &\propto& p(x | \mu, \lambda) p(\mu, \lambda) \\
 	&=& \left(\frac{\lambda}{2\pi}\right)^{\frac{n}{2}}\exp\left(-\frac{\lambda}{2} \left[n(\mu - \bar{x})^2 + \sum_{i=1}^n (x_i - \bar{x})^2\right] \right) \\
 	&& \hspace{3mm} \times \hspace{3mm} \lambda^{\alpha_0 - \frac{1}{2}} \exp\left(-\frac{\lambda}{2}\left[\kappa_0 (\mu - \mu_0)^2 + 2 \beta_0\right]\right) \\
-	&\propto&  \lambda^{\alpha_0 + \frac{n}{2} - \frac{1}{2}} \exp \left\{-\frac{\lambda}{2}\left[n(\mu - \bar{x})^2 + \kappa_0(\mu - \mu_0)^2 + \sum_{i=1}^n(x_i - \bar{x})^2 + 2\beta_0\right]\right\} 
+	&\propto& \lambda^{\alpha_0 + \frac{n}{2} - \frac{1}{2}} \exp \left\{-\frac{\lambda}{2}\left[n(\mu - \bar{x})^2 + \kappa_0(\mu - \mu_0)^2 + \sum_{i=1}^n(x_i - \bar{x})^2 + 2\beta_0\right]\right\} 
 	(\#eq:posteriorStep1)
 \end{eqnarray}
 	
 We try and anticipate the parameters of our posterior. 
-In Bayesian inference there is no difference between the prior and the likelihood (bar that one corresponds to observed variables and the other to unobersved variables). Thus we would expect that if we wish to combine these quantities and we have conjugacy, that the intuition for what each parameter means within the observed part of our equation should help us to have an intution for how to think about combining the likelihood with the prior distribution. Thus if we think as the prior as being based upon some previously observed data, then the $\kappa_0$ parameter would be  the number of observations in this data and $\mu_0$ as the mean observed (based upon a correspondence between the likelihood and the prior). In this case we would now expect that the updated mean, $\mu_n$, should correspond to a weighted average of the sample mean of the data currently being observed ($\bar{x}$), and that in our prior ($\mu_0$). Similarly, the ``total'' number of observations  between the prior data and the current data, $\kappa_n$, should be the sum of the number of samples in the dataset under observation, $n$, and the number of samples in our prior dataset, $\kappa_0$. This logic implies that including a very small $\kappa_0$ is one way of including an uninformative prior. Describing this mathematically:
+In Bayesian inference there is no difference between the prior and the likelihood (bar that one corresponds to observed variables and the other to unobersved variables). Thus we would expect that if we wish to combine these quantities and we have conjugacy, that the intuition for what each parameter means within the observed part of our equation should help us to have an intution for how to think about combining the likelihood with the prior distribution. Thus if we think as the prior as being based upon some previously observed data, then the $\kappa_0$ parameter would be the number of observations in this data and $\mu_0$ as the mean observed (based upon a correspondence between the likelihood and the prior). In this case we would now expect that the updated mean, $\mu_n$, should correspond to a weighted average of the sample mean of the data currently being observed ($\bar{x}$), and that in our prior ($\mu_0$). Similarly, the ``total'' number of observations between the prior data and the current data, $\kappa_n$, should be the sum of the number of samples in the dataset under observation, $n$, and the number of samples in our prior dataset, $\kappa_0$. This logic implies that including a very small $\kappa_0$ is one way of including an uninformative prior. Describing this mathematically:
 	
 \begin{eqnarray}
 	\kappa_n &=& \kappa_0 + n \\
