@@ -29,6 +29,21 @@ suspected in the data or to discover _interesting_ groups of homogeneous
 observations. In large datasets, such as modern 'omics datasets, estimation of
 clusters is often necessary for improved understanding and interpretation [@meinshausen2010stability]. 
 
+```{definition, clustering, name="Clustering"}
+If one has some collection of data $X=\left(x_1,\ldots,x_N\right)$, let a _clustering_ or partition of the data be defined by:
+
+\begin{align}
+	Y &=& \left\{Y_1,\ldots,Y_K\right\} \\
+	Y_k &=& \left\{x_i : c_i = k \right\}  \\
+	Y_i \cap Y_j &=& \emptyset \hspace{4 pt} \forall \hspace{4 pt} i,j \in \{1,\ldots,K\},  i \neq j \\
+	n_k & = & \mid Y_k \mid \hspace{4 pt} \geq 1 \hspace{4 pt} \forall \hspace{4 pt} k \in \{1,\ldots,K\} \\
+	\sum_{k=1}^Kn_k &=& n
+\end{align}
+	
+In short there are $K$ non-empty disjoint sets of data, each of which is referred to as a _cluster_, the set of which form a _clustering_. This clustering may be described by a collection of allocation labels, $c=(c_1, \ldots, c_N)$. For an item $x_i$, the label $c_i=k$ states that point $x_i$ is assigned to cluster $Y_k$.
+
+```
+
 Cluster analysis has a myriad of applications. These include data mining, 
 which started from the search for groupings of customers and products in massive
 retail datasets [@fraley2002model]; document clustering and the analysis of 
@@ -41,7 +56,7 @@ through identifying driving biological mechanisms or in defining subtypes within
 given diseases. Defining subtypes based upon behaviour at the 
 subcellular level rather than on phenotypic patterns can enable more effective 
 treatment. Examples where cluster analysis has been used to propose new subtypes
-include Breast cancer [@cancer2012comprehensive; @berger2018comprehensive], 
+include such a diverse range of diseases as Breast cancer [@cancer2012comprehensive; @berger2018comprehensive], 
 Coronary artery disease [@guo2017cluster], tinnitus [@van2017cluster] and asthma
 [@ortega2014cluster]. Another interesting application is the defining of subpopulations of 
 patients; this application is integral to _Precision medicine_, which relies 
@@ -54,8 +69,8 @@ Traditional approaches [as taught in many textbooks, see for e.g. @fidell2001usi
 clustering. These methods are heuristic in nature; they are not based upon a 
 formal model and what guidance there is for solving important practical 
 questions that arise in every cluster analysis (such as the number of clusters
-present, which clustering method to, etc.) is subjective and informal. Despite 
-this, most of the clustering that is done in practive is based upon these 
+present, the measure of distance / similarity between points, which solution is optimal, etc.) is subjective and informal. Despite 
+this, most of the clustering that is done in practise is based upon these 
 methods; they are intuitively reasonable and, perhaps more importantly, most 
 clustering methods available in commercial software are of this type 
 [@fraley2002model]. However, I am interested in _model-based cluster analysis_. 
@@ -68,16 +83,46 @@ clustering method can be recast as statistical model choice problems, and
 models that differ in numbers of components and/or in component distributions 
 can be compared. Outliers are handled by adding one or more components representing a different distribution for outlying data [@fraley2002model; see an example in @crook2018bayesian].
 
-Mathematical description of mixture models.
+```{definition, mixtureModels, name="Finite mixture models"}
 
+If one is given some data $X = (x_1, \ldots, x_N)$, we assume $K$ unobserved 
+subpopulations generate the data and that insights into these sub-populations 
+can be revealed by imposing a clustering $Y = \left\{Y_1,\ldots,Y_K\right\}$ on
+the data. It is assumed that each of the $K$ clusters can be modelled by a 
+parametric distribution, $f_k(\cdot)$ with parameters $\theta_k$. Normally a
+common distribution, $f(\cdot)$, is assumed across all components. We let 
+membership in the $k^{th}$ cluster for the $i^{th}$ individual be denoted by 
+$c_i = k$. The full model density is then the weighted sum of the probability 
+density functions where the weights, $\pi_k$, are the proportion of the total 
+population assigned to the $k^{th}$ cluster. Then for item $x_i$ in a _finite 
+mixture model_:
+
+\begin{align}
+	p(x_i|c_i = k) &= \pi_k f(x_i | \theta_k) \\
+	p(x_i) &= \sum_{k=1}^K \pi_k f(x_i | \theta_k)
+\end{align}
+
+```
+
+The flexibility in choice of $f(\cdot)$ means that these models can be applied in many different scenarios. 
+
+<!-- The unobserved variable $c$ is (normally) the object we are most interested in performing inference upon. Thus clustering can be seen as a _latent variable analysis_. -->
 
 ### Frequentist inference
 
-The most common form of inference, traditionally, is Frequentist; specifically Maximum Likelihood (*ML*) based. In mixture models, this inference is normally implemented using Expectation-Maximisation (*EM*), a two-step iterative process. This inference is very quick but suffers from several problems:
+The most common form of inference, traditionally, is Frequentist; specifically Maximum Likelihood (*ML*) based. In mixture models, the model log-likelihood is:
 
-1. Difficult to include prior beliefs or data;
-2. Sensitive to initialisation, prone to finding local maxima;
-3. Difficulty in converging - as the covariacne matrix has to be computed and inverted, this method often fails.
+\begin{align}
+l(\pi, \theta)=\sum_{i=1}^N \ln p(x_i | \theta, \pi)
+\end{align}
+
+The likelihood equations based upon the derivative of this object with respect to the parameters $(\theta, \pi)$ are too complicated for the normal methods of maximisation [@stahl2012model] and thus inference is normally performed using Expectation-Maximisation (*EM*), a two-step iterative process. 
+
+This inference is very quick but suffers from several problems:
+
+1. Difficult to combine multiple sources of information [see @singh2005combining for an  example of how to consider this under the Frequentist paradigm];
+2. Sensitive to initialisation, prone to finding local maxima due to the nature of the EM algorithm - normally these models are run from multiple diffferent initialisations. In this case observing the same log‐likelihood values from multiple starting points increases confidence that the solution is a global maximum. Using a some heuristic clustering method to initialise the method [such as in @mclust2016] also offers stability; and
+3. Difficulty in converging - singularities can occur in the likelihood function; these are points where the likelihood becomes infinite, resulting in degenerate distributions. Singularities occur when the number of parameters to be estimated is large in relation to the sample size [@stahl2012model], models with unrestrained covariances and large numbers of components are prone to this problem. @fraley2007bayesian suggest using Bayesian inference as a means of overcoming this issue, reccomending use of a _maximum a posteriori_ (*MAP*) estimate instead of an ML estimate.
 
 #### Expectation maximisation
 
@@ -87,61 +132,245 @@ Perform inference
 
 An alternative to the Frequentist paradigm is Bayesian inference. This relies upon a number of statements:
 
-* Conditional probability:
+```{definition, condProb, name = "Conditional probability"}
+
+For events $A$, $B$ and $C$:
 
 \begin{eqnarray}
-p(A, B | C) &=& p(B | A, C) p (A | C)
+p(A, B | C) &=& p(B | A, C) p (A | C).
 (\#eq:condProb) 
 \end{eqnarray}
 
-* The law of total probability:
+```
+
+```{definition, totalProb, name = "Law of total probability"}
+
+For a countable partition of the sample space $\mathcal{B}$, $\{B_q\}_{q=1}^Q$, and events $A$ and $C$:
+  
+\begin{eqnarray}
+p(A | C) &=& \sum_{q=1}^Q p(A | B_q, C) p(B_q | C).
+\end{eqnarray}
+
+If it is the case that each member of the partition has a measure of 0 (i.e. the partition is uncountable), then:
+
 
 \begin{eqnarray}
-p(A | C) &=& \int_B p(A | B', C) p(B' | C) dB' 
+p(A | C) &=& \int_{\mathcal{B}} p(A | B_q, C) p(B_q | C) dB_q.
 (\#eq:totalProb)
 \end{eqnarray}
 
-* Bayes' Theorem (combining \@ref(eq:condProb) and \@ref(eq:totalProb)):
+```
+
+```{definition, bayesTheorem, name = "Bayes' Theorem"}
+
+From definition \@ref(def:condProb):
 
 \begin{eqnarray}
-p(A|B, C) &=& \frac{p(A, B | C)}{P(B|C)} \notag \\
-&=& \frac{p(B | A, C) p (A | C)}{P(B|C)}
-(\#eq:bayesTheorem) 
+p(A|B, C) &=& \frac{p(A, B | C)}{P(B|C)} \\
+&=& \frac{p(B | A, C) p (A | C)}{P(B|C)} 
+(\#eq:bayesTheorem)
 \end{eqnarray}
+
+Now applying definition \@ref(def:totalProb):
+
+\begin{eqnarray}
+\frac{p(B | A, C) p (A | C)}{P(B|C)}  &=& \frac{p(B | A, C) p (A | C)}{\int_A P(B|A', C) dA'}
+(\#eq:bayesTheoremIntegral)
+\end{eqnarray}
+
+```
+
+<!-- * Bayes' Theorem (combining \@ref(eq:condProb) and \@ref(eq:totalProb)): -->
+
+<!-- \begin{eqnarray} -->
+<!-- p(A|B, C) &=& \frac{p(A, B | C)}{P(B|C)} \notag \\ -->
+<!-- &=& \frac{p(B | A, C) p (A | C)}{P(B|C)} -->
+<!-- (\#eq:bayesTheorem) \\ -->
+<!-- &=& \frac{p(B | A, C) p (A | C)}{\int_A P(B|A', C) dA'} -->
+<!-- \end{eqnarray} -->
 
 Bayesian inference is focuses upon the concept of updating one's beliefs via equation \@ref(eq:bayesTheorem). If one has a prior belief about the behaviour of some 
 parameter $\theta$, captured in the distribution $p(\theta)$, and then
-observe some data $X$, then one describes the change in one's belief about $\theta$ given the observed variable $X$ by:
+observe some data $X$, then one describes the change in one's belief about $\theta$ given the observed variable $X$ by combining the distributions associated with the two sources of information (one currently observed, the other currently unobserved):
 
 \begin{eqnarray}
-p(\theta | X) = \frac{p(X | \theta) p(\theta)}{p(X)}.
+p(\theta | X) = \frac{p(X | \theta) p(\theta)}{\int_{\Theta} p(X | \theta') d \theta'}.
 (\#eq:posteriorDistribution)
 \end{eqnarray}
 
 In this case the following terminology is used:
 
 * $p(\theta)$ is the _prior distribution_ of $\theta$ (so-called as it encompasses one beliefs prior to observing $X$);
-* $p(X)$ is the _marginal likelihood_ of $X$ as it is the likelihood with $\theta$ marginalised out; and
+* $p(X | \theta)$ is the _likelihood_ of $X$;
+* $\int_{\Theta} p(X | \theta') d \theta' = p(X)$ is the _marginal likelihood_ of $X$ as it is the likelihood with $\theta$ marginalised out; and
 * $p(\theta | X)$ is the _posterior distribution_ of $\theta$ (as it denotes the belief about $\theta$ one has _a posteriori_, that is after observing empirical fact).
 
-Analytical vs sampling based.
+Normally the posterior distribution is too difficult to solve analytically and one must use either _sampling based_ or _variational inference_ methods to solve this.
 
-Pior
+A common class of sampling based methods are the Markov-Chain Monte Carlo methods. These methods draw samples from Markov Chains constructed such that the stationary distribution is the posterior distribution. Samples are drawn to use Monte Carlo integration to describe the posterior distribution.
 
-Likelihood
+#### Monte Carlo integration
+The original Monte Carlo method was developed as a means to solving integrals by use of random number generation [@metropolis1949monte].
 
-Posterior
+```{definition, monteCarloIntegration, name = "Monte Carlo integration"}
 
-Use language of variables and distributions.
+Suppose there is some complex integral one wishes to solve on some interval, $(a,b)$:
+  
+\begin{align}
+\int_a^b h(x) dx
+\end{align}
 
-#### MCMC
+If one can decompose $h(x)$ into the product of some more simple function $f(x)$ and a probability density $p(x)$ where both are defined over $(a,b)$, it can then be stated:
+  
+\begin{align}
+\int_a^bh(x)dx = \int_a^bf(x)p(x)dx = \mathbb{E}_{p(x)}\left[f(x)\right]
+(\#eq:monteCarloBasis)
+\end{align}
+  
+By the Law of Large Numbers one can approximate this expectation of $f(x)$ over $p(x)$ by drawing $N$ random variables $x = (x_1,\ldots,x_N)$ from $p(x)$ for some large $N$; thus \@ref(eq:monteCarloBasis) becomes:
+  
+\begin{align}
+\int_a^bh(x)dx = \mathbb{E}_{p(x)}\left[f(x)\right] \approx \frac{1}{N}\sum_{i=1}^Nf(x_i)
+(\#eq:monteCarloIntegration)
+\end{align}
+  
+This is Monte Carlo integration.
 
-Markov-Chain Monte Carlo methods are one way of performing Bayesian inference. These methods draw samples from Markov Chains constructed such that the stationary distribution is the posterior distribution. Samples are drawn to use Monte Carlo integration to describe the posterior distribution.
+```
 
-* Markov chains
-* Monte carlo integration
-* MCMCM
-* Metropolis hastings & Gibbs
+#### Markov chains
+
+For the following definitions, consider some process $X$ which generates observations $x_1, \ldots, x_N$ which are observed at discrete timepoints $T=(t_1, \ldots, t_N)$ (where $t_i < t_j \iff i < j$). Let $S=\{s_q\}_{q=1}^Q$ be the sample space of $X$ and let $p_{(i,j)}=p(X_{t+1}=s_i | X_t = s_j)$ be the transition probability from state $s_j$ to $s_i$ in a single time step.
+
+```{definition, markovProperty, name = "Markov property"}
+$X$ is said to have the _Markov property_ if for a time point $t_{j+1}$, having observed all $j$ previous states, the transition probability is defined only by the preceding state, i.e. for any states $s_i, s_j, s_k \in S$:
+  
+\begin{align}
+p(x_{t_{j+1}} = s_j | x_{t_1} = s_k, \ldots, x_{t_i} = s_i) = p(x_{t_{j+1})} = s_j | x_{t_i} = s_i) \hspace{4pt} \forall \hspace{4pt} i,j \in {1, \ldots, N}
+\end{align}
+
+Thus the future state depends only upon the present state. The process is said to be memoryless as past states do not affect future outcomes, given the current state. 
+
+```
+
+```{definition, markovProcess, name = "Markov process"}
+If a process $X$ has the Markov property (\@ref(def:markovProperty)), then it is referred to as a _Markov process_. 
+
+```
+
+```{definition, markovChain, name = "Markov chain"}
+If $X$ is a Markov process, than the sequence of variables $(x_1,\ldots, x_N)$ generated from $X$ form a _Markov chain_.
+```
+
+```{definition, nStepTransition, name = "$n$-step transition probability"}
+Let $\mathbf{P}$ be an $|S| \times |S|$ matrix composed of the transition probabilities $p_{(i,j)}$ for all $i,j \in {1,\ldots, |S|}$. Define the $n$-step transition probability $p_{(i,j)}^n$ as the probability that the process is in state $s_j$ given it was in state $s_i$ at a remove of $n$ steps, i.e.:
+  
+\begin{align}
+p_{(i,j)}^n = p(x_{t_{i+n}} = s_j | x_{t_i} = s_i)
+\end{align}
+
+```
+
+```{definition, irreducible, name = "Irreducible"}
+A Markov chain is said to be _irreducible_ if $p_{ij}^n > 0 \; \forall \; i,j \in \mathbb{N}$.
+```
+
+```{definition, communicate, name = "Communicate"}
+If a Markov chain is irreducible, this means that there always exists a possible path from any state $s_i$ to every other state $s_j$. If this is true the states are said to _communicate_. 
+```
+
+```{definition, aperiodic, name = "Aperiodic"}
+For a Markov chain, if the number of steps between two states is not required to be the multiple of some integer than the chain is considered _aperiodic_.
+
+```
+
+```{definition, detailedBalance, name = "Detailed balance"}
+Let $X$ be a Markov process. The constraint:
+
+\begin{align} 
+p(x_{t_{n+1}} = s_i | x_{t_n} = s_j)  p(x_{t_{n+1}} = s_i)  =  p(x_{t_{n+1}} = s_j | x_{t_n} = s_i)  p(x_{t_{n+1}} = s_j)
+(\#eq:detailedBalance)
+\end{align}
+
+is known as the _detailed balance_.
+
+```
+
+
+```{definition, reversible, name="Reversible"}
+
+The chain has the _reversible_ property if the detailed balance holds for all states.
+
+```
+
+Reversibility is sufficient condition for a unique, stationary distribution. This means that the probability of being in any given state for the process is independent of the starting conditions given sufficient time and that the transition probabilities have approached some limiting value. 
+
+```{definition, stationaryDistribution, name = "Staitonary distribution"}
+
+A stationary distribution, $\pi$, is a $|S|$-vector where the $i^{th}$ entry is the probability $\pi_i = p(x_{t_{n+1}} = s_i)$. This means that:
+
+\begin{align}
+\pi_i &\geq 0 \: \forall \: i \in (1,\ldots,|S|) \\
+\sum_{i=1}^{|S|}\pi_i &= 1
+\end{align}
+
+Furthermore the stationary distribution is invariant under the operation of the transition matrix $\mathbf{P}$ upon it:
+
+\begin{align}
+\pi = \pi\mathbf{P}.
+(\#eq:stationaryDistribution)
+\end{align}
+
+Thus the distribution, $\pi$, remains unchanged as time progresses and more states are observed.
+
+If $\pi$ is a stationary distirbution associated with a reversible Markov process $X$, then for any initial distribution, $\pi_0$, and transition probability matrix $P$,
+
+\begin{align}
+\lim_{n\to\infty} \pi_0 \mathbf{P}^n = \pi.
+\end{align}
+
+In this case the chain is said to converge to $\pi$. Once the chain is sampling from $\pi$, then as this distribution is stationary, the samples drawn should be independent of the previous draws as can be seen in \@ref(eq:stationaryDistribution).
+
+```
+
+For this reason auto-correlation is one of the measures of convergence within a Markov chain.
+
+#### Markov-Chain Monte Carlo methods
+
+Markov-Chain Monte Carlo (MCMC) methods developed as a method to obtain samples from some complex distribution $p(x)$ for the decomposition suggested in \@ref(eq:monteCarloBasis). The goal in the following is to draw samples from some distribution $p(\theta)$ where there is some distribution $f(\theta)$ such that:
+  
+\begin{align}
+p(\theta) = \frac{f(\theta)}{K} 
+\end{align}
+
+For some constant $K$ where $K$ may not be known and is often difficult to compute.
+
+The Metropolis algorithm [@metropolis1949monte; @metropolis1953equation] generates a sequence of draws from $p(\theta)$ using the following steps:
+  
+1. Initialise with some arbitrary value $\theta_0$ with the condition that $f(\theta_0) > 0$ and also choose some probability density $q(\theta_1|\theta_2)$ as the _jumping distribution_ or _proposal density_. For the Metropolis algorithm one demands that this is symmetric (i.e. $q(\theta_1 | \theta_2) = q(\theta_2 | \theta_1)$).
+2. For each iteration, $t$:
+  1. Using the current value $\theta_{t-1}$, sample a candidate point, $\theta^*$, from  $q(\theta^* | \theta_{t-1})$.
+  2. Calculate the _acceptance ratio_ for the new value $\theta^*$:
+  
+  \begin{align}
+  \alpha = \frac{p(\theta^*)}{p(\theta_{t-1})} = \frac{f(\theta^*)}{f(\theta_{t-1})}
+  \end{align}
+  
+  Note that as the proportionality constant is the same for all $\theta$ that this is an equivalence rather than proportional relationship.
+  3. Accept the new value $\theta^*$ with probability equal to $\min(\alpha, 1)$. Generate a number $u$ from the uniform distribution on $[0,1]$ and accept if $\alpha \geq u$, else reject.
+
+This generates a Markov chain $(\theta_0,\ldots,\theta_k,\ldots, \theta_n)$ as each iteration is conditionally independent of all others given the sample from the iteration preceding it. A stationary distribution is reached after a \emph{burn-in} period of $k$ steps (for some $k \in \mathbb{N}$) and all following samples come from $p(\theta)$ (i.e. the vector $(\theta_{k+1},\ldots,\theta_n)$ are samples from $p(\theta)$). Knowing $k$ is a non-trivial issue; some arbitrary large number of burn-in iterations is often assumed erring on the side of caution, although there exists techniques to help in diagnosing what value this should be (see section \ref{sec:additional_theory:sub_sec:convergence:sub_sub_sec:ess}). The samples generated are highly correlated with other samples from within a close range of iterations. To avoid recording this duplicate information, often only every $l$th sample is recorded for some small $l$ (this process is referred to as _thinning_).
+
+@hastings1970monte extends this method to allow asymmetric proposal densities, in which case the acceptance ratio changes to:
+  
+\begin{align} 
+\alpha = \min\left(\frac{f(\theta^*) q(\theta^*|\theta_{t-1})}{f(\theta_{t-1})q(\theta_{t-1}|\theta^*)}, 1\right)
+(\#eq:metropolisHastingsAlpha)
+\end{align}
+
+This extension proposed is known as the Metropolis-Hastings algorithm. @geman1984stochastic use a special case of this, taking $\alpha = 1 \; \forall \; \theta^*$, accepting all proposed values. This is known as a _Gibbs sampler_.
+
+These methods are useful in a Bayesian context as one is interested in a rather complex distribution, the posterior, and know two simpler quantities, the prior and the likelihood, that the posterior is proportional to (as shown in equation \@ref(eq:bayesTheorem)). Thus one can use MCMC methods to sample directly from the posterior distribution without directly calculating the normalising constant.
 
 #### Gibbs sampling
 
@@ -278,7 +507,7 @@ To derive the poisterior probability, we apply Bayes' theorem (equation \@ref(eq
 \end{eqnarray}
 	
 We try and anticipate the parameters of our posterior. 
-In Bayesian inference there is no difference between the prior and the likelihood (bar that one corresponds to observed variables and the other to unobersved variables). Thus we would expect that if we wish to combine these quantities and we have conjugacy, that the intuition for what each parameter means within the observed part of our equation should help us to have an intution for how to think about combining the likelihood with the prior distribution. Thus if we think as the prior as being based upon some previously observed data, then the $\kappa_0$ parameter would be the number of observations in this data and $\mu_0$ as the mean observed (based upon a correspondence between the likelihood and the prior). In this case we would now expect that the updated mean, $\mu_n$, should correspond to a weighted average of the sample mean of the data currently being observed ($\bar{x}$), and that in our prior ($\mu_0$). Similarly, the ``total'' number of observations between the prior data and the current data, $\kappa_n$, should be the sum of the number of samples in the dataset under observation, $n$, and the number of samples in our prior dataset, $\kappa_0$. This logic implies that including a very small $\kappa_0$ is one way of including an uninformative prior. Describing this mathematically:
+In Bayesian inference there is no fundamental difference between the prior and the likelihood - both are distributions (bar that one corresponds to observed variables and the other to unobersved variables). Thus we would expect that if we wish to combine these quantities and we have conjugacy, that the intuition for what each parameter means within the observed part of our equation should translate onto the unobserved distribution and in this way help us to have an intution for how to combine the two quantities. Thus if we think as the prior as being based upon some previously observed data, then the $\kappa_0$ parameter would be the number of observations in this data and $\mu_0$ the mean observed. In this case we would expect that the updated mean, $\mu_n$, should correspond to a weighted average of the sample mean of the data currently being observed ($\bar{x}$), and that in our prior ($\mu_0$). Similarly, the ``total'' number of observations between the prior data and the current data, $\kappa_n$, should be the sum of the number of samples in the dataset under observation, $n$, and the number of samples in our prior dataset, $\kappa_0$. (This logic implies that including a very small $\kappa_0$ is one way of including an uninformative prior.) Describing this mathematically:
 	
 \begin{eqnarray}
 	\kappa_n &=& \kappa_0 + n \\
