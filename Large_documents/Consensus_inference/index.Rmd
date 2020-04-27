@@ -24,17 +24,13 @@ header-includes:
 - \usepackage{makecell}
 - \usepackage{xcolor}
 - \usepackage{mathtools}
+- \usepackage[OT1]{fontenc}
 ---
 
 ```{r, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 
-# automatically create a bib database for R packages
-knitr::write_bib(c(
-  .packages(), "bookdown", "knitr", "rmarkdown", "mcclust", "mclust", "coda"
-), "packages.bib")
 
-library(mdiHelpR)
 library(tidyr)
 library(plot3D)
 library(plotly)
@@ -43,9 +39,22 @@ library(ggplot2)
 library(tibble)
 library(dplyr)
 library(patchwork)
+library(mergeTrees)
+library(pheatmap)
+library(coda)
+library(mclust)
+library(mcclust)
+library(mergeTrees)
+
+# automatically create a bib database for R packages
+knitr::write_bib(c(
+  .packages(), "bookdown", "knitr", "rmarkdown"
+), "packages.bib")
+
+library(mdiHelpR)
 
 # devtools::install_github("sarawade/mcclust.ext")
-library(mcclust.ext)
+# library(mcclust.ext)
 
 # Function for converting surfaces for 3D plot to long data for ggplot2
 surface2Df <- function(x, n_seeds, n_iter) {
@@ -109,19 +118,60 @@ I propose Consensus inference as an alternative to Bayesian or Frequentist infer
 
 I refer to objects being clustered as _items_. Each item has observations across some variables that I refer to as _features_. More generally if we are considering a multiple dataset context: 
 
+\newcommand{\myG}[1]{\textnormal{\fontencoding{OT1}\fontfamily{eiadtt}\selectfont {#1} \normalfont}}
+
+
 \begin{eqnarray}
 N & & \textrm{The number of items in each dataset.} \\
 L & & \textrm{The number of datasets present.} \\
 P_l & & \textrm{The number of features in the $lth$ dataset.} \\
 K_l & & \textrm{The number of components present in the $lth$ dataset.} \\
+G & & \textrm{The number of components present in the global context (if applicable).} \\
 X &= (X_1, \ldots, X_L) & \textrm{The datasets.} \\
 X_l &= (x_{l1}, \ldots, x_{lN}) & \textrm{The observed data for the $lth$ dataset.} \\
-c &= (c_1, \ldots, c_L) & \textrm{ The membership vectors for each dataset (our latent variable).} \\
-c_l &= (c_{l1}, \ldots, c_{lN}) & \textrm{The context-specific component membership.} \\
-C &= (C_1, \ldots, C_N) & \textrm{The global allocation vector (if present).} \\
-\pi_l &= (\pi_{l1,}\ldots, \pi_{lK_l}) & \textrm{The mixture weights in the $lth$ context.} \\
-\Pi &= (\Pi_1, \ldots, \Pi_K) & \textrm{The mixutre weights for the global components (if present).}
+% c &= (c_1, \ldots, c_L) & \textrm{ The membership vectors for each dataset (our latent variable).} \\
+c_l &= (c_{l1}, \ldots, c_{lN}) & \textrm{The membership vector in the $lth$ dataset.} \\
+c &= (c_1, \ldots, c_N) & \textrm{The global allocation vector (if applicable).} \\
+\pi_l &= (\pi_{l1,}\ldots, \pi_{lK_l}) & \textrm{The mixture weights in the $lth$ context.} %\\
+\pi &= (\pi_1, \ldots, \pi_G) & \textrm{The mixutre weights for the global components (if present).}
 \end{eqnarray}
 
 If $K_1 = \ldots = K_L$ then we use $K$ as the number of components in each 
 context. We treat $P_l$ in the same way. If $L=1$ then any subscript used to distinguish datasets is ignored. I denote abbreviations or terms that  will be used in place of another in the format "[Full name] ([name hereafter])". For some variable $\theta=(\theta_1, \ldots, \theta_Q)$, I use $\theta_{-i}$ to denote the vector $(\theta_1, \ldots, \theta_{i-1}, \theta_{i+1}, \ldots, \theta_Q)$.
+
+
+```{definition, allocMatrix, name = "Allocation matrix"}
+Let $\mathbf{Z}$ be a $N \times K$ binary matrix, with 
+
+\[
+z_{ik} = \begin{cases}
+ 1 \textrm{ if items $x_i$ is assigned to cluster $k$}, \\
+ 0 \textrm{ else.}
+\end{cases}
+\]
+
+$\mathbf{Z}$ describes the same information as membership vector $c$ in a different format and is referred to as an _allocation matrix_.
+```
+
+Following from \@ref(def:allocMatrix), I use the following notation:
+
+\[
+\begin{aligned}
+\sum_{k=1}^K z_{ik} &= 1 \textrm{ for all $i \in \{1, \ldots, N\}$ }\\
+N_k &= \sum_{i=1}^N z_{ik}  \\
+\mu_k &= \frac{1}{N_k} \sum_{i=1}^N z_{ik} x_i \textrm{ for all $k \in \{1, \ldots, K\}$}
+\end{aligned}
+\]
+
+```{definition, coclustMatrix, name = "Coclustering matrix"}
+Let $\mathbf{B}$ be a $N \times N$ binary matrix, with 
+
+\[
+b_{ij} = \begin{cases}
+ 1 \textrm{ if items $x_i$ and $x_j$ are assigned to the same cluster}, \\
+ 0 \textrm{ else.}
+\end{cases}
+\]
+
+$\mathbf{B}$ is referred to as the _coclustering matrix_.
+```

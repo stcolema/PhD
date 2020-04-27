@@ -596,47 +596,876 @@ Dirichlet process [@ferguson1973bayesian]
 Multinomical dirichlet allocation model
 
 Current Markov chain Monte Carlo (MCMC) algorithms for Bayesian inference in Dirichlet process (DP) mixture models (see e.g. @neal2000markov; @jain2004split) are computationally costly, and often infeasible for large datasets [@crook2019fast].
-	
+
+#### Dirichlet-Multinomial Allocation mixture model
+
+[@green2001modelling; see @savage2013identifying for an example]
+
+Consider a dataset of $N$ samples, $x = (x_1,\ldots,x_N)$ where each sample is 
+itself a $p$-vector of measurements for some $p \in \mathbb{N}$. We are 
+interested in uncovering structure in the data. To do this we associate each 
+sample, $x_i$, with a *cluster*.This moves us from a $p$-dimensional 
+space to a 1-dimensional space based upon similarity of samples which enables 
+interpretation. We want to understand if there are sub-populations in our sample
+that are responsible for heterogeneity. By partitioning the data into clusters 
+we hope to have some insight into this underlying structure and improve our 
+understanding of the data. There are a myriad of ways to uncover such 
+partitions. Some methods have more obvious disadvantages than others, a common 
+problem being that the number of clusters allowed in the result is arbitrary. 
+Another common problem is that some of the methods are not model based which
+gives an ad-hoc nature to the paritioning. A method that does not suffer from 
+these problems is the Dirichlet process. A tractable approximation of this
+is the DMA mixture model which is a common choice 
+in the Bayesian-model based clustering. In this case we model each 
+sub-population by an individual distribution. We also allow the number of
+clusters present to be inferred from the data, thus avoiding a heuristic or 
+arbitrary means of selecting the number of clusters allowed.
+
+In this model we use a mixture of $K$ components to model the sub-populations.
+The components are all modelled by a distribution with a density function 
+$f(\cdot)$. The $kth$ component has associated parameters, $\theta_k$, based on 
+the samples allocated to this component and is thus defined by density 
+$f(\theta_k)$. The proportion of samples within the components define the 
+associated mixture weights, $\pi=(\pi_1,\ldots,\pi_K)$. Each sample is allocated 
+to a specific component; this component memberhsip is represented by the latent
+variable $c=(c_1,\ldots,c_n)$, where 
+$c_i \in \{1,\ldots, K\} \forall i \in \{1,\ldots,N\}$. Therefore we have 
+allocation probability:
+
+\[
+p(x_i| c_i = k) = \pi_k f(x_i \theta_k),
+\]
+and the full model density, which is a weighted sum of the mixture densities:
+\[
+p(x_i) = \sum_{k=1}^K\pi_k f(x_1 | \theta_k)
+\]
+Note that while there are component-specific parameters, the density function 
+used, $f(\cdot)$, is common across all components.
+
+In the DMA mixture model, the mixture weights are given a Dirichlet prior, 
+normally with a symmetric concentration parameter. The allocation variable is
+then sampled from a Cateogrical distrbution defined by the component weights.
+The component parameters are then updated based upon the allocation of samples
+and the full model is then the weighted sum described above. The full 
+hierarchical model is described below:
+\[
+\begin{aligned}
+\pi &\sim \textrm{Dirichlet}\left(\frac{\alpha_0}{K},\ldots,\frac{\alpha_0}{K}\right), \\
+c_i &\sim \textrm{Categorical}(\pi), \\
+\theta_k &\sim h(\cdot), \\
+x_i | c_i = k &\sim f(x_i | \theta_k).
+\end{aligned}
+\]
+Here $h(\cdot)$ is some distribution, often with additional hyperparameters. If 
+one let's $K \to \infty$ then this model becomes a Dirichlet process. To 
+approximate this $K$ is set to an arbitrarily large number. In this scenario one
+must have chosen a $K$ sufficiently large that there are empty clusters for the 
+model to be a true approximation of the Dirichlet process. @kirk2012bayesian 
+recommend setting $K=\frac{N}{2}$.
+
+
 #### Variational inference
 
 @blei2006variational and @blei2017variational
 
 ## Consensus clustering 
 
-@monti2003consensus and @wilkerson2010consensusclusterplus
+Consensus Clustering [@monti2003consensus] was proposed as a method for _cluster validation_, specifically in the context of gene expression data. It is a 
+general, model-independent re-sampling based method that may be applied to any
+clustering method that is sensitive to initialisation. 
 
-## Integrative clustering
+For a given model (such as $k$-means clustering), multiple random restarts are
+used to asses cluster stability and to decide upon $K$, the number of clusters 
+present. For each restart a random initialisation is used and the dataset is 
+re-sampled. 
 
-sequential vs post-hoc vs simultaneous, local vs global
+The method does help to inform the choice of $K$, but remains a 
+heuristic method.
 
-### iCluster
-@shen2009integrative and @mo2018fully
+> "The underlying assumption is that the more stable the results are with respect 
+  to the simulated perturbations, the more these results are to be trusted."
+`r tufte::quote_footer('@monti2003consensus')`
+
+> "A possible drawback of these methods is in the fact that by not explicitly
+  modeling the assumptions underlying the data-generating process, it is sometime difficult
+  to rigorously evaluate the significance of the results produced."
+  `r tufte::quote_footer('@monti2003consensus')`
+
+if the data represent a sample of 
+items drawn from distinct sub-populations, and if we were to observe a different sample
+drawn from the same sub-populations, the induced cluster composition and number should
+not be radically different. Therefore, the more the attained clusters are robust to sampling
+variability, the more we can be confident that these clusters represent real structure.
+To this end, perturbations of the original data can be simulated by resampling techniques.
+The clustering algorithm of choice can then be applied to each of the perturbed data sets,
+and the agreement, or consensus, among the multiple runs can be assessed.
+
+```{definition, consensusMatrix, name = "Consensus matrix"}
+A _consensus matrix_ is an $(N \times N)$ matrix that stores, for each pair of items, the proportion of clustering runs in which two items are clustered together. The consensus matrix is obtained by taking the average over the coclustering matrices of models restart.
+
+Let Z^{(r)} be the coclustering matrix associated with the $r^{th}$ model run. Then, for $R$ model runs, let the consensus matrix, $M$, be defined:
+  
+\begin{align}
+M = \frac{1}{R}\sum_{r=1}^RZ^{(r)}
+\end{align}
+```
+general, model-independent resampling-based methodology of class discovery
+and clustering validation
+
+Implemented in the ``ConsensusClusterPlus`` package [@wilkerson2010consensusclusterplus] on Bioconductor.
+
+## Integrative methods
+
+required to explain complex disease [@hasin2017multi; @integrative2014integrative]
+
+Parkinson's disease [@markello2020integrated]
+
+Cancer has been particularly successful [@wang2016integrative; @rappoport2018multi]
+
+autoencoder based methods [@seal2020estimating; @lemsara2020pathme]
+
+Network based: [@rappoport2020monet, MONET allows outliers, missing data. Subsets of patients are clustered and may use a subset of 'omics to define this cluster]
+
+"i) direct integrative clustering, consisting in a preprocessing of the original data set before concatenation into a single data set ready for some standard clustering analysis [12, 13]; ii) regulatory integrative clustering, which are based on pathways [14]; iii) clustering of clusters, i.e., methods that take clustering made on different data sets and find a consensus [15, 16]."
+
+``mergeTrees`` [@R-mergeTrees] implements the algorithm described by @hulot2020fast; this is a quick, heuristic-based method of combining local hierarchical clustering models to create a global dendrogram from which a clustering may be created.
+
+sequential vs post-hoc vs joint, local vs global
+
+Joint, sequential, post-hoc
+Local vs global
+
+
 
 ### Bayesian integrative clustering
+
+Bayesian integrative models tend either to be an extension of the MDA 
+model, or else an extension of factor analysis where clustering is performed 
+_post-hoc_ within the latent variable space. The prior approach is the main 
+object of interest here, but I will include an example of a factor analysis 
+model as this approach is often included in the multi-omics literature (); 
+however when I refer to Bayesian integrative clustering I will be referring to 
+methods that are clustering methods rather than factor analysis methods.
+
+There are 3 basic approaches to Bayesian integrative clustering:
+
+1. assume no global clustering structure;
+2. assume the global clustering structure has _less_ clusters than the local clusterings;
+3. assume the global clustering structure has _more_ clusters than the local clusterings;
+
+I give an example of each of these, 1) Multiple Dataset Integration [*MDI*, @kirk2012bayesian], 2) Bayesian Consensus Clustering [*BCC*, @lock2013bayesian] and 3) Clusternomics [@gabasova2017clusternomics]. In each case I will describe the model briefly and explain how information is shared across datasets. All of these models are extensions of the MDA model to the multiple dataset setting.
+
+
+
+In this case we model the latent structure in the $lth$ dataset using a mixture 
+of $K_l$ components. This means that the full model density is the weighted 
+sum of the probability density functions associated with each component where
+the weights, $\pi_{lk}$, are the proportion of the total population assigned to the 
+$kth$ components:
+
+$$p(X_{li}| c_{li} = k) = \pi_{lk} f(X_{li} | \theta_{lk}),$$
+$$p(X_{li}) = \sum_{k=1}^{K_l} \pi_{lk} f_l(X_{li} | \theta_{lk}).$$
+Here $K_l$ is the total number of clusters present and $\theta_{lk}$ are the 
+parameters defining the $kth$ distribution in the $lth$ dataset.
+
+The weights, $\pi_l = (\pi_{l1},\ldots,\pi_{lK_l})$, follow a Dirichlet 
+distribution with concentration parameter $\alpha_0$.
+
+The distributions in the mixture model for each dataset are:
+
+\[
+\begin{aligned}
+\pi_l &\sim \textrm{Dirichlet}\left(\frac{\alpha_0}{K_l},\ldots,\frac{\alpha_0}{K_l}\right) \\
+c_{li} &\sim \textrm{Categorical}(\pi_l) \\
+\theta_{lk} &\sim h_l \\
+X_{li} | c_{li} = k &\sim f_l(X_{li} | \theta_{lk})
+\end{aligned}
+\]
+
+
+where $H_l$ is some prior distribution for parameteters for each mixture
+component; $F_l$ is a probability distribution for samples given the parameters
+$\theta_{lk}$. Note that each context may have different distributions and
+hyperparameters.
 
 
 #### Multiple Dataset Integration
 
 @kirk2012bayesian and @mason2016mdi
 
+@afrin2020directionally attempt to add directionality to information sharing.
+
 #### Clusternomics
 
-@gabasova2017clusternomics
+@gabasova2017clusternomics; assumes more global clusters than local
+
+Clusternomics, which is embedded in the Bayesian clustering framework, uses a 
+hierarchical Dirichlet mixture model to identify structure on both the local and
+the global level. The model is fit to the data via Gibbs sampling. The model 
+does not assume that cluster behaviour will be consistent across heterogeneous 
+datasets. This is not to assume that the clustering structure uncovered in one 
+dataset should not inform the clustering in another dataset. This can be 
+summarised as so:
+
+1. Clustering structure in one dataset should inform the clustering in another 
+dataset. If two points are clustered together in one context they should be 
+more inclined to cluster together in other contexts.
+2. Different degrees of dependence should be allowed between clusters across
+contexts. The model should work when datasets have the same underlying structure
+and also when each dataset is effecitvely independent of all others. Fundamental 
+to this is allowing datasets to have different numbers of clusters.
+
+To enable these modelling aims, Clusternomics explicitly represents the local 
+clusters (i.e. dataset specific) and the global structure that emerges when 
+considering the combination of the datasets. The global clusters are defined by 
+combinations of local clusters. Consider the case where 3 clusters emerge in 
+Context 1 (denoted by labels $\{1, 2, 3\}$) and 2 clusters emerge in Context 2 
+(denoted by labels $\{A, B\}$). In this case our global structure has the 
+possibile form:
+
+$$\{(1, A), (2, A), (3, A), (1, B), (2, B), (3, B)\}$$
+
+Thus if a point is assigned a label of 1 in Context 1 and a label of $A$ in 
+Context 2 it increases the probability of cluster $(1, A)$ becoming populated 
+at the global level. However, it is possible that some of the possible 
+global clusters described above are not realised as some local clusters overlap 
+across datasets. Consider the case that labellings 1 and 2 from the first 
+context are captured entirely by label $A$ in the second context with a albel of 
+3 corresponding perfectly to label $B$. In this case our global structure would 
+take the form:
+
+$$\{(1, A), (2, A), (3, B)\}$$
+
+The original paper introduces two models that are "asymptotically equivalent". 
+The first is easier to develop an intuition of, but it is the second that is 
+implmented as it is more computationally efficient.
+
+I begin by describing the intuitive model. For ease of understanding, let $L=2$. Then each context has its own mixture 
+weights with symmetric Dirichlet priors:
+
+\[
+\begin{aligned}
+\pi_1 &\sim \textrm{Dirichlet}\left(\frac{\alpha_1}{K_1},\ldots,\frac{\alpha_1}{K_1}\right) \\
+\pi_2 &\sim \textrm{Dirichlet}\left(\frac{\alpha_2}{K_2},\ldots,\frac{\alpha_2}{K_2}\right)
+\end{aligned}
+\]
+
+
+These weights form the basis of the local clustering within each dataset. A 
+third mixure distribution is used to link the two local clusters. This has a 
+Dirichlet prior over the global mixture weights, $\rho$, which is defined over 
+the outer product of the local weights:
+
+
+\[
+\rho \sim \textrm{Dirichlet}\left(\gamma \textrm{ vec}(\pi_1 \otimes \pi_2)\right).
+\]
+
+The outer product is defined:
+
+\[
+\begin{aligned}
+\pi_1 \otimes \pi_2 &= \pi_1 \pi_2^T \\
+  &= \begin{pmatrix}
+  \pi_{11}\pi_{21} & \pi_{11}\pi_{22} & \cdots & \pi_{11}\pi_{2K_2} \\
+  \pi_{12}\pi_{21} & \pi_{12}\pi_{22} & \cdots & \pi_{12}\pi_{2K_2} \\
+  \vdots & \vdots & \ddots & \vdots \\
+  \pi_{1K_1}\pi_{21} & \pi_{1K_1}\pi_{22} & \cdots & \pi_{1K_1}\pi_{2K_2} \\
+  \end{pmatrix}
+\end{aligned}
+\]
+
+Then the vector function takes the column vectors of the matrix and places them 
+in one vector:
+
+\[
+\mathrm{vec}(\pi_1 \otimes \pi_2) = \begin{pmatrix}
+  \pi_{11}\pi_{21} \\
+  \vdots \\
+  \pi_{1K_1}\pi_{21}\\
+  \pi_{11}\pi_{22} \\
+  \vdots \\
+  \pi_{1K_1}\pi_{22} \\
+  \pi_{11}\pi_{23} \\
+  \vdots \\
+  \pi_{1K_1}\pi_{2K_2}
+\end{pmatrix}
+\]
+
+This is the basis for the non-symmetric concentration parameter of the 
+Dirichlet distribution over the global mixture weights, $\rho$. 
+
+A global membership variable, $c$, is drawn from a Catgeorical distribution with
+concentration parameter $\rho$:
+
+\[
+\begin{aligned}
+c_i &= (c_{1i}, c_{2i}) \\
+c &\sim \textrm{Categorical}(\rho) \\
+X_{li} | c_{li} = k &\sim f_l(X_{li} | \theta_{lk}), l \in \{1, 2\}
+\end{aligned}
+\]
+
+In this way the local clusters, $c_{li}$, in the $lth$ context are projections 
+of the global clustering, $c_i$, onto this space.
+
+The model achieves the property that the local assignment should affect the 
+global assignment posterior probability. This can be seen as local assignments 
+affect the posterior probability of the context-specific weights, $\pi_l$, which
+in turn define the probabilities of the global combinatorial clusters through 
+the hierarchical model (a change in the membership of the $kth$ component in the
+$lth$ dataset affects an entire slice of column vectors in the tensors defining 
+the concentration parameter for the global component weights, $\rho$).
+
+The model also represents different degrees of dependence by allowing any combination of cluster assignments across contexts. When there is a single common cluster structure across the two contexts, the occupied clusters will be concentrated along the diagonal of the probability matrix of $\rho$.
+
+When $L > 2$ then the outer product of the local componenet weights generalises 
+to a tensor product. In this case the hierarchical model is given by:
+
+\[
+\begin{aligned}
+\pi_l | \alpha_0 &\sim \textrm{Dirichlet}\left(\frac{\alpha_0}{K_l},\ldots,\frac{\alpha_0}{K_l}\right) \\
+\rho | \gamma, \{\pi_1\, \ldots, \pi_L\} & \sim \textrm{Dirichlet}\left(\gamma \left\{\bigotimes_{l=1}^L \pi_l \right\} \right)  \\
+c_i | \rho &\sim \textrm{Categorical}(\rho), c_i = \left(c_{1i},\ldots,c_{Li}\right)\\
+\theta_{lk} &\sim h_l \\
+X_{li} | c_{li} = k &\sim f_l(X_{li} | \theta_{lk})
+\end{aligned}
+\]
+
+The model for $L$ contexts has a scaling issue as each additional dataset brings
+an additional layer of calculations in the probability tensor. The second model 
+is designed to reduce this cost by avoiding calculations for uninhabited 
+components.
+
+The secodn formulation, the quick model, attempts to reduce the number of combinations required. This requires
+decoupling the number of local clusters and the number of global clusters. A 
+mixture over $S$ global clusters is defined:
+
+\[
+\begin{aligned}
+\rho | \gamma_0 & \sim \textrm{Dirichlet}\left(\frac{\gamma_0}{S}, \ldots, \frac{\gamma_0}{S} \right) \\
+c_i | \rho &\sim \textrm{Categorical}(\rho)
+\end{aligned}
+\]
+
+where $\rho$ is the global mixture weights and $c_i$ is the components 
+assignment indivator variable as before. A variable $z_{ls}$ is then defined 
+that associates the $sth$ global cluster with context specific clusters:
+
+\[
+\begin{aligned}
+\pi_l | \alpha_0 & \sim \textrm{Dirichlet}\left(\frac{\alpha_0}{K_l},\ldots,\frac{\alpha_0}{K_l}\right), \\
+z_{ls} | \pi_l & \sim \textrm{Categorical}(\pi_l).
+\end{aligned}
+\]
+
+Here $z_{ls} \in \{1, \ldots, K_l\}$ assignes the $sth$ global cluster to the a 
+specific local cluster in the $lth$ dataset. One may consider $(z_{sl})_{s=1}^S$ 
+as the coordinates of the global clusters in the $lth$ dataset. This link 
+means that the $c_i$ maps a point to a global cluster as well as the local 
+clusters.
+
+In the previous model the mapping of global clusters to local clusters was
+implicit, because each combination of context clusters mapped to a unique 
+global cluster. In this model, the mapping is probabilistic and forms a part of
+the model. One may now state $S$, the number of global components, and thus 
+limit the number of computations required in contrast to the preceding model.
+
+This hierarchial model is defined by:
+
+\[
+\begin{aligned}
+\rho | \gamma_0 & \sim \textrm{Dirichlet}\left(\frac{\gamma_0}{S},\ldots,\frac{\gamma_0}{S}\right), \\
+c_i | \rho & \sim \textrm{Categorical}(\rho), \\
+\pi_l | \alpha_0 & \sim \textrm{Dirichlet}\left(\frac{\alpha_0}{K_l},\ldots,\frac{\alpha_0}{K_l}\right), \\
+z_{ls} | \pi_l & \sim \textrm{Categorical}(\pi_l) \\
+\theta_{kl} | h_l & \sim h_l \\
+X_{li} | c_i, (z_{sl})_{s=1}^S, (\theta_{lk})_{k=1}^K &\sim f_l(X_{li} | \theta_{lk_{c_i}})
+\end{aligned}
+\]
+
+The quick, decoupled model is implemented in the R package `clusternomics` and 
+uses Gibbs sampling as the inference algorithm.
+
 
 #### Bayesian Consensus Clustering
 
-@lock2013bayesian
+@lock2013bayesian; assumes less gloabl clusters than local clusters
+
+The dependence between the datasets are captured by defining a parameter that 
+controls the adherence of the source-specific clustering to the global 
+clustering. 
+
+Where MDI defines a parameter to share information between each
+pariwise local clustering, BCC shares information between the local and
+global clusterings. This $\alpha$ parameter defines how much the local 
+clustering informs the global clustering and vice-versa. In this approach, each
+local clustering is assumed to be conditionally independent of all others given
+the global clustering.
+
+BCC [@lock2013bayesian] is extension of the DMA mixture model. Consider the case
+of $L$ datasets describing the same $N$ samples with different measurements or under different experimental conditions (e.g. gene expression data in one dataset, copy number variation of the same genes in
+another). In this case there are context-specific models similar to that 
+described above with a common number of components, $K$, in each model. There is
+then an additional *global clustering*, $C=(C_1, \ldots, C_N)$, where 
+$C_i \in \{1, \ldots, K\} \forall i \in [1, N]$. In this model it is the local
+allocations that are dependent upon the global membership. For the $lth$ 
+context, given the global clustering $C$, the context-specific concentration 
+parameter, $\alpha_l$:
+
+\[
+P(c_{li} = k | C_i) = \nu(k, C_i, \alpha_l)
+\]
+
+where $\alpha_l$ changes the magnitude of dependence of the local clustering 
+about the global clustering. The conditional model is:
+
+\[
+P(c_{li} = k | x_{li}, C_i, \theta_{lk}) \propto \nu(k, C_i, \alpha_l) f_L(x_{li} | \theta_{lk}).
+\]
+
+@lock2013bayesian assume the following form for $\nu(\cdot)$:
+
+\[
+\nu(c_{li}, C_i, \alpha_l) = \alpha_l  \mathbb{I}(c_{li} = C_i) + \frac{1 - \alpha_l}{K - 1} (1 - \mathbb{I}(c_{li} = C_i))
+\]
+
+where $\alpha_l \in [\frac{1}{K}, 1]$ controls the similarity of the clustering 
+in context $l$ to the global clustering and $\mathbb{I}(\cdot)$ is the indicator
+function. If $\alpha_l=1$ then $c_l = C$. The $\alpha_l$ is a random variable 
+inferred from the data. Let $\alpha = (\alpha_1, \ldots, \alpha_L)$.
+
+Let $\Pi=(\Pi_1, \ldots, \Pi_K)$ be the component weights at the global level.
+Then the conditional probability of the context-specific clustering given the 
+component weights is defined to be:
+
+\[
+P(c_{li} = k | \Pi ) = \alpha_l \Pi_k + (1 - \Pi_k) \frac{1 - \alpha_l}{K - 1}
+\]
+
+Note that if $kth$ global mixture weight is 0 (and hence the associated 
+component has a total membership of 0) then the probability of assignment to the
+$kth$ local cluster is 0 if and only if $\alpha_l = 1$. This is unlikely to 
+happen (as 1 is the upper bound on $\alpha_l$), and therefore it is normal that
+there are *more* local clusters than global clusters in stark contrast to the
+Clusternomics model.
+
+The probability of being allocated to the $kth$ global component is:
+
+\[
+P(C_i = k | c, \Pi, \alpha) \propto \Pi_k \prod_{l=1}^L \nu(c_{li}, k, \alpha_l).
+\]
+
+### Integrative factor analysis methods
+
+I also briefly describe iCluster [@shen2009integrative], Joint and Individual 
+Variation Explained [*JIVE*, @lock2013joint] and Multi-Omics Factor Analysis 
+[*MOFA*, @argelaguet2018multi]. All of these methods apply a flavour of factor
+analysis model; they are not clustering tools _per se_, instead they map the 
+datasets to a shared set of latent factors which one may then perform clustering
+upon (this is part of the iCluster pipeline). However, Factor Analysis is 
+another prevalent integrative technique and some examples seem pertinent. 
+Furthermore, MOFA is a Beysian method that uses VI to perform inference.
+
+#### iCluster
+@shen2009integrative and @mo2018fully
+
+#### JIVE
+
+JIVE [@lock2013joint] produces a decomposition of multiple datasets in three
+terms: a low-rank approximation of variation for the integrated analysis, 
+low-rank approximations of varation for the individual datasets and residual 
+noise.
+
+The model assumes that there will exist some global structure (joint structure
+in the words ofthe original paper) and some local structure or individual 
+structure unique to each dataset. The local component of the model is intended 
+to account for structure that may be be artifacts of the process used to 
+generate the data or of biological interest. This dataset-level variation can
+interfere with finding global signal, just as joint structure can obscure 
+important signal that is individual to a data type.
+
+In the authors own words:
+
+> "Analysis of individual structure provides a way to identify potentially 
+   useful information that exists in one data type, but not others. Accounting
+   for individual structure also allows for more accurate estimation of what is
+   common between data types."
+`r tufte::quote_footer('@lock2013joint')`
+
+Some attractive featurs of JIVE include that it:
+
+* may be used regardless of whether the dimension of a dataset exceeds the 
+sample size;
+* is applicable to datasets with more than two data types; and 
+* has a simple algebraic interpretation.
+
+This method describes the data as a sum of global factors, local factors and 
+local noise. If one thinks of it in this way (i.e. related to factor
+analysis), JIVE avoids computation and considers only the matrix that would 
+normally be considered the product of the loadings matrix and the factors matrix.
+
+Consider $L$ datasets denoted 
+$X_1,\ldots,X_L$ for some $L \geq 2$. Each dataset **must** have a common number
+of columns representing $N$ objects. Each dataset may have a unique number of 
+rows (let $P_l$ be the number of rows for the $lth$ dataset $X_l$). Let:
+
+\[
+\begin{aligned}
+P &= \sum_{l=1}^L P_l \\
+X &= \begin{bmatrix}
+  X_1 \\ \vdots \\ X_L
+\end{bmatrix}
+\end{aligned}
+\]
+
+In this case $X$ is a $P \times N$ matrix. @lock2013joint recommend 
+the mean-centreing of the data by row, and scaleing the individual datasets by their 
+individual variation to avoid dominance by anyone dataset. Let:
+
+\[
+\begin{aligned}
+X_l^{scaled} &= \frac{X_l}{||X_l||} \\
+||X_l||^2 &= \sum_{i,j} x_{lij} \\
+\therefore ||X_l^{scaled}|| &= 1 \forall l
+\end{aligned}
+\]
+
+Now:
+
+\[
+X^{scaled} = \begin{bmatrix}
+  X_1^{scaled} \\ \vdots \\ X_L^{scaled}
+\end{bmatrix}
+\]
+
+and each dataset contributes equally to the total variation of the concatenated 
+matrix, $X$.
+
+For this section let $X_1, \ldots, X_L$ be data matrices scaled as described 
+above. Let $J_1, \ldots, J_L$ and $A_1, \ldots, A_L$ be the joint and individual 
+structure matrices. Then the full model is given by:
+
+\[
+\begin{aligned}
+X_1 & = J_1 + A_1 + \epsilon_1 \\
+\vdots \\
+X_L &= J_L + A_L + \epsilon_L
+\end{aligned}
+\]
+
+where $\epsilon_l$ are $P_l \times N$ error matrices with independet entries and
+an expectation of 0. Let $J$ be the stacked joint structure matrices. This model
+imposes rank constraints:
+
+Let:
+
+\[ 
+\begin{aligned}
+rank(J) &= r < rank(X) \\
+rank(A_l) &= r_l < rank(X_l) \textrm{ for } l \in \{1,\ldots,L\}
+\end{aligned}
+\]
+
+A further constrain that the joint and individual structure matrices are 
+orthogonal is imposed:
+
+\[
+J A_l^T = 0_{P \times P} \textrm{ for } l \in \{1,\ldots,L\}
+\]
+
+The purpose of this is to ensure that patterns in the samples that are informing
+the global structure are unrelated to those responsible for the local structure.
+
+For fixed ranks $r, r_1, \ldots, r_L$, the global and local structure captured 
+in $J, A_1, \ldots, A_L$ is estimaed by minimising the sum of squared error for 
+the given ranks. Let:
+
+\[
+R = \begin{bmatrix}
+  R_1 \\ \vdots \\ R_L
+\end{bmatrix} = \begin{bmatrix}
+  X_1 - J_1 - A_1 \\ \vdots \\ X_L - J_L - A_L
+\end{bmatrix}.
+\]
+
+The minimisation process is achieved iteratively by repeating two steps until 
+convergence is achieved:
+
+* Given the current $J$, find $A_1, \ldots, A_L$ to minimise $||R||$; and
+* Given the current $A_1, \ldots, A_L$, find $J$ to minimise $||R||$.
+
+The joint structure $J$ minimizing $||R||$ is equal to the first $r$ terms in 
+the singular value decomposition (SVD) of $X$ with individual structure removed.
+
+This method has been extended to consider the case where the data does not share 
+only common items or features but allows for both [@park2020integrative; @lock2020bidimensional].
 
 #### MOFA
 
 @argelaguet2019mofaplus and @argelaguet2018multi
 
-### COCA
+### Sequential analysis methods
+
+These methods are performed to uncover a _global_ clustering structure given the
+results of local clustering analyses for multiple related datasets.
+
+Kernel Learning Integrative Clustering (_KLIC_) is a **sequential analysis** method of integrative clustering. This in comparison to **post-processing** or **joint** methods.
+
+#### Cluster-Of-Cluster Analysis
 
 @cancer2012comprehensive
 
-#### KLIC
+#### Kernel Learning Integrative Clustering
 
 @cabassi2019multiple
+
+**Elevator pitch**: Takes independent clusterings of the individuals (i.e. local clusterings) and combines these for a global clustering. Allows different local clusterings to contribute with different strenghts to the final clustering. No specifications on the type of model used to create the original clusterings.
+
+
+KLIC is an extension of Cluster-of-Cluster Analysis (COCA). If one has $L$ different datasets of measurements for the same $N$ individuals to which one applies independent clustering methods, COCA then turns the similarity matrices that result from this into a global clustering by combining the matrices in a method similar to Consensus Clustering (the original paper). KLIC extends this by allowing different similarity matrices to have different weights in how they contribute to the global clustering. In short, KLIC applies multiple kernel k-means clustering to similarity matrices generated for individual datasets.
+
+To understand KLIC one must understand the following:
+
+* COCA;
+* the kernel trick;
+* $k$-means clustering; and
+* multiple kernel $k$-means clustering.
+
+##### The kernel trick
+
+This is a computational trick to avoid operations. It aims to do an analysis in a high-dimensional space while only considering calculations in the original space.
+
+```{definition, kenrel, name = "Positive-definite kernel"}
+A _positive-definite kernel_ (or simply a _kernel_), $\delta$, is a symmetric map:
+
+\[
+\delta : \mathcal{X} \times \mathcal{X} \to \mathbb{R}
+\]
+
+which for all $x_1, \ldots, x_N \in \mathcal{X}$, the matrix $\mathbf{\Delta}$ defined by entries $\mathbf{\Delta}_{ij} = \delta(x_i, x_j)$, is positive semi-definite.
+```
+
+```{definition, kenrelMatrix, name = "Kernel matrix"}
+A _kernel matrix_ or __Gram matrix__, $\mathbf{\Delta}$, is the positive semi-definite matrix defined by a kernel $\delta$ applied to data $\mathcal{X} = (x_1, \ldots, x_N)$ with entries $\mathbf{\Delta}_{ij} = \delta(x_i, x_j)$.
+```
+
+```{definition, featureMap, name = "Feature map"}
+For each kernel $\delta$ there exists a _feature map_ $\phi(\cdot)$, which maps the original data $\mathcal{X}=(x_1, \ldots, x_N)$ to some new feature space taking values in some inner product of $\mathcal{X}$ defined by:
+
+\[
+\delta(x_i, x_j) = \langle \phi(x_i), \phi(x_j) \rangle.
+\]
+
+Thus if one is interested in working in some feature space that can be defined in terms of inner products, one may use kernels to avoid computations in analysing the data in said space.
+```
+
+<!-- Sometimes one will see kernels defined by their feature map - indeed this can be a more intuitive way to approach the problem. Knowing that we wish to include higher order terms of $x_i$, for example: -->
+
+<!-- \[ -->
+<!-- \phi(x_i) = \begin{bmatrix} -->
+<!--   x_i \\ x_i^2 \\ x_i^3 -->
+<!--   \end{bmatrix}. -->
+<!-- \] -->
+
+<!-- In this case we know the feature space we wish to use and can create an inner product: -->
+
+<!-- \[ -->
+<!-- \phi(x_i)^T \phi(x_j) = \sum_{k=1}^3 x_i^k x_j^k. -->
+<!-- \] -->
+
+##### $k$-means clustering
+
+$k$-means clustering assigns each of $N$ points to *one* of $K$ different clusters. For cluster means $\mu = (\mu_1, \ldots, \mu_K)$, data $X=(x_1, \ldots, x_n)$ and cluster allocation matrix $\mathbf{Z}$, the objective function for $k$-means clustering is:
+
+\[
+f_{Obj}(\mathbf{Z}, \mu) = \sum_{i=1}^N \sum_{k=1}^K z_{ik}||x_i - \mu_k||^2.
+\]
+
+One can solve for $f_{Obj}$ by iterating over:
+
+\[
+\begin{aligned}
+z_{ik} &= \mathbb{I}(k = \underset{\mathbf{k'}}{\operatorname{argmin}}|| x_i - \mu_{k'} ||_2^2), \\
+\mu_k &= \frac{1}{N_k} \sum_{i = 1}^N z_{ik} x_i.
+\end{aligned}
+\]
+
+##### Kernel $k$-means clustering
+
+If we redefine this problem in some feature space defined by the feature map $\phi(\cdot)$, we can use the kernel trick in this context. First we write the problem in terms of the feature map:
+
+\[
+f_{Obj}(\mathbf{Z}, \mu) = \sum_{i=1}^N \sum_{k=1}^K z_{ik}||\phi(x_i) - \mu_k||^2.
+\]
+
+Allocation and cluster means are as previously stated, except $x_i$ is replaced with the features $\phi(x_i)$.
+
+\[
+\begin{aligned}
+& \underset{\mathbf{Z}}{\operatorname{argmin}} \sum_{i=1}^N \sum_{k=1}^K z_{ik}||\phi(x_i) - m^*_k ||_2^2 \\
+& m^*_k = \frac{1}{N_k} \sum_{i=1}^N z_{ik} \phi(x_i)
+\end{aligned}
+\]
+
+Define the $K \times K$ matrix $\mathbf{L}$ with $(k, k)th$ entries of $1 / N_k$ and 0's elsewhere (i.e. the $kth$ diagonal correspond the inverse of the number of points assigned to the $kth$ cluster). Define also the gram matrix $\mathbf{\Delta}$ as the matrix with $(i,j)th$ entries $\delta(x_i, x_j)$ and the matrix $\Phi$ where $\Phi_{ij} = \phi_i(x_j)$. Define also the matrix $\mathbf{M}$:
+
+\[
+\mathbf{M} = \Phi \mathbf{Z} L \mathbf{Z}^T.
+\]
+
+\[
+\begin{aligned}
+L\mathbf{Z}^T &= \begin{bmatrix} 
+  \frac{1}{N_1} & &  \\
+  & \ddots & \\
+  & & \frac{1}{N_K}
+\end{bmatrix} \begin{bmatrix}
+  z_{11} & \cdots & z_{N1} \\
+  \vdots & \ddots & \vdots \\
+  z_{K1} & \cdots & z_{NK}
+\end{bmatrix} \\
+ &= \begin{bmatrix}
+ \frac{z_{11}}{N_1} & \cdots & \frac{z_{N1}}{N_1} \\
+ \vdots & \ddots & \vdots \\
+ \frac{z_{1K}}{N_K} & \cdots & \frac{z_{NK}}{{N_K}}
+\end{bmatrix}, \\
+\mathbf{Z} L \mathbf{Z}^T &= \begin{bmatrix}
+  \sum_{k=1}^K \frac{z_{1k}z_{1k}}{N_k} & \cdots & \sum_{k=1}^K \frac{z_{1k}z_{Nk}}{N_k} \\
+  \vdots & \ddots & \vdots \\
+  \sum_{k=1}^K \frac{z_{Nk}z_{1k}}{N_k} & \cdots & \sum_{k=1}^K \frac{z_{Nk}z_{Nk}}{N_k}
+\end{bmatrix}
+\end{aligned}
+\]
+
+As $z_{ik}$ is a binary variable with the constraint that $\sum_{k=1}^Kz_{ik} = 1$, this means that the only non-zero entries are the entries for which there is a common allocation. If one re-arranges the rows of $\mathbf{Z} L \mathbf{Z}^T$ such that points assigned to the same cluster are contiguous, i.e. into a block diagonal matrix, then the matrix has the form:
+
+\[
+\mathbf{Z} L \mathbf{Z}^T = \begin{bmatrix}
+  \frac{1}{N_1} & \cdots & \frac{1}{N_1} \\
+  \vdots & \ddots & \vdots \\
+  \frac{1}{N_1} & \cdots & \frac{1}{N_1} &  \\
+  & & & \frac{1}{N_2} & \cdots & \frac{1}{N_2} \\
+  & & & \vdots & \ddots & \vdots & & \\
+  & & & \frac{1}{N_2} & \cdots & \frac{1}{N_2} & & \\
+  & & & & & & \ddots & & & \\
+  & & & & & & & \frac{1}{N_K} & \cdots & \frac{1}{N_K} \\
+  & & & & & & & \vdots & \ddots & \vdots \\
+  & & & & & & & \frac{1}{N_K} & \cdots & \frac{1}{N_K}
+\end{bmatrix}
+\]
+
+We consider the order of the points as stored in $X$ to be independent of the analysis and consider the rows of each matrix rearranged to give the above block diagonal structure.
+
+This means that multiplying by $X^T$ or $\Phi$ gives a $p \times N$ matrix with the $jth$ column being the mean of the cluster the $jth$ point is assigned to. The $jth$ column is of the form:
+
+\[
+\mathrm{col}_j(\Phi Z L Z^T) = \begin{bmatrix}
+  \frac{1}{N_{c_j}} \sum_{i=1}^N z_{ic_j}\phi_j(x_i) \\
+  \vdots \\
+  \frac{1}{N_{c_j}} \sum_{i=1}^N z_{ic_j}\phi_j(x_i) 
+\end{bmatrix} = \mu_{c_j}
+\]
+
+This allows us to write the objective function in the form $f_{Obj} = \mathbf{tr}[(\Phi - M) (\Phi - M)^T]$[@gonen2014localized].
+
+The $jth$ diagonal entry of this matrix is given by:
+
+\[
+f_{Obj_{jj}} = \sum_{j=1}^p(x_{ij} - \mu_{c_i j})^2.
+\]
+
+Thus, one can see how the statement of the function as a trace minimisation problem is merely a restatement of our original objective function.
+
+Note that:
+
+\[
+\begin{aligned}
+Z^TZ &= \begin{bmatrix}
+  \sum_{i=1}^N z_{i1}z_{i1} & \cdots & \sum_{i=1}^N z_{i1}z_{iK} \\
+  \vdots & \ddots & \vdots \\
+  \sum_{i=1}^N z_{i1}z_{iK} & \cdots & \sum_{i=1}^N z_{iN}z_{iK}
+\end{bmatrix} \\
+  &= \begin{bmatrix}
+  N_1 \\
+  & \ddots \\
+  & & N_K
+\end{bmatrix} \\
+  &= L^{-1}
+\end{aligned}
+\]
+
+This means that $(ZLZ^T)^2 = ZLZ^T$ which is the definition of a projection. Similarly $I - ZLZ^T$ is a projection on the complement. This combined with the fact that $\mathbf{tr}[AB]=\mathbf{tr}[BA]$ means that we can simplify the objective function:
+
+\[
+\begin{aligned}
+f_{Obj} &= \mathbf{tr}[\Phi(I - ZLZ^T)^2\Phi^T] \\
+  &= \mathbf{tr}[\Phi(I - ZLZ^T)\Phi^T] \\
+  &= \mathbf{tr}[\Phi\Phi^T] - \mathbf{tr}[\Phi Z L^{1/2} L^{1/2} Z^T \Phi^T] \\
+  &= \mathbf{tr}[\Phi^T \Phi] - \mathbf{tr}[L^{1/2}Z^T\Phi^T \Phi Z L^{1/2}] \\
+  &= \mathbf{tr}[\Delta] - \mathbf{tr}[L^{1/2}Z^T\Delta Z L^{1/2}]
+\end{aligned}
+\]
+
+Here we have let $L^{1/2}$ be the matrix with entries of the square root of the diagonal entries of $L$.
+
+As it is only the second part of the equation that depends upon the clustering matrix $Z$, one can formulate the equivalent maximisation problem:
+
+\[
+\max \mathbf{tr}[L^{\frac{1}{2}}Z^T\Delta Z L^{\frac{1}{2}}],
+\]
+
+subject to the contraints:
+
+\[
+\begin{aligned}
+\mathbf{Z} \mathbf{1}_K &= \mathbf{1}_N \\
+z_{ik} &\in \left\{0, 1 \right\}
+\end{aligned}
+\]
+
+The binary variables, $z_{ik}$, make this problem very difficult to solve [@gonen2014localized]. By setting $H = ZL^{1/2}$, we can restate the problem with matrix $H$ which is no longer constrained to be binary, but as $Z^TZ = L^{-1}$ does have the constraint that $H^T H = I$. One hopes that a clustering solution may then be derived as an additional step after the optimisation problem is solved. Thus the relaxed formulation of the problem is:
+
+\[
+\begin{aligned}
+& \max_H \mathbf{tr}[H^T \Delta H] \\
+& \textrm{subject to }H^TH = I
+\end{aligned}
+\]
+
+One can solve this by performing Kernel-PCA on the Gram matrix $\mathbf{\Delta}$ and setting $\mathbf{H}$ to the $K$ largest eigevalues. To fianlly acquire a clustering solution, one can normalise all rows of $\mathbf{H}$ to be on the unit sphere. This is done as so:
+
+\[\hat{H}= \frac{H_{ik}}{\sqrt{\sum_{k=1}^K H_{ik}^2}}\]
+
+One can then implements $k$-means clustering on this normalised matrix.
+
+##### Multiple kernel $k$-means clustering
+
+@gonen2014localized extend this concept of kernel $k$-means clustering to multiple kernel $k$-means clustering. Considered in the context of *multiview learning*, this method assumes we have $L$ different feature representations each with its own mapping function, i.e. $\{\Phi_m(\cdot)\}_{l=1}^L$. The aim is to combine these different views in a non-naive way; we wish to avoid simple concatenation. If instead we use a weighted sum such that the views that contribute the most signal are given the greatest weights with the restriction that weights are positive and sum to 1. This corresponds to replacing $\phi(x_i)$ with:
+
+\[
+\phi_\theta(x_i) = \begin{bmatrix}
+  \theta_1 \phi_1(x_i)^T \\ \vdots \\ \theta_L \phi_L (x_i)^T
+\end{bmatrix}.
+\]
+
+Here $\theta \in \mathbb{R}^L_+$ is the kernel weights that need to be optimised. The kernel function over the weighted mapping function becomes:
+
+\[
+\begin{aligned}
+\delta_\theta (x_i, x_j) &= \langle \phi_\theta(x_i), \phi_\theta(x_j) \rangle \\
+  &= \sum_{l=1}^L \langle \theta_l \phi_l(x_i), \theta_l \phi_l(x_j) \rangle \\
+  &= \sum_{l=1}^L \theta_l^2 \delta_l(x_i, x_j)
+\end{aligned}
+\]
+
+Where previously we could discard the $\mathbf{tr}[\Delta]$ component of the trace minimisation problem as being independant of the clustering matrix, it will now be dependent upon the kernel weights. Letting $\Delta_\theta= \sum_{l+1}^L \theta_l^2 \Delta_l$, our objective function becomes:
+
+\[
+\begin{aligned}
+& f_{Obj} = \mathbf{tr}[\Delta_\theta] - \mathbf{tr}[L^{1/2}Z^T\Delta_\theta Z L^{1/2}] \\
+& \textrm{subject to }H^TH = I, \sum_{l=1}^L \theta_l = 1
+\end{aligned}
+\]
 
 ## Problems

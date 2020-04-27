@@ -61,7 +61,6 @@ summarised as so:
 1. Clustering structure in one dataset should inform the clustering in another 
 dataset. If two points are clustered together in one context they should be 
 more inclined to cluster together in other contexts.
-
 2. Different degrees of dependence should be allowed between clusters across
 contexts. The model should work when datasets have the same underlying structure
 and also when each dataset is effecitvely independent of all others. Fundamental 
