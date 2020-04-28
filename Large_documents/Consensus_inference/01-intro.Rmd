@@ -27,7 +27,8 @@ homogeneous and distinct from one another. These groups are known as clusters.
 Clustering is used in multivariate statistics to uncover _useful_ latent groups
 suspected in the data or to discover _interesting_ groups of homogeneous 
 observations. In large datasets, such as modern 'omics datasets, estimation of
-clusters is often necessary for improved understanding and interpretation [@meinshausen2010stability]. 
+clusters is often necessary for improved understanding and interpretation [@meinshausen2010stability] - reducing a complex, $P$-dimensional dataset to 
+a 1-dimensional, discrete variable can significantly aid interpretation.
 
 ```{definition, clustering, name="Clustering"}
 If one has some collection of data $X=\left(x_1,\ldots,x_N\right)$, let a _clustering_ or partition of the data be defined by:
@@ -56,21 +57,25 @@ through identifying driving biological mechanisms or in defining subtypes within
 given diseases. Defining subtypes based upon behaviour at the 
 subcellular level rather than on phenotypic patterns can enable more effective 
 treatment. Examples where cluster analysis has been used to propose new subtypes
-include such a diverse range of diseases as Breast cancer [@cancer2012comprehensive; @berger2018comprehensive], 
-Coronary artery disease [@guo2017cluster], tinnitus [@van2017cluster] and asthma
-[@ortega2014cluster]. Another interesting application is the defining of subpopulations of 
-patients; this application is integral to _Precision medicine_, which relies 
-upon "the classification of people into subpopulations using their common 
-genetic patterns, lifestyles, drug responses, and environmental and cultural
-factors" [@gameiro2018precision].
+include such a diverse range of diseases as breast cancer [@cancer2012comprehensive; @berger2018comprehensive], Coronary artery disease [@guo2017cluster], tinnitus [@van2017cluster] and asthma [@ortega2014cluster]. Another interesting 
+application is the defining of subpopulations of patients; this application
+is integral to _Precision medicine_, which relies upon "the classification of 
+people into subpopulations using their common genetic patterns, lifestyles, 
+drug responses, and environmental and cultural factors" [@gameiro2018precision].
 
 Within cluster analysis there exists a large number of possible methods. 
-Traditional approaches [as taught in many textbooks, see for e.g. @fidell2001using; @manly2016multivariate; @stevens2012applied] include hierarchical and non-hierarchical (normally $k$-means) 
-clustering. These methods are heuristic in nature; they are not based upon a 
-formal model and what guidance there is for solving important practical 
-questions that arise in every cluster analysis (such as the number of clusters
-present, the measure of distance / similarity between points, which solution is optimal, etc.) is subjective and informal. Despite 
-this, most of the clustering that is done in practise is based upon these 
+Traditional approaches [as taught in many textbooks, see for e.g. 
+@fidell2001using; @manly2016multivariate; @stevens2012applied] include 
+hierarchical and non-hierarchical (normally $k$-means) clustering. These
+methods are heuristic in nature; they are not based upon a formal model that 
+explicitly models the data-generating process and what guidance there is for 
+solving important practical questions that arise in every cluster analysis (
+such as the number of clusters present, the measure of distance / similarity
+between points, which solution is optimal, etc.) is subjective and informal. 
+This has consequences for the interpretation of the results, as evaluation of
+the significance of results is difficult [@monti2003consensus].
+
+Despite this, most of the clustering that is done in practise is based upon these 
 methods; they are intuitively reasonable and, perhaps more importantly, most 
 clustering methods available in commercial software are of this type 
 [@fraley2002model]. However, I am interested in _model-based cluster analysis_. 
@@ -352,16 +357,32 @@ The Metropolis algorithm [@metropolis1949monte; @metropolis1953equation] generat
   1. Using the current value $\theta_{t-1}$, sample a candidate point, $\theta^*$, from  $q(\theta^* | \theta_{t-1})$.
   2. Calculate the _acceptance ratio_ for the new value $\theta^*$:
   
-  \begin{align}
-  \alpha = \frac{p(\theta^*)}{p(\theta_{t-1})} = \frac{f(\theta^*)}{f(\theta_{t-1})}
-  \end{align}
+\begin{align}
+\alpha = \frac{p(\theta^*)}{p(\theta_{t-1})} = \frac{f(\theta^*)}{f(\theta_{t-1})}
+\end{align}
   
-  Note that as the proportionality constant is the same for all $\theta$ that this is an equivalence rather than proportional relationship.
-  3. Accept the new value $\theta^*$ with probability equal to $\min(\alpha, 1)$. Generate a number $u$ from the uniform distribution on $[0,1]$ and accept if $\alpha \geq u$, else reject.
+Note that as the proportionality constant is the same for all $\theta$ that this
+is an equivalence rather than proportional relationship.
+3. Accept the new value $\theta^*$ with probability equal to $\min(\alpha, 1)$. 
+Generate a number $u$ from the uniform distribution on $[0,1]$ and accept if 
+$\alpha \geq u$, otherwise reject and continue with the previously accepted 
+value.
 
-This generates a Markov chain $(\theta_0,\ldots,\theta_k,\ldots, \theta_n)$ as each iteration is conditionally independent of all others given the sample from the iteration preceding it. A stationary distribution is reached after a \emph{burn-in} period of $k$ steps (for some $k \in \mathbb{N}$) and all following samples come from $p(\theta)$ (i.e. the vector $(\theta_{k+1},\ldots,\theta_n)$ are samples from $p(\theta)$). Knowing $k$ is a non-trivial issue; some arbitrary large number of burn-in iterations is often assumed erring on the side of caution, although there exists techniques to help in diagnosing what value this should be (see section \ref{sec:additional_theory:sub_sec:convergence:sub_sub_sec:ess}). The samples generated are highly correlated with other samples from within a close range of iterations. To avoid recording this duplicate information, often only every $l$th sample is recorded for some small $l$ (this process is referred to as _thinning_).
+This generates a Markov chain $(\theta_0,\ldots,\theta_k,\ldots, \theta_n)$ as 
+each iteration is conditionally independent of all others given the sample from
+the iteration preceding it. A stationary distribution is reached after a
+_burn-in_ period of $n_{burn}$ steps (for some $n_{burn} \in \mathbb{N}$) and
+all following samples come from the true $p(\theta)$. Knowing $n_{burn}$ is a 
+non-trivial issue; there exist some heuristic methods are used to diagnose 
+$n_{burn}$, but it remains a subjective choice.
 
-@hastings1970monte extends this method to allow asymmetric proposal densities, in which case the acceptance ratio changes to:
+The samples generated are highly correlated with other samples from within a 
+close range of iterations. To avoid recording this duplicate information, often
+only every $l$th sample is recorded for some small $l$ (this process is referred 
+to as _thinning_).
+
+@hastings1970monte extends this method to allow asymmetric proposal densities, 
+in which case the acceptance ratio changes to:
   
 \begin{align} 
 \alpha = \min\left(\frac{f(\theta^*) q(\theta^*|\theta_{t-1})}{f(\theta_{t-1})q(\theta_{t-1}|\theta^*)}, 1\right)
@@ -385,9 +406,9 @@ p(\theta^{(j)}_i | \theta^{(j)}_1, \ldots, \theta^{(j)}_{i-1}, \theta^{(j)}_{i+1
 (\#eq:updateProbs)
 \end{eqnarray}
 
-Consider Gibbs sampling performed upon a mixture model of $K$ components clustering observed variables $X=(x_1, \ldots, x_N)$. In this case the unobserved variables present are the $N$ allocation variables, $z=(z_1, \ldots, z_N)$, $K$ component parameters $\theta=(\theta_1, \ldots, \theta_K)$ (possibly each $\theta_k$ is a vector of parameters) and $K$ component weights $\pi=(\pi_1, \ldots, \pi_K)$. I use the notation $x_{-i}=(x_1,\ldots, x_{i-1}, x_{i+1}, \ldots, x_N)$. The hierarchical model is described in figure \@ref(fig:hierarchical-model).
+Consider Gibbs sampling performed upon a mixture model of $K$ components clustering observed variables $X=(x_1, \ldots, x_N)$. In this case the unobserved variables present are the $N$ allocation variables, $z=(z_1, \ldots, z_N)$, $K$ component parameters $\theta=(\theta_1, \ldots, \theta_K)$ (possibly each $\theta_k$ is a vector of parameters) and $K$ component weights $\pi=(\pi_1, \ldots, \pi_K)$. I use the notation $x_{-i}=(x_1,\ldots, x_{i-1}, x_{i+1}, \ldots, x_N)$. The hierarchical model is described in figure \@ref(fig:hierarchicalModelFiniteMixture).
 
-```{r, hierarchical-model, echo=FALSE, engine="tikz", out.width="90%", fig.cap="The mixture model we are interested in performing inference upon.", fig.align="center", cache=T}
+```{r, hierarchicalModelFiniteMixture, echo=FALSE, engine="tikz", out.width="90%", fig.cap="The mixture model we are interested in performing inference upon.", fig.align="center", cache=T}
  \usetikzlibrary{arrows}
 \usetikzlibrary{fit,positioning}
 \centering
@@ -420,7 +441,7 @@ Consider Gibbs sampling performed upon a mixture model of $K$ components cluster
 In the case of a mixture model, often the *only* variables of interest are the unseen allocation variables, $z$. This means that we are not interested in the samples produced for the other variables.
 
 Consider the sampling of $z_i$. As this can only hold a relatively small number of values we
-can consider the probability for each possible $k$. Based upon the relationships depicted in figure \@ref(fig:hierarchical-model) and equations \@ref(eq:totalProb) and \@ref(eq:bayesTheorem):
+can consider the probability for each possible $k$. Based upon the relationships depicted in figure \@ref(fig:hierarchicalModelFiniteMixture) and equations \@ref(eq:totalProb) and \@ref(eq:bayesTheorem):
 
 \begin{eqnarray}
 		p(z_i = k | x, z_{-i}, \pi) &=& \frac{p(z_i = k | \pi, x_{-i}, z_{-i}, \pi) p(x_i | z, x_{-i}, \pi)}{p(x_i | x_{-i}, z_{-i}, \pi)} \\
@@ -591,63 +612,38 @@ Thus our marginal likelihood is the ratio of the posterior normalising constants
 
 #### Dirichlet process
 
-Dirichlet process [@ferguson1973bayesian]
+I stated in section \@ref(clusterAnalysis) that the problem of choosing $K$ is a 
+non-trivial issue. All of the previously stated methods demand that the user 
+choose $K$; different criteria might be offered to help choose $K$, but it 
+remains a subjective choice (as the choie of criteria is itself subjective).
+A method that does not suffer from this problems is the Dirichlet process 
+[**DP**, @ferguson1973bayesian], which is a form of _non-parametric_ Bayesian
+model. A non-parametric model, despite the wording, contains inifinite 
+parameters. These methods are computationally expensive due to the MCMC 
+algorithms for Bayesian inference in DP mixture models [see e.g. @neal2000markov; @jain2004split], and often infeasible for large datasets [@crook2019fast].
+A computationally tractable approximation is the  _Dirichlet-Multinomial Allocation_ (**DMA**) mixture model [@green2001modelling; see @savage2013identifying for an 
+example].
 
-Multinomical dirichlet allocation model
+```{definition, DMAmodel, name = "Dirichlet-multinomial allocation mixture model"}
 
-Current Markov chain Monte Carlo (MCMC) algorithms for Bayesian inference in Dirichlet process (DP) mixture models (see e.g. @neal2000markov; @jain2004split) are computationally costly, and often infeasible for large datasets [@crook2019fast].
-
-#### Dirichlet-Multinomial Allocation mixture model
-
-[@green2001modelling; see @savage2013identifying for an example]
-
-Consider a dataset of $N$ samples, $x = (x_1,\ldots,x_N)$ where each sample is 
-itself a $p$-vector of measurements for some $p \in \mathbb{N}$. We are 
-interested in uncovering structure in the data. To do this we associate each 
-sample, $x_i$, with a *cluster*.This moves us from a $p$-dimensional 
-space to a 1-dimensional space based upon similarity of samples which enables 
-interpretation. We want to understand if there are sub-populations in our sample
-that are responsible for heterogeneity. By partitioning the data into clusters 
-we hope to have some insight into this underlying structure and improve our 
-understanding of the data. There are a myriad of ways to uncover such 
-partitions. Some methods have more obvious disadvantages than others, a common 
-problem being that the number of clusters allowed in the result is arbitrary. 
-Another common problem is that some of the methods are not model based which
-gives an ad-hoc nature to the paritioning. A method that does not suffer from 
-these problems is the Dirichlet process. A tractable approximation of this
-is the DMA mixture model which is a common choice 
-in the Bayesian-model based clustering. In this case we model each 
-sub-population by an individual distribution. We also allow the number of
-clusters present to be inferred from the data, thus avoiding a heuristic or 
-arbitrary means of selecting the number of clusters allowed.
-
-In this model we use a mixture of $K$ components to model the sub-populations.
-The components are all modelled by a distribution with a density function 
-$f(\cdot)$. The $kth$ component has associated parameters, $\theta_k$, based on 
-the samples allocated to this component and is thus defined by density 
-$f(\theta_k)$. The proportion of samples within the components define the 
-associated mixture weights, $\pi=(\pi_1,\ldots,\pi_K)$. Each sample is allocated 
-to a specific component; this component memberhsip is represented by the latent
-variable $c=(c_1,\ldots,c_n)$, where 
-$c_i \in \{1,\ldots, K\} \forall i \in \{1,\ldots,N\}$. Therefore we have 
-allocation probability:
+Begin with the definition of a finite mixture model for a dataset 
+$X=(x_1, \ldots, x_N)$ and $P$ features as described in definition 
+\@ref(def:mixtureModels). For a given item $x_i$ we have allocation probability:
 
 \[
 p(x_i| c_i = k) = \pi_k f(x_i \theta_k),
 \]
-and the full model density, which is a weighted sum of the mixture densities:
+
+and marginal likelihood:
+
 \[
 p(x_i) = \sum_{k=1}^K\pi_k f(x_1 | \theta_k)
 \]
-Note that while there are component-specific parameters, the density function 
-used, $f(\cdot)$, is common across all components.
 
-In the DMA mixture model, the mixture weights are given a Dirichlet prior, 
-normally with a symmetric concentration parameter. The allocation variable is
-then sampled from a Cateogrical distrbution defined by the component weights.
-The component parameters are then updated based upon the allocation of samples
-and the full model is then the weighted sum described above. The full 
-hierarchical model is described below:
+In the DMA mixture model, the mixture weights, $\pi=(\pi_1, \ldots, \pi_K)$, 
+are given a Dirichlet prior, often with a symmetric concentration parameter, 
+$\alpha$. The hierarchical model is:
+
 \[
 \begin{aligned}
 \pi &\sim \textrm{Dirichlet}\left(\frac{\alpha_0}{K},\ldots,\frac{\alpha_0}{K}\right), \\
@@ -656,12 +652,54 @@ c_i &\sim \textrm{Categorical}(\pi), \\
 x_i | c_i = k &\sim f(x_i | \theta_k).
 \end{aligned}
 \]
-Here $h(\cdot)$ is some distribution, often with additional hyperparameters. If 
-one let's $K \to \infty$ then this model becomes a Dirichlet process. To 
-approximate this $K$ is set to an arbitrarily large number. In this scenario one
-must have chosen a $K$ sufficiently large that there are empty clusters for the 
-model to be a true approximation of the Dirichlet process. @kirk2012bayesian 
-recommend setting $K=\frac{N}{2}$.
+
+This is also represented in figure \@ref(fig:hierarchicalModelDMA). 
+Here $h(\cdot)$ is some distribution, often with additional hyperparameters.
+```
+
+```{r, hierarchicalModelDMA, echo=FALSE, engine="tikz", out.width="90%", fig.cap="The hierarchical model for the DMA mixture model.", fig.align="center", cache=T}
+ \usetikzlibrary{arrows}
+\usetikzlibrary{fit,positioning}
+\centering
+\begin{tikzpicture}[scale=.7, auto,>=latex']
+\tikzstyle{main}=[circle, minimum size = 10mm, thick, draw =black!80, node distance = 22mm]
+\tikzstyle{connect}=[-latex, thick]
+\tikzstyle{box}=[rectangle, draw=black!100]
+ \node[main] (pi) {$\pi_k$ };
+ \node[main] (a) [left=of pi] {$\alpha_0$ };
+ \node[main] (z_i) [below right=of pi] {$z_i$};
+ \node[main, fill = black!10] (x_i) [right=of z_i] {$x_i$};
+ \node[main] (theta) [above left=of x_i] {$\theta_k$};
+ \path (pi) edge [connect] (z_i)
+		(z_i) edge [connect] (x_i)
+		(theta) edge [connect] (x_i)
+		(a) edge [connect] (pi);
+ \node[rectangle, inner sep=-0.5mm, fit= (z_i) (x_i),label=above right:$N$, xshift=14mm] {};
+ \node[rectangle, inner sep=4.8mm,draw=black!100, fill=blue! 25, fill opacity=0.2, fit= (z_i) (x_i)] {};
+ \node[rectangle, inner sep=-0.8mm, fit= (theta) (pi),label=above right:$K$, xshift=14mm] {};
+ \node[rectangle, inner sep=4.8mm, draw=black! 100, fit= (theta)(pi)] {};
+ \node[main] (pi) {$\pi_k$ };
+ \node[main, fill = white!1] (z_i) [below right=of pi] {$z_i$};
+ \node[main, fill = black!10] (x_i) [right=of z_i] {$x_i$};
+ \node[main] (theta) [above left=of x_i] {$\theta_k$};
+ \path (pi) edge [connect] (z_i)
+		(z_i) edge [connect] (x_i)
+		(theta) edge [connect] (x_i);
+\end{tikzpicture}
+
+```
+
+$K$ is learnt from the data as components are allowed to become empty. If a 
+component does become empty than it retain a a non-zero probability of being
+allocated a member; thus by initialising with a large value of $K$ 
+[@kirk2012bayesian recommend setting $K=\frac{N}{2}$] and allowing the model
+to itself empty and fill components, the number of components actually used is
+learnt. If one does let $K \to \infty$ then this model becomes a Dirichlet
+process; to be approximating this well, one must have chosen a $K$ sufficiently
+large that there are empty clusters within the model (although this is not 
+sufficient cirterion to be sure that $K$ was initialised with a large enough 
+value). 
+
 
 
 #### Variational inference
@@ -675,46 +713,40 @@ general, model-independent re-sampling based method that may be applied to any
 clustering method that is sensitive to initialisation. 
 
 For a given model (such as $k$-means clustering), multiple random restarts are
-used to asses cluster stability and to decide upon $K$, the number of clusters 
-present. For each restart a random initialisation is used and the dataset is 
-re-sampled. 
+used to asses cluster stability. The cluster stability is itself used to decide
+upon $K$, the number of clusters present. For each restart a random 
+initialisation is used and the dataset is perturbed using resampling techniques.
+The consensus between the restarts can be then assesed using the 
+_consensus matrix_. 
 
-The method does help to inform the choice of $K$, but remains a 
-heuristic method.
+```{definition, consensusMatrix, name = "Consensus matrix"}
+A _consensus matrix_ is an $(N \times N)$ matrix that stores, for each pair of items, the proportion of clustering runs in which two items are clustered together. The consensus matrix is obtained by taking the average over the coclustering matrices of models restart.
+
+Let B^{(r)} be the coclustering matrix associated with the $r^{th}$ model run. Then, for $R$ model runs, let the consensus matrix, $M$, be defined:
+  
+\begin{align}
+M = \frac{1}{B}\sum_{r=1}^RZ^{(r)}
+\end{align}
+```
+
+The driving logic of this method is that if a sub-population does exist, then if 
+a different sent of items had been observed, drawn from the same sub-populations, 
+the clustering produced should be quite similar. Therefore, the more robust 
+clusters are to sampling variability, the more possible it is that these 
+clusters represent real structure.
 
 > "The underlying assumption is that the more stable the results are with respect 
   to the simulated perturbations, the more these results are to be trusted."
 `r tufte::quote_footer('@monti2003consensus')`
 
-> "A possible drawback of these methods is in the fact that by not explicitly
-  modeling the assumptions underlying the data-generating process, it is sometime difficult
-  to rigorously evaluate the significance of the results produced."
-  `r tufte::quote_footer('@monti2003consensus')`
+@monti2003consensus recommend applying Consensus clustering for various values 
+of $K$ and selecting that which gives a consensus matrix with the most values 
+close to 0 or 1.
 
-if the data represent a sample of 
-items drawn from distinct sub-populations, and if we were to observe a different sample
-drawn from the same sub-populations, the induced cluster composition and number should
-not be radically different. Therefore, the more the attained clusters are robust to sampling
-variability, the more we can be confident that these clusters represent real structure.
-To this end, perturbations of the original data can be simulated by resampling techniques.
-The clustering algorithm of choice can then be applied to each of the perturbed data sets,
-and the agreement, or consensus, among the multiple runs can be assessed.
-
-```{definition, consensusMatrix, name = "Consensus matrix"}
-A _consensus matrix_ is an $(N \times N)$ matrix that stores, for each pair of items, the proportion of clustering runs in which two items are clustered together. The consensus matrix is obtained by taking the average over the coclustering matrices of models restart.
-
-Let Z^{(r)} be the coclustering matrix associated with the $r^{th}$ model run. Then, for $R$ model runs, let the consensus matrix, $M$, be defined:
-  
-\begin{align}
-M = \frac{1}{R}\sum_{r=1}^RZ^{(r)}
-\end{align}
-```
-general, model-independent resampling-based methodology of class discovery
-and clustering validation
-
-Implemented in the ``ConsensusClusterPlus`` package [@wilkerson2010consensusclusterplus] on Bioconductor.
+This method is implemented in ``R`` in the ``ConsensusClusterPlus`` package [@wilkerson2010consensusclusterplus], available on Bioconductor.
 
 ## Integrative methods
+
 
 required to explain complex disease [@hasin2017multi; @integrative2014integrative]
 
@@ -725,8 +757,6 @@ Cancer has been particularly successful [@wang2016integrative; @rappoport2018mul
 autoencoder based methods [@seal2020estimating; @lemsara2020pathme]
 
 Network based: [@rappoport2020monet, MONET allows outliers, missing data. Subsets of patients are clustered and may use a subset of 'omics to define this cluster]
-
-"i) direct integrative clustering, consisting in a preprocessing of the original data set before concatenation into a single data set ready for some standard clustering analysis [12, 13]; ii) regulatory integrative clustering, which are based on pathways [14]; iii) clustering of clusters, i.e., methods that take clustering made on different data sets and find a consensus [15, 16]."
 
 ``mergeTrees`` [@R-mergeTrees] implements the algorithm described by @hulot2020fast; this is a quick, heuristic-based method of combining local hierarchical clustering models to create a global dendrogram from which a clustering may be created.
 
@@ -757,36 +787,36 @@ I give an example of each of these, 1) Multiple Dataset Integration [*MDI*, @kir
 
 
 
-In this case we model the latent structure in the $lth$ dataset using a mixture 
-of $K_l$ components. This means that the full model density is the weighted 
-sum of the probability density functions associated with each component where
-the weights, $\pi_{lk}$, are the proportion of the total population assigned to the 
-$kth$ components:
+<!-- In this case we model the latent structure in the $lth$ dataset using a mixture  -->
+<!-- of $K_l$ components. This means that the full model density is the weighted  -->
+<!-- sum of the probability density functions associated with each component where -->
+<!-- the weights, $\pi_{lk}$, are the proportion of the total population assigned to the  -->
+<!-- $kth$ components: -->
 
-$$p(X_{li}| c_{li} = k) = \pi_{lk} f(X_{li} | \theta_{lk}),$$
-$$p(X_{li}) = \sum_{k=1}^{K_l} \pi_{lk} f_l(X_{li} | \theta_{lk}).$$
-Here $K_l$ is the total number of clusters present and $\theta_{lk}$ are the 
-parameters defining the $kth$ distribution in the $lth$ dataset.
+<!-- $$p(X_{li}| c_{li} = k) = \pi_{lk} f(X_{li} | \theta_{lk}),$$ -->
+<!-- $$p(X_{li}) = \sum_{k=1}^{K_l} \pi_{lk} f_l(X_{li} | \theta_{lk}).$$ -->
+<!-- Here $K_l$ is the total number of clusters present and $\theta_{lk}$ are the  -->
+<!-- parameters defining the $kth$ distribution in the $lth$ dataset. -->
 
-The weights, $\pi_l = (\pi_{l1},\ldots,\pi_{lK_l})$, follow a Dirichlet 
-distribution with concentration parameter $\alpha_0$.
+<!-- The weights, $\pi_l = (\pi_{l1},\ldots,\pi_{lK_l})$, follow a Dirichlet  -->
+<!-- distribution with concentration parameter $\alpha_0$. -->
 
-The distributions in the mixture model for each dataset are:
+<!-- The distributions in the mixture model for each dataset are: -->
 
-\[
-\begin{aligned}
-\pi_l &\sim \textrm{Dirichlet}\left(\frac{\alpha_0}{K_l},\ldots,\frac{\alpha_0}{K_l}\right) \\
-c_{li} &\sim \textrm{Categorical}(\pi_l) \\
-\theta_{lk} &\sim h_l \\
-X_{li} | c_{li} = k &\sim f_l(X_{li} | \theta_{lk})
-\end{aligned}
-\]
+<!-- \[ -->
+<!-- \begin{aligned} -->
+<!-- \pi_l &\sim \textrm{Dirichlet}\left(\frac{\alpha_0}{K_l},\ldots,\frac{\alpha_0}{K_l}\right) \\ -->
+<!-- c_{li} &\sim \textrm{Categorical}(\pi_l) \\ -->
+<!-- \theta_{lk} &\sim h_l \\ -->
+<!-- X_{li} | c_{li} = k &\sim f_l(X_{li} | \theta_{lk}) -->
+<!-- \end{aligned} -->
+<!-- \] -->
 
 
-where $H_l$ is some prior distribution for parameteters for each mixture
-component; $F_l$ is a probability distribution for samples given the parameters
-$\theta_{lk}$. Note that each context may have different distributions and
-hyperparameters.
+<!-- where $H_l$ is some prior distribution for parameteters for each mixture -->
+<!-- component; $F_l$ is a probability distribution for samples given the parameters -->
+<!-- $\theta_{lk}$. Note that each context may have different distributions and -->
+<!-- hyperparameters. -->
 
 
 #### Multiple Dataset Integration
@@ -797,15 +827,54 @@ hyperparameters.
 
 #### Clusternomics
 
-@gabasova2017clusternomics; assumes more global clusters than local
+Before I explain Clusternomics, two definitions are required.
 
-Clusternomics, which is embedded in the Bayesian clustering framework, uses a 
-hierarchical Dirichlet mixture model to identify structure on both the local and
-the global level. The model is fit to the data via Gibbs sampling. The model 
-does not assume that cluster behaviour will be consistent across heterogeneous 
-datasets. This is not to assume that the clustering structure uncovered in one 
-dataset should not inform the clustering in another dataset. This can be 
-summarised as so:
+
+```{definition, outerProduct, name = "Outer product"}
+For two vectors, $x=(x_1, \ldots, x_N)$ and $y=(y_1,\ldots,y_M)$, the outer
+product is defined:
+
+\[
+\begin{aligned}
+x \otimes y &= \begin{pmatrix}
+  x_1 y_1 & x_1 y_2 & \cdots & x_1 y_M \\
+  x_2 y_1 & x_2 y_2 & \cdots & x_2 y_M \\
+  \vdots & \vdots & \ddots & \vdots \\
+  x_N y_1 & x_N y_2 & \cdots & x_N y_M \\
+  \end{pmatrix}
+\end{aligned}
+\]
+
+```
+
+```{definition, vectorFunction, name = "$vec(\\cdot)$"}
+For a $N \times M$ matrix $A$, the $vec(\cdot)$ function is defined:
+
+\[
+\begin{aligned}
+vec(A) &= \begin{pmatrix}
+  A_{11} \\
+  \vdots \\
+  A_{N1} \\
+  A_{12} \\
+  \vdots \\
+  A_{N2} \\
+  A_{13} \\
+  \vdots \\
+  A_{NM}
+\end{pmatrix}
+\end{aligned}
+\]
+
+```
+
+<!-- assumes more global clusters than local -->
+
+Clusternomics [@gabasova2017clusternomics] identifies structure on both the 
+local and the global level. The model does not assume that cluster behaviour
+will be consistent across heterogeneous datasets. This is not to assume that the
+clustering structure uncovered in one dataset should not inform the clustering 
+in another dataset. This can be summarised as so:
 
 1. Clustering structure in one dataset should inform the clustering in another 
 dataset. If two points are clustered together in one context they should be 
@@ -816,32 +885,32 @@ and also when each dataset is effecitvely independent of all others. Fundamental
 to this is allowing datasets to have different numbers of clusters.
 
 To enable these modelling aims, Clusternomics explicitly represents the local 
-clusters (i.e. dataset specific) and the global structure that emerges when 
-considering the combination of the datasets. The global clusters are defined by 
-combinations of local clusters. Consider the case where 3 clusters emerge in 
-Context 1 (denoted by labels $\{1, 2, 3\}$) and 2 clusters emerge in Context 2 
-(denoted by labels $\{A, B\}$). In this case our global structure has the 
-possibile form:
+clusters and the global structure that emerges when considering the combination
+of the datasets. The global clusters are defined by combinations of local 
+clusters. Consider the case where 3 clusters emerge in Context 1 (denoted by 
+labels $\{1, 2, 3\}$) and 2 clusters emerge in Context 2 (denoted by labels 
+$\{A, B\}$). In this case our global structure has the possibile form:
 
 $$\{(1, A), (2, A), (3, A), (1, B), (2, B), (3, B)\}$$
 
-Thus if a point is assigned a label of 1 in Context 1 and a label of $A$ in 
-Context 2 it increases the probability of cluster $(1, A)$ becoming populated 
-at the global level. However, it is possible that some of the possible 
+Thus if an item is assigned a label of 1 in Context 1 and a label of $A$ in 
+Context 2 it increases the probability of other items being assigned to cluster 
+$(1, A)$ at the global level. However, it is possible that some of the possible 
 global clusters described above are not realised as some local clusters overlap 
 across datasets. Consider the case that labellings 1 and 2 from the first 
-context are captured entirely by label $A$ in the second context with a albel of 
+context are captured entirely by label $A$ in the second context with a label of 
 3 corresponding perfectly to label $B$. In this case our global structure would 
 take the form:
 
 $$\{(1, A), (2, A), (3, B)\}$$
 
 The original paper introduces two models that are "asymptotically equivalent". 
-The first is easier to develop an intuition of, but it is the second that is 
-implmented as it is more computationally efficient.
+The first is easier to develop an intuition for, but it is the second that is 
+implmented in the ``clusternomics`` R package [@R-clusternomics] as it is more 
+computationally efficient.
 
-I begin by describing the intuitive model. For ease of understanding, let $L=2$. Then each context has its own mixture 
-weights with symmetric Dirichlet priors:
+I begin by describing the intuitive model. For ease of understanding, let $L=2$.
+Then each context has its own mixture weights with symmetric Dirichlet priors:
 
 \[
 \begin{aligned}
@@ -850,58 +919,26 @@ weights with symmetric Dirichlet priors:
 \end{aligned}
 \]
 
-
 These weights form the basis of the local clustering within each dataset. A 
 third mixure distribution is used to link the two local clusters. This has a 
-Dirichlet prior over the global mixture weights, $\rho$, which is defined over 
+Dirichlet prior over the global mixture weights, $\varpi$, which is defined over 
 the outer product of the local weights:
 
-
 \[
-\rho \sim \textrm{Dirichlet}\left(\gamma \textrm{ vec}(\pi_1 \otimes \pi_2)\right).
+\varpi \sim \textrm{Dirichlet}\left(\gamma \textrm{ vec}(\pi_1 \otimes \pi_2)\right).
 \]
 
-The outer product is defined:
-
-\[
-\begin{aligned}
-\pi_1 \otimes \pi_2 &= \pi_1 \pi_2^T \\
-  &= \begin{pmatrix}
-  \pi_{11}\pi_{21} & \pi_{11}\pi_{22} & \cdots & \pi_{11}\pi_{2K_2} \\
-  \pi_{12}\pi_{21} & \pi_{12}\pi_{22} & \cdots & \pi_{12}\pi_{2K_2} \\
-  \vdots & \vdots & \ddots & \vdots \\
-  \pi_{1K_1}\pi_{21} & \pi_{1K_1}\pi_{22} & \cdots & \pi_{1K_1}\pi_{2K_2} \\
-  \end{pmatrix}
-\end{aligned}
-\]
-
-Then the vector function takes the column vectors of the matrix and places them 
-in one vector:
-
-\[
-\mathrm{vec}(\pi_1 \otimes \pi_2) = \begin{pmatrix}
-  \pi_{11}\pi_{21} \\
-  \vdots \\
-  \pi_{1K_1}\pi_{21}\\
-  \pi_{11}\pi_{22} \\
-  \vdots \\
-  \pi_{1K_1}\pi_{22} \\
-  \pi_{11}\pi_{23} \\
-  \vdots \\
-  \pi_{1K_1}\pi_{2K_2}
-\end{pmatrix}
-\]
 
 This is the basis for the non-symmetric concentration parameter of the 
-Dirichlet distribution over the global mixture weights, $\rho$. 
+Dirichlet distribution over the global mixture weights, $\varpi$. 
 
-A global membership variable, $c$, is drawn from a Catgeorical distribution with
-concentration parameter $\rho$:
+A global membership variable, $\varsigma$, is drawn from a Catgeorical distribution with
+concentration parameter $\varpi$:
 
 \[
 \begin{aligned}
-c_i &= (c_{1i}, c_{2i}) \\
-c &\sim \textrm{Categorical}(\rho) \\
+\varsigma_i &= (c_{1i}, c_{2i}) \\
+\varsigma &\sim \textrm{Categorical}(\varpi) \\
 X_{li} | c_{li} = k &\sim f_l(X_{li} | \theta_{lk}), l \in \{1, 2\}
 \end{aligned}
 \]
@@ -915,9 +952,11 @@ affect the posterior probability of the context-specific weights, $\pi_l$, which
 in turn define the probabilities of the global combinatorial clusters through 
 the hierarchical model (a change in the membership of the $kth$ component in the
 $lth$ dataset affects an entire slice of column vectors in the tensors defining 
-the concentration parameter for the global component weights, $\rho$).
+the concentration parameter for the global component weights, $\varpi$).
 
-The model also represents different degrees of dependence by allowing any combination of cluster assignments across contexts. When there is a single common cluster structure across the two contexts, the occupied clusters will be concentrated along the diagonal of the probability matrix of $\rho$.
+The model also represents different degrees of dependence by allowing any 
+combination of cluster assignments across contexts. When there is a single 
+common cluster structure across the two contexts, the occupied clusters will be concentrated along the diagonal of the probability matrix of $\varpi$.
 
 When $L > 2$ then the outer product of the local componenet weights generalises 
 to a tensor product. In this case the hierarchical model is given by:
@@ -925,8 +964,8 @@ to a tensor product. In this case the hierarchical model is given by:
 \[
 \begin{aligned}
 \pi_l | \alpha_0 &\sim \textrm{Dirichlet}\left(\frac{\alpha_0}{K_l},\ldots,\frac{\alpha_0}{K_l}\right) \\
-\rho | \gamma, \{\pi_1\, \ldots, \pi_L\} & \sim \textrm{Dirichlet}\left(\gamma \left\{\bigotimes_{l=1}^L \pi_l \right\} \right)  \\
-c_i | \rho &\sim \textrm{Categorical}(\rho), c_i = \left(c_{1i},\ldots,c_{Li}\right)\\
+\varpi | \gamma, \{\pi_1\, \ldots, \pi_L\} & \sim \textrm{Dirichlet}\left(\gamma \left\{\bigotimes_{l=1}^L \pi_l \right\} \right)  \\
+\varsigma_i | \varpi &\sim \textrm{Categorical}(\varpi), \varsigma_i = \left(c_{1i},\ldots,c_{Li}\right)\\
 \theta_{lk} &\sim h_l \\
 X_{li} | c_{li} = k &\sim f_l(X_{li} | \theta_{lk})
 \end{aligned}
@@ -937,32 +976,32 @@ an additional layer of calculations in the probability tensor. The second model
 is designed to reduce this cost by avoiding calculations for uninhabited 
 components.
 
-The secodn formulation, the quick model, attempts to reduce the number of combinations required. This requires
-decoupling the number of local clusters and the number of global clusters. A 
-mixture over $S$ global clusters is defined:
+The second formulation, the quick model, attempts to reduce the number of
+combinations required. This requires decoupling the number of local clusters and
+the number of global clusters. A mixture over $S$ global clusters is defined:
 
 \[
 \begin{aligned}
-\rho | \gamma_0 & \sim \textrm{Dirichlet}\left(\frac{\gamma_0}{S}, \ldots, \frac{\gamma_0}{S} \right) \\
-c_i | \rho &\sim \textrm{Categorical}(\rho)
+\varpi | \gamma_0 & \sim \textrm{Dirichlet}\left(\frac{\gamma_0}{S}, \ldots, \frac{\gamma_0}{S} \right) \\
+\varsigma_i | \varpi &\sim \textrm{Categorical}(\varpi)
 \end{aligned}
 \]
 
-where $\rho$ is the global mixture weights and $c_i$ is the components 
-assignment indivator variable as before. A variable $z_{ls}$ is then defined 
+where $\varpi$ is the global mixture weights and $\varsigma_i$ is the components 
+assignment indivator variable as before. A variable $c_{ls}$ is then defined 
 that associates the $sth$ global cluster with context specific clusters:
 
 \[
 \begin{aligned}
 \pi_l | \alpha_0 & \sim \textrm{Dirichlet}\left(\frac{\alpha_0}{K_l},\ldots,\frac{\alpha_0}{K_l}\right), \\
-z_{ls} | \pi_l & \sim \textrm{Categorical}(\pi_l).
+c_{ls} | \pi_l & \sim \textrm{Categorical}(\pi_l).
 \end{aligned}
 \]
 
-Here $z_{ls} \in \{1, \ldots, K_l\}$ assignes the $sth$ global cluster to the a 
-specific local cluster in the $lth$ dataset. One may consider $(z_{sl})_{s=1}^S$ 
+Here $c_{ls} \in \{1, \ldots, K_l\}$ assignes the $sth$ global cluster to the a 
+specific local cluster in the $lth$ dataset. One may consider $(c_{ls})_{s=1}^S$ 
 as the coordinates of the global clusters in the $lth$ dataset. This link 
-means that the $c_i$ maps a point to a global cluster as well as the local 
+means that the $varsigma_i$ maps a point to a global cluster as well as the local 
 clusters.
 
 In the previous model the mapping of global clusters to local clusters was
@@ -975,18 +1014,62 @@ This hierarchial model is defined by:
 
 \[
 \begin{aligned}
-\rho | \gamma_0 & \sim \textrm{Dirichlet}\left(\frac{\gamma_0}{S},\ldots,\frac{\gamma_0}{S}\right), \\
-c_i | \rho & \sim \textrm{Categorical}(\rho), \\
+\varpi | \gamma_0 & \sim \textrm{Dirichlet}\left(\frac{\gamma_0}{S},\ldots,\frac{\gamma_0}{S}\right), \\
+\varsigma_i | \varpi & \sim \textrm{Categorical}(\varpi), \\
 \pi_l | \alpha_0 & \sim \textrm{Dirichlet}\left(\frac{\alpha_0}{K_l},\ldots,\frac{\alpha_0}{K_l}\right), \\
-z_{ls} | \pi_l & \sim \textrm{Categorical}(\pi_l) \\
+c_{ls} | \pi_l & \sim \textrm{Categorical}(\pi_l) \\
 \theta_{kl} | h_l & \sim h_l \\
-X_{li} | c_i, (z_{sl})_{s=1}^S, (\theta_{lk})_{k=1}^K &\sim f_l(X_{li} | \theta_{lk_{c_i}})
+X_{li} | \varsigma_i, (c_{sl})_{s=1}^S, (\theta_{lk})_{k=1}^K &\sim f_l(X_{li} | \theta_{lk_{c_i}})
 \end{aligned}
 \]
 
-The quick, decoupled model is implemented in the R package `clusternomics` and 
-uses Gibbs sampling as the inference algorithm.
+This is represented in figure \@ref(fig:hierarchicalModelClusternomics).
 
+```{r, hierarchicalModelClusternomics, echo=FALSE, engine="tikz", out.width="90%", fig.cap="The hierarchical model for Clusternomics.", fig.align="center", cache=T}
+ \usetikzlibrary{arrows}
+\usetikzlibrary{fit,positioning}
+\centering
+\begin{tikzpicture}[scale=.7, auto,>=latex']
+\tikzstyle{main}=[circle, minimum size = 10mm, thick, draw =black!80, node distance = 22mm]
+\tikzstyle{connect}=[-latex, thick]
+\tikzstyle{box}=[rectangle, draw=black!100]
+ \node[main] (pi) {$\pi_{lk}$ };
+ \node[main] (a) [left=of pi] {$\alpha_0$ };
+ \node[main] (ci) [below right=of pi] {$c_{ls}$};
+ \node[main, fill = black!10] (xi) [right=of ci] {$x_{li}$};
+ \node[main] (theta) [above left=of xi] {$\theta_{lk}$};
+ \node[main] (varsig) [below=of xi] {$\varsigma_i$};
+ \node[main] (varpi) [left=of varsig] {$\varpi_s$};
+ \node[main] (gamma0) [left=of varpi] {$\gamma_0$};
+ \node[main] (hl) [right=of theta] {$h_l$};
+ \path (pi) edge [connect] (ci)
+		(ci) edge [connect] (xi)
+		(theta) edge [connect] (xi)
+		(a) edge [connect] (pi);
+ \node[rectangle, inner sep=-0.5mm, fit= (varsig) (xi),label=above right:$N$, xshift=0mm, yshift=16mm] {};
+ \node[rectangle, inner sep=4.8mm,draw=black!100, fit= (varsig) (xi)] {};
+ \node[rectangle, inner sep=-0.8mm, fit= (theta) (pi),label=above right:$K_l$, xshift=14mm] {};
+ \node[rectangle, inner sep=4.8mm, draw=black! 100, fit= (theta)(pi)] {};
+\node[rectangle, inner sep=4.8mm, draw=black! 100, fit= (theta)(pi)] {};
+ \node[rectangle, inner sep=-0.8mm, fit= (ci) (varpi),label=above right:$S$, xshift=0mm, yshift=16mm] {};
+ \node[rectangle, inner sep=4.8mm, draw=black! 100, fit= (ci) (varpi)] {};
+ \node[rectangle, inner sep=-0.8mm, fit= (ci) (xi) (theta) (pi) (hl),label=above right:$L$, xshift=20mm] {};
+ \node[rectangle, inner sep=6.0mm, draw=black! 100, fit= (ci) (xi) (theta) (pi) (hl)] {};
+
+ \path (pi) edge [connect] (ci)
+		(ci) edge [connect] (xi)
+		(theta) edge [connect] (xi)
+		(hl) edge [connect] (theta)
+		(varsig) edge [connect] (xi)
+		(varpi) edge [connect] (varsig)
+		(gamma0) edge [connect] (varpi);
+\end{tikzpicture}
+
+```
+
+The quick, decoupled model is implemented in the R package `clusternomics`
+[@R-clusternomics], available on Github, and uses Gibbs sampling to perform the 
+inference.
 
 #### Bayesian Consensus Clustering
 
@@ -1055,6 +1138,9 @@ The probability of being allocated to the $kth$ global component is:
 \[
 P(C_i = k | c, \Pi, \alpha) \propto \Pi_k \prod_{l=1}^L \nu(c_{li}, k, \alpha_l).
 \]
+
+This model is implemented within the ``bayesCC`` R package [@R-bayesCC],
+available on Github.
 
 ### Integrative factor analysis methods
 
@@ -1215,10 +1301,12 @@ Kernel Learning Integrative Clustering (_KLIC_) is a **sequential analysis** met
 #### Cluster-Of-Cluster Analysis
 
 @cancer2012comprehensive
+@R-coca
 
 #### Kernel Learning Integrative Clustering
 
 @cabassi2019multiple
+@R-klic
 
 **Elevator pitch**: Takes independent clusterings of the individuals (i.e. local clusterings) and combines these for a global clustering. Allows different local clusterings to contribute with different strenghts to the final clustering. No specifications on the type of model used to create the original clusterings.
 

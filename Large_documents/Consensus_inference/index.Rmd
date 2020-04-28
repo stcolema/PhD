@@ -45,6 +45,11 @@ library(coda)
 library(mclust)
 library(mcclust)
 library(mergeTrees)
+library(clusternomics)
+library(bayesCC)
+library(coca)
+library(klic)
+# library(r.jive)
 
 # automatically create a bib database for R packages
 knitr::write_bib(c(
@@ -126,14 +131,14 @@ N & & \textrm{The number of items in each dataset.} \\
 L & & \textrm{The number of datasets present.} \\
 P_l & & \textrm{The number of features in the $lth$ dataset.} \\
 K_l & & \textrm{The number of components present in the $lth$ dataset.} \\
-G & & \textrm{The number of components present in the global context (if applicable).} \\
+S & & \textrm{The number of components present in the global context (if applicable).} \\
 X &= (X_1, \ldots, X_L) & \textrm{The datasets.} \\
 X_l &= (x_{l1}, \ldots, x_{lN}) & \textrm{The observed data for the $lth$ dataset.} \\
 % c &= (c_1, \ldots, c_L) & \textrm{ The membership vectors for each dataset (our latent variable).} \\
 c_l &= (c_{l1}, \ldots, c_{lN}) & \textrm{The membership vector in the $lth$ dataset.} \\
-c &= (c_1, \ldots, c_N) & \textrm{The global allocation vector (if applicable).} \\
-\pi_l &= (\pi_{l1,}\ldots, \pi_{lK_l}) & \textrm{The mixture weights in the $lth$ context.} %\\
-\pi &= (\pi_1, \ldots, \pi_G) & \textrm{The mixutre weights for the global components (if present).}
+\varsigma &= (\varsigma_1, \ldots, \varsigma_N) & \textrm{The global allocation vector (if applicable).} \\
+\pi_l &= (\pi_{l1,}\ldots, \pi_{lK_l}) & \textrm{The mixture weights in the $lth$ context.} \\
+\varpi &= (\varpi_1, \ldots, \varpi_G) & \textrm{The mixture weights for the global components (if present).}
 \end{eqnarray}
 
 If $K_1 = \ldots = K_L$ then we use $K$ as the number of components in each 
@@ -175,3 +180,23 @@ b_{ij} = \begin{cases}
 
 $\mathbf{B}$ is referred to as the _coclustering matrix_.
 ```
+
+## Acknowledge these:
+General:
+@R-base
+@R-dplyr
+@R-ggplot2
+@R-magrittr
+@R-patchwork
+@R-pheatmap
+@R-tibble
+@R-tidyr
+
+Write-up:
+@R-bookdown
+@R-knitr
+@R-rmarkdown
+
+MCMC diagnostics:
+@R-coda
+@R-mcclust

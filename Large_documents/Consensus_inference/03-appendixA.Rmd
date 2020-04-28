@@ -57,3 +57,9 @@ based upon that described by @gelman2013garden, but applied to cluster
 analysis). This does not mean the analysis is not useful or does not have 
 implications beyond the dataset analysed, but a measure of the broader 
 significance of results, often an aim in statistical analyses, is not possible. 
+
+@bock1985some attempted to derive some significance tests for cluster analysis.
+However, these were derived for low dimensional data, and it is not clear how
+well they generalise; how they apply to high-dimensional data is an open 
+question. @liu2008statistical have defined a test for the small $N$ large $P$ 
+context frequently ecnountered in 'omics.
