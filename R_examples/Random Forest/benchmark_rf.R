@@ -33,15 +33,34 @@ autoplot(mbm) +
 # Slightly smaller and more reasonable data (with only two classes)
 small_p_2 <- generateSimulationDataset(2, 1000, 50, delta_m=0.5)
 small_n_2 <- generateSimulationDataset(2, 50, 1000, delta_m=0.3)
+noisy_small_n <- generateSimulationDataset(2, 50, 100, delta_m=0.3, p_n = 900)
+noisy_large_n <- generateSimulationDataset(2, 1000, 5, delta_m=0.3, p_n = 45)
 
 # Visualise the data to see how separable the classes are
-annotatedHeatmap(small_p_2$data, small_p_2$cluster_IDs)
-annotatedHeatmap(small_n_2$data, small_n_2$cluster_IDs)
+annotatedHeatmap(small_p_2$data, small_p_2$cluster_IDs,
+                 show_rownames =F,
+                 show_colnames= F,
+                 main = "Large N, small P")
+annotatedHeatmap(small_n_2$data, small_n_2$cluster_IDs,
+                 show_rownames =F,
+                 show_colnames= F,
+                 main = "Small N, large P")
+annotatedHeatmap(noisy_small_n$data, noisy_small_n$cluster_IDs,
+                 show_rownames =F,
+                 show_colnames= F,
+                 main = "Small N, large P (noisy)")
+annotatedHeatmap(noisy_large_n$data, noisy_large_n$cluster_IDs,
+                 show_rownames =F,
+                 show_colnames= F,
+                 main = "Large N, small P (noisy)")
+
 
 # Bench mark
 mbm_2 <- microbenchmark(
-  "large_n" = randomForest(x = small_p_2$data, y=small_p_2$cluster_IDs),
-  "large_p" = randomForest(small_n_2$data,y=small_n_2$cluster_IDs),
+  "small_p" = randomForest(x = small_p_2$data, y=small_p_2$cluster_IDs),
+  "small_n" = randomForest(small_n_2$data,y=small_n_2$cluster_IDs),
+  "small_n_noisy"=randomForest(noisy_small_n$data,y=noisy_small_n$cluster_IDs),
+  "small_p_noisy"=randomForest(noisy_large_n$data,y=noisy_large_n$cluster_IDs),
   times = 10
   )
 
@@ -49,5 +68,5 @@ mbm_2 <- microbenchmark(
 autoplot(mbm_2) +
   labs(
     title = "Random forest",
-    subtitle = "10 runs for (1000 x 50) and (50 x 1000) datasets"
+    subtitle = "10 runs for (1000 x 50) and (50 x 1000) datasets\nIn ``noisy`` case only 10% of features contain signal"
   )
