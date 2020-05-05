@@ -5,8 +5,10 @@ date: "`r Sys.Date()`"
 output:
   bookdown::gitbook:
     lib_dir: "book_assets"
+    fig_crop: false
   bookdown::pdf_book:
     keep_tex: yes
+    fig_crop: true
 documentclass: book
 bibliography: [CIbib.bib, packages.bib]
 biblio-style: apalike
@@ -57,7 +59,7 @@ knitr::write_bib(c(
 ), "packages.bib")
 
 library(mdiHelpR)
-
+set.seed(1)
 # devtools::install_github("sarawade/mcclust.ext")
 # library(mcclust.ext)
 

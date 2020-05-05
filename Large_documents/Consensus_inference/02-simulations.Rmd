@@ -64,24 +64,23 @@ scn_table <- data.frame(
   Delta_mu = c(3, 0, 1, 1, 1, 0.5, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0.2, 1),
   sigma2 = c(1, 1, 1, 1, 1, 1, 3, 5, 10, 1, 1, 1, 1, 1, 1, 1, 1),
   Pi = c(rep("vec(1/K)", 16), "(0.5, 0.25, 0.125, 0.0675, 0.0675)")
-  )
+)
 
 colnames(scn_table) <- c(
   "Scenario",
-"$N$",
-"$P_s$",
-"$P_n$",
-"$K$",
-"$\\Delta_{\\mu}$",
-"$\\sigma^2$",
-"$\\pi$"
+  "$N$",
+  "$P_s$",
+  "$P_n$",
+  "$K$",
+  "$\\Delta_{\\mu}$",
+  "$\\sigma^2$",
+  "$\\pi$"
 )
 
-sims_used <- scn_table[c(1:3, 7, 8, 11:13, 17, 4:6, 15:16),] %>% 
+sims_used <- scn_table[c(1:3, 7, 8, 11:13, 17, 4:6, 15:16), ] %>%
   set_rownames(1:nrow(.))
 
-knitr::kable(sims_used, row.names = T, escape = F) #, "latex", longtable = T, booktabs = T, caption = "Longtable")
-
+knitr::kable(sims_used, row.names = T, escape = F) # , "latex", longtable = T, booktabs = T, caption = "Longtable")
 ```
 
 <!-- \begin{center} -->
@@ -96,13 +95,544 @@ knitr::kable(sims_used, row.names = T, escape = F) #, "latex", longtable = T, bo
 <!-- \end{tabular} -->
 <!-- \end{center} -->
 
+### Scenario purposes
+
+Each scenario is seen as testing certain cases or concepts.
+
+#### Simple 2D
+This case is seen as an introduction to method performance. In this case the data can be plotted as a scatter plot (whereas higher dimensions mean any two dimensional representation is missing some information about the data). This means that one may view the data and have an intuition if it is possible for a mixture model to cluster the data; furthermore the small dimsnaionality of the problem means that the distance between modes on the likelihood surface is less so we do not expect the Gibbs sampler to become trapped. This means that we can compare consensus inference to Bayesian inference with a strong belief that our model has converged (given appropriate tests). This means that we can process how well consensus inference performs with a deeper understanding of the context than might be possible in higher dimensional cases.
+
+```{r, simple2dView, echo = F, cache = T}
+scn <- "Simple 2D"
+row_ind <- which(sims_used$Scenario == scn)
+N <- sims_used[["$N$"]][row_ind]
+P_s <- sims_used[["$P_s$"]][row_ind]
+P_n <- sims_used[["$P_n$"]][row_ind]
+K <- sims_used[["$K$"]][row_ind]
+dm <- sims_used[["$\\Delta_{\\mu}$"]][row_ind]
+s2 <- sims_used[["$\\sigma^2$"]][row_ind]
+pi <- sims_used[["$\\pi$"]][row_ind]
+
+if (pi == "vec(1/K)") {
+  pi <- rep(1 / K, K)
+} else {
+  pi <- "(0.5, 0.25, 0.125, 0.0675, 0.0675)" %>%
+    stringr::str_remove_all("[() ]") %>%
+    strsplit(",") %>%
+    unlist() %>%
+    as.numeric()
+}
+
+# Generate dataset
+simple2D_gen <- generateSimulationDataset(K, N, P_s,
+  delta_mu = dm,
+  p_n = P_n,
+  cluster_sd = s2,
+  pi = pi
+)
+
+
+annotatedHeatmap(scale(simple2D_gen$data), simple2D_gen$cluster_IDs,
+  main = "Simple 2D (seed 1)",
+  show_rownames = F,
+  show_colnames = F
+)
+
+simple2D_gen$data %>%
+  scale() %>%
+  data.frame() %>%
+  dplyr::mutate(Cluster = as.factor(simple2D_gen$cluster_IDs)) %>%
+  ggplot(aes(x = Gene_1, y = Gene_2, colour = Cluster)) +
+  geom_point() +
+  scale_colour_viridis_d() +
+  labs(
+    title = "Example: Simple 2D case (seed 1)",
+    x = "Gene 1",
+    y = "Gene 2",
+    subtitle = "Note that multiple clusters may overlap."
+  )
+```
+
+#### No structure
+
+In this case all items are drawn from the same normal distribution. It is meant to be a test to see how the inference methods perform when there is no structure to find. It may be considered an similar to attempting to quantify the false positive rate in a predictive method.
+
+```{r, noStructureView, echo = F, cache = T}
+scn <- "No structure"
+row_ind <- which(sims_used$Scenario == scn)
+N <- sims_used[["$N$"]][row_ind]
+P_s <- sims_used[["$P_s$"]][row_ind]
+P_n <- sims_used[["$P_n$"]][row_ind]
+K <- sims_used[["$K$"]][row_ind]
+dm <- sims_used[["$\\Delta_{\\mu}$"]][row_ind]
+s2 <- sims_used[["$\\sigma^2$"]][row_ind]
+pi <- sims_used[["$\\pi$"]][row_ind]
+
+if (pi == "vec(1/K)") {
+  pi <- rep(1 / K, K)
+} else {
+  pi <- "(0.5, 0.25, 0.125, 0.0675, 0.0675)" %>%
+    stringr::str_remove_all("[() ]") %>%
+    strsplit(",") %>%
+    unlist() %>%
+    as.numeric()
+}
+
+# Generate dataset
+noStructure_gen <- generateSimulationDataset(K, N, P_s,
+  delta_mu = dm,
+  p_n = P_n,
+  cluster_sd = s2,
+  pi = pi
+)
+
+
+annotatedHeatmap(scale(noStructure_gen$data), noStructure_gen$cluster_IDs,
+  main = "No structure (seed 1)",
+  show_rownames = F,
+  show_colnames = F
+)
+
+noStructure_gen$data %>%
+  scale() %>%
+  data.frame() %>%
+  dplyr::mutate(Cluster = as.factor(noStructure_gen$cluster_IDs)) %>%
+  ggplot(aes(x = Noise_1, y = Noise_2, colour = Cluster)) +
+  geom_point() +
+  scale_colour_viridis_d() +
+  labs(
+    title = "Example: No structure case (seed 1)",
+    x = "Gene 1",
+    y = "Gene 2"
+  )
+```
+
+#### Base case
+
+This is the _base case_ which most of the other scenarios are some variation of. This is intended to be a benchmark against which performance may be judged. 
+
+```{r, baseCase, echo = F, cache = T}
+scn <- "Base Case"
+row_ind <- which(sims_used$Scenario == scn)[1]
+N <- sims_used[["$N$"]][row_ind]
+P_s <- sims_used[["$P_s$"]][row_ind]
+P_n <- sims_used[["$P_n$"]][row_ind]
+K <- sims_used[["$K$"]][row_ind]
+dm <- sims_used[["$\\Delta_{\\mu}$"]][row_ind]
+s2 <- sims_used[["$\\sigma^2$"]][row_ind]
+pi <- sims_used[["$\\pi$"]][row_ind]
+
+if (pi == "vec(1/K)") {
+  pi <- rep(1 / K, K)
+} else {
+  pi <- "(0.5, 0.25, 0.125, 0.0675, 0.0675)" %>%
+    stringr::str_remove_all("[() ]") %>%
+    strsplit(",") %>%
+    unlist() %>%
+    as.numeric()
+}
+
+
+# Generate dataset
+baseCase_gen <- generateSimulationDataset(K, N, P_s,
+  delta_mu = dm,
+  p_n = P_n,
+  cluster_sd = s2,
+  pi = pi
+)
+
+
+annotatedHeatmap(scale(baseCase_gen$data), baseCase_gen$cluster_IDs,
+  main = paste0(scn, " (seed 1)"),
+  show_rownames = F,
+  show_colnames = F
+)
+
+
+# Set labels for facet wrapping
+cluster_labels <- c(paste0("Cluster ", 1:K))
+names(cluster_labels) <- 1:K
+ 
+
+pc1 <- prcomp(baseCase_gen$data)$x
+pcaSeriesPlot(x = pc1, labels = baseCase_gen$cluster_IDs, n_comp = min(P_s, 6)) +
+  facet_wrap(~Cluster, labeller = labeller(Cluster = cluster_labels)) +
+  labs(
+    title = paste0("PCA series for ", scn, " scenario") #,
+    # subtitle = "Notice how the clusters separate across the components."
+  )
+
+# noStructure_gen$data %>%
+#   scale() %>%
+#   data.frame() %>%
+#   dplyr::mutate(Cluster = as.factor(noStructure_gen$cluster_IDs)) %>%
+#   ggplot(aes(x = Gene_1, y = Gene_1, colour = Cluster)) +
+#   geom_point() +
+#   scale_colour_viridis_d() +
+#   labs(
+#     title = "Example: No structure case (seed 1)",
+#     x = "Gene 1",
+#     y = "Gene 2"
+#   )
+```
+
+#### Large standard deviation
+
+This is to test how distinct the clusters must be for the inference to perform well. 
+
+```{r, largeStandardDeviation, echo = F, cache = T}
+scn <- "Large standard deviation"
+row_ind <- which(sims_used$Scenario == scn)[1]
+N <- sims_used[["$N$"]][row_ind]
+P_s <- sims_used[["$P_s$"]][row_ind]
+P_n <- sims_used[["$P_n$"]][row_ind]
+K <- sims_used[["$K$"]][row_ind]
+dm <- sims_used[["$\\Delta_{\\mu}$"]][row_ind]
+s2 <- sims_used[["$\\sigma^2$"]][row_ind]
+pi <- sims_used[["$\\pi$"]][row_ind]
+
+if (pi == "vec(1/K)") {
+  pi <- rep(1 / K, K)
+} else {
+  pi <- "(0.5, 0.25, 0.125, 0.0675, 0.0675)" %>%
+    stringr::str_remove_all("[() ]") %>%
+    strsplit(",") %>%
+    unlist() %>%
+    as.numeric()
+}
+
+
+# Generate dataset
+largeStadDev_gen <- generateSimulationDataset(K, N, P_s,
+  delta_mu = dm,
+  p_n = P_n,
+  cluster_sd = s2,
+  pi = pi
+)
+
+
+annotatedHeatmap(scale(largeStadDev_gen$data), largeStadDev_gen$cluster_IDs,
+  main = "Large N, small P (seed 1)",
+  show_rownames = F,
+  show_colnames = F
+)
+
+
+# Set labels for facet wrapping
+cluster_labels <- c(paste0("Cluster ", 1:K))
+names(cluster_labels) <- 1:K
+ 
+
+pc1 <- prcomp(largeStadDev_gen$data)$x
+pcaSeriesPlot(x = pc1, labels = largeStadDev_gen$cluster_IDs, n_comp = min(P_s, 6)) +
+  facet_wrap(~Cluster, labeller = labeller(Cluster = cluster_labels)) +
+  labs(
+    title = "PCA series for large N, small P scenario",
+    subtitle = "Notice how the clusters separate across the components."
+  )
+
+# noStructure_gen$data %>%
+#   scale() %>%
+#   data.frame() %>%
+#   dplyr::mutate(Cluster = as.factor(noStructure_gen$cluster_IDs)) %>%
+#   ggplot(aes(x = Gene_1, y = Gene_1, colour = Cluster)) +
+#   geom_point() +
+#   scale_colour_viridis_d() +
+#   labs(
+#     title = "Example: No structure case (seed 1)",
+#     x = "Gene 1",
+#     y = "Gene 2"
+#   )
+```
+
+
+
+
+#### Large $N$, small $P$
+
+This is to test the _large $N$, small $P$_ scenario.
+
+```{r, largeNsmallP, echo = F, cache = T}
+scn <- "Large N, small P"
+row_ind <- which(sims_used$Scenario == scn)[1]
+N <- sims_used[["$N$"]][row_ind]
+P_s <- sims_used[["$P_s$"]][row_ind]
+P_n <- sims_used[["$P_n$"]][row_ind]
+K <- sims_used[["$K$"]][row_ind]
+dm <- sims_used[["$\\Delta_{\\mu}$"]][row_ind]
+s2 <- sims_used[["$\\sigma^2$"]][row_ind]
+pi <- sims_used[["$\\pi$"]][row_ind]
+
+if (pi == "vec(1/K)") {
+  pi <- rep(1 / K, K)
+} else {
+  pi <- "(0.5, 0.25, 0.125, 0.0675, 0.0675)" %>%
+    stringr::str_remove_all("[() ]") %>%
+    strsplit(",") %>%
+    unlist() %>%
+    as.numeric()
+}
+
+
+# Generate dataset
+largeNsmallP_gen <- generateSimulationDataset(K, N, P_s,
+  delta_mu = dm,
+  p_n = P_n,
+  cluster_sd = s2,
+  pi = pi
+)
+
+
+annotatedHeatmap(scale(largeNsmallP_gen$data), largeNsmallP_gen$cluster_IDs,
+  main = "Large N, small P (seed 1)",
+  show_rownames = F,
+  show_colnames = F
+)
+
+
+# Set labels for facet wrapping
+cluster_labels <- c(paste0("Cluster ", 1:K))
+names(cluster_labels) <- 1:K
+ 
+
+pc1 <- prcomp(largeNsmallP_gen$data)$x
+pcaSeriesPlot(x = pc1, labels = largeNsmallP_gen$cluster_IDs, n_comp = min(P_s, 6)) +
+  facet_wrap(~Cluster, labeller = labeller(Cluster = cluster_labels)) +
+  labs(
+    title = "PCA series for large N, small P scenario",
+    subtitle = "Notice how the clusters separate across the components."
+  )
+
+# noStructure_gen$data %>%
+#   scale() %>%
+#   data.frame() %>%
+#   dplyr::mutate(Cluster = as.factor(noStructure_gen$cluster_IDs)) %>%
+#   ggplot(aes(x = Gene_1, y = Gene_1, colour = Cluster)) +
+#   geom_point() +
+#   scale_colour_viridis_d() +
+#   labs(
+#     title = "Example: No structure case (seed 1)",
+#     x = "Gene 1",
+#     y = "Gene 2"
+#   )
+```
+
+
+#### Small $N$, large $P$
+
+This is to test the _small $N$, large $P$_ scenario so common in genetics.
+
+```{r, smallNlargeP, echo = F, cache = T}
+scn <- "Small N, large P"
+row_ind <- which(sims_used$Scenario == scn)[2]
+N <- sims_used[["$N$"]][row_ind]
+P_s <- sims_used[["$P_s$"]][row_ind]
+P_n <- sims_used[["$P_n$"]][row_ind]
+K <- sims_used[["$K$"]][row_ind]
+dm <- sims_used[["$\\Delta_{\\mu}$"]][row_ind]
+s2 <- sims_used[["$\\sigma^2$"]][row_ind]
+pi <- sims_used[["$\\pi$"]][row_ind]
+
+if (pi == "vec(1/K)") {
+  pi <- rep(1 / K, K)
+} else {
+  pi <- "(0.5, 0.25, 0.125, 0.0675, 0.0675)" %>%
+    stringr::str_remove_all("[() ]") %>%
+    strsplit(",") %>%
+    unlist() %>%
+    as.numeric()
+}
+
+
+# Generate dataset
+smallNlargeP_gen <- generateSimulationDataset(K, N, P_s,
+  delta_mu = dm,
+  p_n = P_n,
+  cluster_sd = s2,
+  pi = pi
+)
+
+
+annotatedHeatmap(scale(smallNlargeP_gen$data), smallNlargeP_gen$cluster_IDs,
+  main = "Small N, large P (seed 1)",
+  show_rownames = F,
+  show_colnames = F
+)
+
+
+# Set labels for facet wrapping
+cluster_labels <- c(paste0("Cluster ", 1:K))
+names(cluster_labels) <- 1:K
+ 
+
+pc1 <- prcomp(smallNlargeP_gen$data)$x
+pcaSeriesPlot(x = pc1, labels = smallNlargeP_gen$cluster_IDs, n_comp = min(P_s, 6)) +
+  facet_wrap(~Cluster, labeller = labeller(Cluster = cluster_labels)) +
+  labs(
+    title = "PCA series for small N, large P scenario",
+    subtitle = "The clusters appear to be separable, despite the wide range of loadings within clusters."
+  )
+
+# noStructure_gen$data %>%
+#   scale() %>%
+#   data.frame() %>%
+#   dplyr::mutate(Cluster = as.factor(noStructure_gen$cluster_IDs)) %>%
+#   ggplot(aes(x = Gene_1, y = Gene_1, colour = Cluster)) +
+#   geom_point() +
+#   scale_colour_viridis_d() +
+#   labs(
+#     title = "Example: No structure case (seed 1)",
+#     x = "Gene 1",
+#     y = "Gene 2"
+#   )
+```
+
+#### Irrelevant features
+
+This is to test how robust to noise the methods are.
+
+```{r, irrelevantFeatures, echo = F, cache = T}
+scn <- "Irrelevant features"
+row_ind <- which(sims_used$Scenario == scn)[3]
+N <- sims_used[["$N$"]][row_ind]
+P_s <- sims_used[["$P_s$"]][row_ind]
+P_n <- sims_used[["$P_n$"]][row_ind]
+K <- sims_used[["$K$"]][row_ind]
+dm <- sims_used[["$\\Delta_{\\mu}$"]][row_ind]
+s2 <- sims_used[["$\\sigma^2$"]][row_ind]
+pi <- sims_used[["$\\pi$"]][row_ind]
+
+if (pi == "vec(1/K)") {
+  pi <- rep(1 / K, K)
+} else {
+  pi <- "(0.5, 0.25, 0.125, 0.0675, 0.0675)" %>%
+    stringr::str_remove_all("[() ]") %>%
+    strsplit(",") %>%
+    unlist() %>%
+    as.numeric()
+}
+
+
+# Generate dataset
+irrelevantFeatures_gen <- generateSimulationDataset(K, N, P_s,
+  delta_mu = dm,
+  p_n = P_n,
+  cluster_sd = s2,
+  pi = pi
+)
+
+
+annotatedHeatmap(scale(irrelevantFeatures_gen$data), irrelevantFeatures_gen$cluster_IDs,
+  main = paste0("Irrelevant features (seed 1, ", P_n, " irrelevant features)"),
+  show_rownames = F,
+  show_colnames = F
+)
+
+
+# Set labels for facet wrapping
+cluster_labels <- c(paste0("Cluster ", 1:K))
+names(cluster_labels) <- 1:K
+ 
+
+pc1 <- prcomp(irrelevantFeatures_gen$data)$x
+pcaSeriesPlot(x = pc1, labels = irrelevantFeatures_gen$cluster_IDs, n_comp = min(P_s, 6)) +
+  facet_wrap(~Cluster, labeller = labeller(Cluster = cluster_labels)) +
+  labs(
+    title = "PCA series for irrelevant features scenario",
+    subtitle = "In this example one might expect clusters 2 and 3 to merge, with cluster 5 also\nin danger of being subsumed."
+  )
+
+# noStructure_gen$data %>%
+#   scale() %>%
+#   data.frame() %>%
+#   dplyr::mutate(Cluster = as.factor(noStructure_gen$cluster_IDs)) %>%
+#   ggplot(aes(x = Gene_1, y = Gene_1, colour = Cluster)) +
+#   geom_point() +
+#   scale_colour_viridis_d() +
+#   labs(
+#     title = "Example: No structure case (seed 1)",
+#     x = "Gene 1",
+#     y = "Gene 2"
+#   )
+```
+
+#### Varying proportions
+
+This simulation is designed ot test how sensitive the methods are to relatively small clusters when large clusters are present.
+
+```{r, varyingProportionsView, echo = F, cache = T}
+scn <- "Varying proportions"
+row_ind <- which(sims_used$Scenario == scn)[1]
+N <- sims_used[["$N$"]][row_ind]
+P_s <- sims_used[["$P_s$"]][row_ind]
+P_n <- sims_used[["$P_n$"]][row_ind]
+K <- sims_used[["$K$"]][row_ind]
+dm <- sims_used[["$\\Delta_{\\mu}$"]][row_ind]
+s2 <- sims_used[["$\\sigma^2$"]][row_ind]
+pi <- sims_used[["$\\pi$"]][row_ind]
+
+if (pi == "vec(1/K)") {
+  pi <- rep(1 / K, K)
+} else {
+  pi <- "(0.5, 0.25, 0.125, 0.0675, 0.0675)" %>%
+    stringr::str_remove_all("[() ]") %>%
+    strsplit(",") %>%
+    unlist() %>%
+    as.numeric()
+}
+
+
+# Generate dataset
+varyingProportions_gen <- generateSimulationDataset(K, N, P_s,
+  delta_mu = dm,
+  p_n = P_n,
+  cluster_sd = s2,
+  pi = pi
+)
+
+
+annotatedHeatmap(scale(varyingProportions_gen$data), varyingProportions_gen$cluster_IDs,
+  main = paste0(scn, " (seed 1)"),
+  show_rownames = F,
+  show_colnames = F
+)
+
+
+# Set labels for facet wrapping
+cluster_labels <- c(paste0("Cluster ", 1:K))
+names(cluster_labels) <- 1:K
+ 
+
+pc1 <- prcomp(varyingProportions_gen$data)$x
+pcaSeriesPlot(x = pc1, labels = varyingProportions_gen$cluster_IDs, n_comp = min(P_s, 6)) +
+  facet_wrap(~Cluster, labeller = labeller(Cluster = cluster_labels)) +
+  labs(
+    title = paste0("PCA series for ", scn, " scenario") #,
+    # subtitle = "Notice how the clusters separate across the components."
+  )
+
+# noStructure_gen$data %>%
+#   scale() %>%
+#   data.frame() %>%
+#   dplyr::mutate(Cluster = as.factor(noStructure_gen$cluster_IDs)) %>%
+#   ggplot(aes(x = Gene_1, y = Gene_1, colour = Cluster)) +
+#   geom_point() +
+#   scale_colour_viridis_d() +
+#   labs(
+#     title = "Example: No structure case (seed 1)",
+#     x = "Gene 1",
+#     y = "Gene 2"
+#   )
+```
+
+
 ## Model evaluation
 
 In this study we will be considering both within-simulation and across-simulation performance for the $N_{sim}$ simulations run under each scenario.
 
 The aim of each model is uncovering the true clustering of the data, $C'$. The performance of each model may be judged by compaing the predicted clustering, $C^*$, to $C'$ using the adjusted rand index (**${ARI(C^*, C')}$**).
 
-Robustness may be judged by the uncertainty on this estimate. I compare the Frobenius product between the coclustering matrix of the true clustering with the posterior similarity matrix (from the Bayesian inferene) and the consensus matrix (from the Consensus inference). For the Bayesian models I also will record the Gelman-Rubin shrinkage parameter ($\hat{R}$) and the Geweke statistic as measures of model convergence.
+Robustness may be judged by the uncertainty on this estimate. I compare the Frobenius norm of of the difference between the coclustering matrix of the true clustering with the posterior similarity matrix (from the Bayesian inferene) and the consensus matrix (from the Consensus inference). For the Bayesian models I also will record the Gelman-Rubin shrinkage parameter ($\hat{R}$) and the Geweke statistic as measures of model convergence.
 
 Each model will be timed in milliseconds.
 
@@ -153,19 +683,19 @@ This can be envisioned as a $K \times K'$ contingency table of the count of over
 table_data <- data.frame(
   "$Y_1'$" = c("$n_{11}$", "$n_{21}$", "$\\vdots$", "$n_{K1}$", "$n_{\\cdot 1}$"),
   "$Y_2'$" = c("$n_{12}$", "$n_{22}$", "$\\vdots$", "$n_{K2}$", "$n_{\\cdot 2}$"),
-  "$\\cdots$" = c("$\\cdots$", "$\\cdots$", "$\\ddots$", "$\\cdots$",  "$\\cdots$"),
-  "$Y_{K'}'$"=c("$n_{1K'}$", "$n_{2K'}$", "$\\vdots$", "$n_{KK'}$", "$n_{\\cdot K'}$"),
-  "Sums"=c("$n_{1 \\cdot}$", "$n_{2 \\cdot}$", "$\\vdots$", "$n_{K \\cdot}$", "$n_{\\cdot \\cdot}$")
+  "$\\cdots$" = c("$\\cdots$", "$\\cdots$", "$\\ddots$", "$\\cdots$", "$\\cdots$"),
+  "$Y_{K'}'$" = c("$n_{1K'}$", "$n_{2K'}$", "$\\vdots$", "$n_{KK'}$", "$n_{\\cdot K'}$"),
+  "Sums" = c("$n_{1 \\cdot}$", "$n_{2 \\cdot}$", "$\\vdots$", "$n_{K \\cdot}$", "$n_{\\cdot \\cdot}$")
 )
 
 row.names(table_data) <- c("$Y_1$", "$Y_2$", "$\\vdots$", "$Y_K$", "**Sums**")
 colnames(table_data) <- c("$Y_1'$", "$Y_2'$", "$\\cdots$", "$Y_{K'}'$", "Sums")
 
 knitr::kable(
-  table_data, 
+  table_data,
   caption = "Contingency table to calculate a measure of similarity between clusterings $Y$ and $Y'$ as used by @rand1971objective.",
   booktabs = TRUE,
-  escape=FALSE
+  escape = FALSE
 )
 ```
 

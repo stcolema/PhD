@@ -129,9 +129,9 @@ This inference is very quick but suffers from several problems:
 2. Sensitive to initialisation, prone to finding local maxima due to the nature of the EM algorithm - normally these models are run from multiple diffferent initialisations. In this case observing the same log‐likelihood values from multiple starting points increases confidence that the solution is a global maximum. Using a some heuristic clustering method to initialise the method [such as in @mclust2016] also offers stability; and
 3. Difficulty in converging - singularities can occur in the likelihood function; these are points where the likelihood becomes infinite, resulting in degenerate distributions. Singularities occur when the number of parameters to be estimated is large in relation to the sample size [@stahl2012model], models with unrestrained covariances and large numbers of components are prone to this problem. @fraley2007bayesian suggest using Bayesian inference as a means of overcoming this issue, reccomending use of a _maximum a posteriori_ (*MAP*) estimate instead of an ML estimate.
 
-#### Expectation maximisation
+<!-- #### Expectation maximisation -->
 
-Perform inference
+<!-- Perform inference -->
 
 ### Bayesian inference
 
@@ -194,7 +194,7 @@ Now applying definition \@ref(def:totalProb):
 <!-- &=& \frac{p(B | A, C) p (A | C)}{\int_A P(B|A', C) dA'} -->
 <!-- \end{eqnarray} -->
 
-Bayesian inference is focuses upon the concept of updating one's beliefs via equation \@ref(eq:bayesTheorem). If one has a prior belief about the behaviour of some 
+One of the strengths of Bayesian inference is that it enables updating one's beliefs via equation \@ref(eq:bayesTheorem). If one has a prior belief about the behaviour of some 
 parameter $\theta$, captured in the distribution $p(\theta)$, and then
 observe some data $X$, then one describes the change in one's belief about $\theta$ given the observed variable $X$ by combining the distributions associated with the two sources of information (one currently observed, the other currently unobserved):
 
@@ -210,9 +210,113 @@ In this case the following terminology is used:
 * $\int_{\Theta} p(X | \theta') d \theta' = p(X)$ is the _marginal likelihood_ of $X$ as it is the likelihood with $\theta$ marginalised out; and
 * $p(\theta | X)$ is the _posterior distribution_ of $\theta$ (as it denotes the belief about $\theta$ one has _a posteriori_, that is after observing empirical fact).
 
-Normally the posterior distribution is too difficult to solve analytically and one must use either _sampling based_ or _variational inference_ methods to solve this.
+Normally the posterior distribution is too difficult to solve analytically and one must approximate it through the use of either stochastic (_sampling based_) or deterministic (_variational inference_) methods.
 
-A common class of sampling based methods are the Markov-Chain Monte Carlo methods. These methods draw samples from Markov Chains constructed such that the stationary distribution is the posterior distribution. Samples are drawn to use Monte Carlo integration to describe the posterior distribution.
+A common class of sampling based methods are the Markov-Chain Monte Carlo (**MCMC**) methods. These methods draw samples from Markov Chains constructed such that the stationary distribution is the posterior distribution. Samples are drawn to use Monte Carlo integration to describe the posterior distribution. These methods are very powerful, with asymptotic guarantees that one will describe the posterior distribution. 
+
+In comparison to Frequentist inference, this approach has some strong advantages. 
+
+1. One may avoid some of the issues in convergence. As one often is only interested in a subset of variables (for example, the allocation varaibles, $c_i$), one may integrate over the remaining nuisance parameters. This means that one may avoid directly calculating awkward variables (such as covariances matrices) that are prone to causing issues such as singularities in the likelihood function (an example of such a solution is the _collapsed Gibbs sampler_).
+2. The aymptotic guarantees of MCMC methods mean that, in comparison to EM, if one runs the algorithm for long enough, one is guaranteed to describe the full posterior distribution and not only a local maximum.
+3. As mentioned previously, one may incorporate prior beliefs into the inference and thus may apply Bayesian methods even when the samples size is small.
+4. Using the Dirichlet Process (see section \@ref(dirichletProcess)) one may infer the number of parameters present, reducing the level of subjectivity in cluster analysis.
+
+However, there are problems. The asymptotic guarantees associated with MCMC methods are reassuring, but require long run times to approach this behaviour. Sometimes any level of realistic computing time does not seem sufficient; individual chains can become trapped in different modes and fail to converge in finite time. This is particularly true in the context of _integrative clustering_ as the large number of parameters required means that the manifold defined by the likelihood function is prone to having very extreme modes (i.e. the probability density in the immediete vicinity of the mode is very low compared to within the mode); this excacerbates the behaviour as the sampler is extremeley unlikely to propose (or accept) values outside of the mode.
+
+In summary, Bayesian inference is very powerful, over coming many of the issues that Frequentist methods have, but retain some weaknesses. Primarily, MCMC methods can be slow and may have problems with multiple modes.
+
+@welling2011bayesian suggest MCMC method that can use stochastic optimization to describe posterior and also be fast.
+@ahmed2012scalable suggest MCMC method that uses parallel environment
+
+#### Dirichlet process {#dirichletProcess}
+
+I stated in section \@ref(clusterAnalysis) that the problem of choosing $K$ is a 
+non-trivial issue. All of the previously stated methods demand that the user 
+choose $K$; different criteria might be offered to help choose $K$, but it 
+remains a subjective choice (as the choie of criteria is itself subjective).
+A method that does not suffer from this problems is the Dirichlet process 
+[**DP**, @ferguson1973bayesian], which is a form of _non-parametric_ Bayesian
+model. A non-parametric model, despite the wording, contains inifinite 
+parameters. These methods are computationally expensive due to the MCMC 
+algorithms for Bayesian inference in DP mixture models [see e.g. @neal2000markov; @jain2004split], and often infeasible for large datasets [@crook2019fast].
+A computationally tractable approximation is the  _Dirichlet-Multinomial Allocation_ (**DMA**) mixture model [@green2001modelling; see @savage2013identifying for an 
+example].
+
+```{definition, DMAmodel, name = "Dirichlet-multinomial allocation mixture model"}
+
+Begin with the definition of a finite mixture model for a dataset 
+$X=(x_1, \ldots, x_N)$ and $P$ features as described in definition 
+\@ref(def:mixtureModels). For a given item $x_i$ we have allocation probability:
+
+\[
+p(x_i| c_i = k) = \pi_k f(x_i \theta_k),
+\]
+
+and marginal likelihood:
+
+\[
+p(x_i) = \sum_{k=1}^K\pi_k f(x_1 | \theta_k)
+\]
+
+In the DMA mixture model, the mixture weights, $\pi=(\pi_1, \ldots, \pi_K)$, 
+are given a Dirichlet prior, often with a symmetric concentration parameter, 
+$\alpha$. The hierarchical model is:
+
+\[
+\begin{aligned}
+\pi &\sim \textrm{Dirichlet}\left(\frac{\alpha_0}{K},\ldots,\frac{\alpha_0}{K}\right), \\
+c_i &\sim \textrm{Categorical}(\pi), \\
+\theta_k &\sim h(\cdot), \\
+x_i | c_i = k &\sim f(x_i | \theta_k).
+\end{aligned}
+\]
+
+This is also represented in figure \@ref(fig:hierarchicalModelDMA). 
+Here $h(\cdot)$ is some distribution, often with additional hyperparameters.
+```
+
+```{r, hierarchicalModelDMA, echo=FALSE, engine="tikz", out.width="90%", fig.cap="The hierarchical model for the DMA mixture model.", fig.align="center", cache=T}
+ \usetikzlibrary{arrows}
+\usetikzlibrary{fit,positioning}
+\centering
+\begin{tikzpicture}[scale=.7, auto,>=latex']
+\tikzstyle{main}=[circle, minimum size = 10mm, thick, draw =black!80, node distance = 22mm]
+\tikzstyle{connect}=[-latex, thick]
+\tikzstyle{box}=[rectangle, draw=black!100]
+ \node[main] (pi) {$\pi_k$ };
+ \node[main] (a) [left=of pi] {$\alpha_0$ };
+ \node[main] (z_i) [below right=of pi] {$z_i$};
+ \node[main, fill = black!10] (x_i) [right=of z_i] {$x_i$};
+ \node[main] (theta) [above left=of x_i] {$\theta_k$};
+ \path (pi) edge [connect] (z_i)
+		(z_i) edge [connect] (x_i)
+		(theta) edge [connect] (x_i)
+		(a) edge [connect] (pi);
+ \node[rectangle, inner sep=-0.5mm, fit= (z_i) (x_i),label=above right:$N$, xshift=14mm] {};
+ \node[rectangle, inner sep=4.8mm,draw=black!100, fill=blue! 25, fill opacity=0.2, fit= (z_i) (x_i)] {};
+ \node[rectangle, inner sep=-0.8mm, fit= (theta) (pi),label=above right:$K$, xshift=14mm] {};
+ \node[rectangle, inner sep=4.8mm, draw=black! 100, fit= (theta)(pi)] {};
+ \node[main] (pi) {$\pi_k$ };
+ \node[main, fill = white!1] (z_i) [below right=of pi] {$z_i$};
+ \node[main, fill = black!10] (x_i) [right=of z_i] {$x_i$};
+ \node[main] (theta) [above left=of x_i] {$\theta_k$};
+ \path (pi) edge [connect] (z_i)
+		(z_i) edge [connect] (x_i)
+		(theta) edge [connect] (x_i);
+\end{tikzpicture}
+
+```
+
+$K$ is learnt from the data as components are allowed to become empty. If a 
+component does become empty than it retain a a non-zero probability of being
+allocated a member; thus by initialising with a large value of $K$ 
+[@kirk2012bayesian recommend setting $K=\frac{N}{2}$] and allowing the model
+to itself empty and fill components, the number of components actually used is
+learnt. If one does let $K \to \infty$ then this model becomes a Dirichlet
+process; to be approximating this well, one must have chosen a $K$ sufficiently
+large that there are empty clusters within the model (although this is not 
+sufficient cirterion to be sure that $K$ was initialised with a large enough 
+value). 
 
 #### Monte Carlo integration
 The original Monte Carlo method was developed as a means to solving integrals by use of random number generation [@metropolis1949monte].
@@ -610,99 +714,45 @@ Thus our marginal likelihood is the ratio of the posterior normalising constants
 	&=& \frac{\Gamma(\alpha_n)}{\Gamma(\alpha_0)}\frac{\beta_0^{\alpha_0}}{\beta_n^{\alpha_n}} \sqrt{\frac{\kappa_0}{\kappa_n}}(2\pi)^{-\frac{n}{2}}
 \end{eqnarray}
 
-#### Dirichlet process
-
-I stated in section \@ref(clusterAnalysis) that the problem of choosing $K$ is a 
-non-trivial issue. All of the previously stated methods demand that the user 
-choose $K$; different criteria might be offered to help choose $K$, but it 
-remains a subjective choice (as the choie of criteria is itself subjective).
-A method that does not suffer from this problems is the Dirichlet process 
-[**DP**, @ferguson1973bayesian], which is a form of _non-parametric_ Bayesian
-model. A non-parametric model, despite the wording, contains inifinite 
-parameters. These methods are computationally expensive due to the MCMC 
-algorithms for Bayesian inference in DP mixture models [see e.g. @neal2000markov; @jain2004split], and often infeasible for large datasets [@crook2019fast].
-A computationally tractable approximation is the  _Dirichlet-Multinomial Allocation_ (**DMA**) mixture model [@green2001modelling; see @savage2013identifying for an 
-example].
-
-```{definition, DMAmodel, name = "Dirichlet-multinomial allocation mixture model"}
-
-Begin with the definition of a finite mixture model for a dataset 
-$X=(x_1, \ldots, x_N)$ and $P$ features as described in definition 
-\@ref(def:mixtureModels). For a given item $x_i$ we have allocation probability:
-
-\[
-p(x_i| c_i = k) = \pi_k f(x_i \theta_k),
-\]
-
-and marginal likelihood:
-
-\[
-p(x_i) = \sum_{k=1}^K\pi_k f(x_1 | \theta_k)
-\]
-
-In the DMA mixture model, the mixture weights, $\pi=(\pi_1, \ldots, \pi_K)$, 
-are given a Dirichlet prior, often with a symmetric concentration parameter, 
-$\alpha$. The hierarchical model is:
-
-\[
-\begin{aligned}
-\pi &\sim \textrm{Dirichlet}\left(\frac{\alpha_0}{K},\ldots,\frac{\alpha_0}{K}\right), \\
-c_i &\sim \textrm{Categorical}(\pi), \\
-\theta_k &\sim h(\cdot), \\
-x_i | c_i = k &\sim f(x_i | \theta_k).
-\end{aligned}
-\]
-
-This is also represented in figure \@ref(fig:hierarchicalModelDMA). 
-Here $h(\cdot)$ is some distribution, often with additional hyperparameters.
-```
-
-```{r, hierarchicalModelDMA, echo=FALSE, engine="tikz", out.width="90%", fig.cap="The hierarchical model for the DMA mixture model.", fig.align="center", cache=T}
- \usetikzlibrary{arrows}
-\usetikzlibrary{fit,positioning}
-\centering
-\begin{tikzpicture}[scale=.7, auto,>=latex']
-\tikzstyle{main}=[circle, minimum size = 10mm, thick, draw =black!80, node distance = 22mm]
-\tikzstyle{connect}=[-latex, thick]
-\tikzstyle{box}=[rectangle, draw=black!100]
- \node[main] (pi) {$\pi_k$ };
- \node[main] (a) [left=of pi] {$\alpha_0$ };
- \node[main] (z_i) [below right=of pi] {$z_i$};
- \node[main, fill = black!10] (x_i) [right=of z_i] {$x_i$};
- \node[main] (theta) [above left=of x_i] {$\theta_k$};
- \path (pi) edge [connect] (z_i)
-		(z_i) edge [connect] (x_i)
-		(theta) edge [connect] (x_i)
-		(a) edge [connect] (pi);
- \node[rectangle, inner sep=-0.5mm, fit= (z_i) (x_i),label=above right:$N$, xshift=14mm] {};
- \node[rectangle, inner sep=4.8mm,draw=black!100, fill=blue! 25, fill opacity=0.2, fit= (z_i) (x_i)] {};
- \node[rectangle, inner sep=-0.8mm, fit= (theta) (pi),label=above right:$K$, xshift=14mm] {};
- \node[rectangle, inner sep=4.8mm, draw=black! 100, fit= (theta)(pi)] {};
- \node[main] (pi) {$\pi_k$ };
- \node[main, fill = white!1] (z_i) [below right=of pi] {$z_i$};
- \node[main, fill = black!10] (x_i) [right=of z_i] {$x_i$};
- \node[main] (theta) [above left=of x_i] {$\theta_k$};
- \path (pi) edge [connect] (z_i)
-		(z_i) edge [connect] (x_i)
-		(theta) edge [connect] (x_i);
-\end{tikzpicture}
-
-```
-
-$K$ is learnt from the data as components are allowed to become empty. If a 
-component does become empty than it retain a a non-zero probability of being
-allocated a member; thus by initialising with a large value of $K$ 
-[@kirk2012bayesian recommend setting $K=\frac{N}{2}$] and allowing the model
-to itself empty and fill components, the number of components actually used is
-learnt. If one does let $K \to \infty$ then this model becomes a Dirichlet
-process; to be approximating this well, one must have chosen a $K$ sufficiently
-large that there are empty clusters within the model (although this is not 
-sufficient cirterion to be sure that $K$ was initialised with a large enough 
-value). 
-
-
-
 #### Variational inference
+
+Deterministic
+
+Origin in calculus of variaitons and work of Euler and Lagrange.
+
+From @jordan1999introduction
+
+Comparison to Newton-Raphson method - use of derivatives to find approximate solutions.
+
+>"The idea behind VI is to first posit a family of densities and then to find a member of that family which is close to the target density. Closeness is measured by Kullback–Leibler divergence." 
+`r tufte::quote_footer('@blei2017variational')`
+
+>"We emphasize that MCMC and variational inference are dif-ferent approaches to solving the same problem. MCMC algorithms sample a Markov chain; variational algorithms solve an optimization problem. MCMC algorithms approximate the posterior with samples from the chain; variational algorithms approximate the posterior with the result of the optimization."
+`r tufte::quote_footer('@blei2017variational')`
+
+Decomposes log marginal likelihood into the lower bound ($\mathcal{L}(q)$) and the _Kullbach-Leibler divergence_ ($KL(q||p)$.)
+
+\begin{align}
+\ln p(X) = \mathcal{L}(q) + KL(q||p)
+\end{align}
+
+where
+
+\begin{align}
+\mathcal{L}(q) &= \int q(\theta) \ln{\frac{p(X, \theta)}{q(\theta)}}d\theta \\
+KL(q||p) &= - \int q(\theta) \ln{\frac{p(\theta | X)}{q(\theta)}}d\theta
+\end{align}
+
+Maximising $\mathcal{L}(q)$ is equivalent to minimising $KL(q||p)$; if choice of 
+$q(\theta)$ is unrestricted then $\mathcal{L}(q)$ is maximised when $KL(q||p)=0$ 
+(i.e. $q(\theta)$ is the posterior distribution). However, in practice one restricts
+the possible distributions for $q(\theta)$.
+
+Tradeoff: want options to be restricted enough to be tractable, sufficiently broad and flexible as to offer a good approximation of the posterior distribution.
+
+Restrict possible distribution to use a parametric distribution $q(\theta | \omega)$ governed by the parameters $\omega$. Then $\mathcal{L}(q)$ is a function of $\omega$ and one may treat this as an optimisation problem.
+
+
 
 @blei2006variational and @blei2017variational
 
@@ -747,25 +797,27 @@ This method is implemented in ``R`` in the ``ConsensusClusterPlus`` package [@wi
 
 ## Integrative methods
 
+Integrative methods attempt to share information across multiple datasets. Normally each of these datasets is assumed to share either items or features (for example, common gene IDs in each datasets for a traditional multiple 'omics analysis). Some methods have been proposed that allow sharing of both, for example combinations of patients with multiple 'omics datasets associated with each set of patients [@park2020integrative; @lock2020bidimensional].
 
-required to explain complex disease [@hasin2017multi; @integrative2014integrative]
+Considering each dataset as a different view onto the same items can offer deeper insight into undeerlying structure than considering each dataset individually. Such an approach is required to explain complex disease [@hasin2017multi; @integrative2014integrative], for example Parkinson's disease [@markello2020integrated] and cancer [@wang2016integrative; @rappoport2018multi].
 
-Parkinson's disease [@markello2020integrated]
+There exists a large range of approaches to integrative methods. Some of the underlying methods include:
 
-Cancer has been particularly successful [@wang2016integrative; @rappoport2018multi]
+1. Autoencoders [@seal2020estimating; @lemsara2020pathme];
+2. Networks [@rappoport2020monet, MONET allows outliers, missing data. Subsets of patients are clustered and may use a subset of 'omics to define this cluster]; and
+3. Trees [``mergeTrees`` @R-mergeTrees implements the algorithm described by @hulot2020fast; this is a quick, heuristic-based method of combining local hierarchical clustering models to create a global dendrogram from which a clustering may be created].
 
-autoencoder based methods [@seal2020estimating; @lemsara2020pathme]
+However, I am interested in the extension of mixture models to the multiple dataset context.
 
-Network based: [@rappoport2020monet, MONET allows outliers, missing data. Subsets of patients are clustered and may use a subset of 'omics to define this cluster]
+Methods can be
 
-``mergeTrees`` [@R-mergeTrees] implements the algorithm described by @hulot2020fast; this is a quick, heuristic-based method of combining local hierarchical clustering models to create a global dendrogram from which a clustering may be created.
+1. sequential;
+2. post-hoc; or
+3. joint.
 
-sequential vs post-hoc vs joint, local vs global
+It is joint models that are of most interest to me, but I will describe some sequential and post-hoc methods too.
 
-Joint, sequential, post-hoc
-Local vs global
-
-
+Another key differentiator of models is whether they integrate information by sharing information between dataset-specific (**local**) clustering or by pooling information across datasets to produce a global clustering.
 
 ### Bayesian integrative clustering
 
@@ -821,9 +873,141 @@ I give an example of each of these, 1) Multiple Dataset Integration [*MDI*, @kir
 
 #### Multiple Dataset Integration
 
-@kirk2012bayesian and @mason2016mdi
+@kirk2012bayesian proposed a Bayesian model assumed no global structure. This is chronoligcally the first Bayesian integrative clustering model of those described here. MDI is a _correlated clustering method_. The degree of correlation between datasets $l_1$ and $l_2$ is controlled by $\phi_{l_1l_2} \in \mathbb{R_+}$, a variable that is inferred from the data. As $\phi_{l_1l_2}$ increases, the correlation between the clusterings in datasets $l_1$ and $l_2$ increases; as $\phi_{l_1l_2} \to 0$ we get mixture models for datasets $l_1$ and $l_2$ that are independent of each other. The prior on item allocation is what drives and differentiates this model.
 
-@afrin2020directionally attempt to add directionality to information sharing.
+Consider the case that $L=2$. The prior on the allocation variable is given by:
+
+\begin{align}
+	p(c_{i1}, c_{i2} | \phi ) \propto \gamma_{c_{i1}1} \gamma_{c_{i2}2} (1 + \phi \mathbb{I}(c_{i1} = c_{i2})).
+	(\#eq:mdiPriorL2)
+\end{align}
+
+In MDI, the component weights are unnormalised (as this makes some of the derivations) and represented by $\gamma_{kl}$ and $\mathbb{I}(\cdot)$ is the indicator function. This states that the probability of allocating the $i^{th}$ item the same label in both datasets is upweighted by $\phi_{12}$; thus all other things being equal, we prefer an item to have the same label in both datasets (when $\phi_{12} > 0$). This leverages common structure between datasets to allocate items more confidently. 
+
+
+For the generalised case for $L$ datasets (for any $L \in \mathbb{N}$), extending the prior is a matter of combinatorics. In this case, \@ref(eq:mdiPriorL2) extends to:
+\begin{align}
+p(c_{i1},\ldots,c_{iL} | \boldsymbol{\phi}) \propto \left[\prod_{l=1}^L\gamma_{c_{il}l} \right]\left[\prod_{l=1}^{L-1}\prod_{m=l+1}^L\left(1+\phi_{lm}\mathbb{1}(c_{il} = c_{im}) \right)\right].
+(\#eq:mdiPrior)
+\end{align}
+
+Here $\boldsymbol{\phi}$ is the ${L \choose 2}$-vector of all $\phi_{ij}$ where $\phi_{12}$ is the variable $\phi$ in \@ref(eq:mdiPriorL2).
+
+The joint allocation probability is:
+
+\begin{align}
+p(\{c_{i1}, \ldots, c_{iL}\}_{i=1}^N, v) &= \frac{v^{N-1}\exp(-vZ)}{(N-1)!} \times \\
+ &\prod_{i=1}^N\left(\prod_{l=1}^L\gamma_{c_{il}l}\prod_{l_1=1}^{L-1}\prod_{l_2=l_1+1}^L (1 + \phi_{l_1l_2}\mathbb{I}(c_{il_1} = c_{il_2}))\right)
+\end{align}
+
+where $Z$ is the normalising constant and $v$ is a strategic latent variable introduced to ensure conjugacy. Before stating the hierarchical model, some parameters must be defined. These are the rate and shape of various variables of interest.
+
+\begin{align}
+a_{\gamma_{kl}} &= 1 + \sum_{i=1}^N \mathbb{I}(c_{il} = k) \\
+b_{\gamma_{kl}} &= v \sum_{k_1=1}^K \cdots \sum_{k_{l-1}=1}^K \sum_{k_{l+1}=1}^K \cdots \sum_{k_L=1}^K \left(\prod_{l'=1; k \neq l}^L \gamma_{k_{l'}l'} \prod_{l_1=1}^{L-1}\prod_{l_2=l_1+1}^L(1 + \phi_{l_1l_2}\mathbb{I}(k_{l_1} = k_{l_2}) \right) \\
+a_{\phi_{lm}} &= 1 + \sum_{i=1}^N \mathbb{I}(c_{il} = c_{im}) \\
+b_{\phi_{lm}} &= v \sum_{k_l = k_m = 1}^K \sum_{k_1=1}^K \cdots \sum_{k_{(l-1)}=1}^K \sum_{k_{(l+1)}=1}^K \cdots \sum_{k_{(m-1)}=1}^K \sum_{k_{(m+1)}=1}^K \cdots \sum_{k_L=1}^K \\ 
+&  \left(\prod_{l_1=1}^L \gamma_{k_{l_1}l_1} \prod_{l_2 = 1}^{L-1}\prod_{l_3=l_2+1}^L (1 + \phi_{l_2l_3} \mathbb{I}(k_{l_2} = k_{l_3})) \prod_{l_4 =1 ; l_4 \neq l}^{m-1} (1 + \phi_{l_4m} \mathbb{I}(k_{l_4} = k_m)) \right)
+\end{align}
+
+The hierarchical model is:
+
+\begin{align}
+v &\sim \textrm{Gamma}(N, Z) \\
+\gamma_{k_ll} &\sim \textrm{Gamma}(a_{\gamma_{kl}}, b_{\gamma_{kl}}) \\
+\phi_{lm} &\sim \textrm{Gamma}(a_{\phi_{lm}}, b_{\phi_{lm}}) \\
+c_{il} = K &\sim g(\gamma{kl}, \boldsymbol{\phi}, c_{-i}, X, \theta_l) 
+\end{align}
+
+where $g(\cdot)$ is some complex distribution; I recommend the reader to the supplementary material of @kirk2012bayesian for further details. I include the hierarchical model for the $L=3$ case as this is smallest $L$ for which the combinatorical aspect can be displayed.
+
+```{r, hierarchicalModelMDI, echo=FALSE, engine="tikz", out.width="60%", fig.cap="The hierarchical model for MDI", fig.align="left", cache=T}
+ \usetikzlibrary{arrows}
+\usetikzlibrary{fit,positioning}
+
+\begin{tikzpicture}[scale=.65, auto,>=latex']
+\tikzstyle{main}=[circle, minimum size = 13mm, thick, draw =black!80, node distance = 12mm]
+\tikzstyle{connect}=[-latex, thick]
+\tikzstyle{box}=[rectangle, draw=black!100]
+
+\node[main] (pi1) {$\gamma_{k1}$ };
+ \node[main] (pi2) [right=of pi1] {$\gamma_{k2}$ };
+ \node[main] (pi3) [right=of pi2] {$\gamma_{k3}$ };
+ 
+ \node[main] (ci1) [below=of pi1] {$c_{i1}$};
+ \node[main, node distance = 24mm] (ci2) [below=of pi2] {$c_{i2}$};
+ \node[main] (ci3) [below=of pi3] {$c_{i3}$};
+ 
+ \node[main, node distance = 16mm] (a) [above=of pi2] {$\alpha_0$ };
+
+ \node[main, fill = black!10] (xi2) [below=of ci2] {$x_{i2}$}; 
+ \node[main, fill = black!10] (xi1) [left=of xi2] {$x_{i1}$};
+ \node[main, fill = black!10] (xi3) [right=of xi2] {$x_{i3}$};
+
+ \node[main]  at (-4, -6) (theta3) {$\theta_{k3}$}; 
+ \node[main] (theta2) [left=of theta3] {$\theta_{k2}$};
+ \node[main] (theta1) [left=of theta2] {$\theta_{k1}$};
+
+ 
+ \node[main] (h1) [above=of theta1] {$h_1$};
+ \node[main] (h2) [above=of theta2] {$h_2$};
+ \node[main] (h3) [above=of theta3] {$h_3$};
+
+ \node[main, minimum size=1.3cm, node distance = 16mm] (phi13) [right=of ci3] {$\phi_{13}$}; 
+ \node[main, minimum size=1.3cm] (phi12) [below=of phi13] {$\phi_{12}$};
+ \node[main, minimum size=1.3cm] (phi23) [above=of phi13] {$\phi_{23}$};
+
+ \node[rectangle, inner sep=-0.5mm, fit= (ci1) (ci2) (ci3) (xi1) (xi2) (xi3),label=below right:$N$, xshift=5mm, yshift=0mm] {};
+ \node[rectangle, inner sep=4.8mm,draw=black!100, fit= (ci1) (ci2) (ci3) (xi1) (xi2) (xi3)] {};
+ 
+% \node[rectangle, inner sep=-0.8mm, fit= (theta1) (theta2) (theta3) (pi1) (pi2) (pi3) ,label=above right:$K$, xshift=63mm] {};
+% \node[rectangle, inner sep=4.8mm, draw=black! 100, fit= (theta1) (theta2) (theta3) (pi1) (pi2) (pi3)] {};
+
+ \node[rectangle, inner sep=-0.8mm, fit= (theta1) (theta2) (theta3) ,label=above right:$K$, xshift=24mm] {};
+ \node[rectangle, inner sep=4.8mm, draw=black! 100, fit= (theta1) (theta2) (theta3)] {};
+
+ \node[rectangle, inner sep=-0.8mm, fit=  (pi1) (pi2) (pi3) ,label=below right:$K$, xshift=24mm] {};
+ \node[rectangle, inner sep=4.8mm, draw=black! 100, fit= (pi1) (pi2) (pi3)] {};
+ 
+ \node[rectangle, inner sep=-0.8mm, fit= (ci1) (ci2) (ci3) (xi1) (xi2) (xi3) (theta1) (theta2) (theta3) (pi1) (pi2) (pi3) (h1) (h2) (h3),label=below right:$L$, xshift=37mm, yshift=-5mm] {};
+ \node[rectangle, inner sep=10.0mm, draw=black! 100, fit= (ci1) (ci2) (ci3) (xi1) (xi2) (xi3) (theta1) (theta2) (theta3) (pi1) (pi2) (pi3) (h1) (h2) (h3)] {};
+
+ \path (pi1) edge [connect] (ci1)
+    (pi2) edge [connect] (ci2)
+    (pi3) edge [connect] (ci3)
+    
+		(ci1) edge [connect] (xi1)
+		(ci2) edge [connect] (xi2)
+		(ci3) edge [connect] (xi3)
+		
+		(ci1) edge [connect] (ci2)
+		(ci1) edge [connect] (ci3)
+		(ci2) edge [connect] (ci3)
+		
+		(theta1) edge [connect] (xi1)
+		(theta2) edge [connect] (xi2)
+		(theta3) edge [connect] (xi3)
+		
+		(h1) edge [connect] (theta1)
+		(h2) edge [connect] (theta2)
+		(h3) edge [connect] (theta3)
+		
+		(a) edge [connect] (pi1)
+		(a) edge [connect] (pi2)
+		(a) edge [connect] (pi3)
+		
+		(phi12) edge [connect] (ci2)
+		(phi13) edge [connect] (ci3)
+		(phi23) edge [connect] (ci3);
+
+\end{tikzpicture}
+
+```
+
+MDI has been applied to precision medicine, specifically identifying modules of genes and glioblastoma sub-typing [@savage2013identifying], in the past showing its potential as a tool. There exists an implementation in C++ [@mason2016mdi]. @afrin2020directionally recently have attempted to extend the model, adding directionality to the information sharing parameter.
+
+
+
 
 #### Clusternomics
 
@@ -1557,3 +1741,34 @@ Where previously we could discard the $\mathbf{tr}[\Delta]$ component of the tra
 \]
 
 ## Problems
+
+## Consensus inference
+
+I propose _consensus inference_ as an alternative means of performing inference upon mixture models. To produce $n_{chain}$ samples to describe the clustering we:
+
+1. Initialise $n_{chain}$ chains randomly.
+2. Let each of these chains run for $n_{burn}+1$ iterations.
+3. Save the last sample drawn from each chains.
+4. Taking the collection of $n_{chain}$ samples, generate a consensus matrix from the clustering from each sample.
+5. Use some summary method to transform the consensus matrix into a predicted clustering.
+
+This means that the clustering produced by each chain is expected to be weak in terms of its ability to have unpicked the true underlying structure. However, if each model performs better than random and the initialisation of allocaiton labels is random, we expect that the ensemble of models to perform well, with similar logic to Random Forest [@breiman2001random]. I expect that there is a relationship between the similarity between the initial label allocation and the strength of the ensemble. 
+
+Consensus inference offers several advantages. 
+
+1. Speed: the use of parallel chains allows one to use a parallel environment and reduce the runtime of the method (in comparison to a Bayesian approach).
+2. Robust: if initialisation is random, the parallel chains are also independent of one another and thus autocorrelation is removed as a problem. This means that the chains are more likely to explore more modes in finite time in a high-dimensional, multiple mode setting, in contrast to either a Frequentist or Bayesian inference.
+3. Uncertainty quantification: the consensus matrix is a measure of uncertainty. Note, however, that this is not the principled uncertainty quantification of a converged Bayesian model.
+4. Allows one to use Bayesian clustering models (such as the DMA or some of the integrative methods), leveraging some of their strengths.
+
+The disadvantages are:
+
+1. No theoretical guarantees or guidelines. Unlike the other forms of inference where there are measures of convergence, consensus inference does not offer advice on judging when a model is converged.
+
+### Consensus inference compared to Bayesian inference
+
+Consider the scenario where a Gibbs sampler is exploring the model space correctly; it does not become trapped in any individual mode and successfully explores the entire posterior distribution in finite time. Say that to approximate the posterior distribution sufficiently well (for some arbitrary idea of sufficiently well) from some random initialisation $\theta^{(0)}$ took $n_{burn}$ iterations. Let the number of samples required to describe the posterior distribution be $n_{req}$ where in a single chain we must run for $n_{burn} + n_{req} \times n_{thin}$ to generate this many samples, where $n_{thin}$ is the smallest thinning factor to remove autocorrelation from these samples. Let $\xi$ be the PSM produced by this.
+
+Now consider consensus inference upon the same data and model. If we take a chain and initialise it randomly, it will start to sample from the posterior distribution after $n_{burn}$ iterations. If we assume that for different initialisations the chain samples a different value from the posterior distribution in the $(n_{burn}+1)^{th}$ iteration of the sampler, then we would expect that the inference obtained from running $n_{req}$ chains for $n_{burn} + 1$ iterations would be highly similar to the Bayesian inference described above.
+
+In this way if we use a sufficiently large $n_{burn}$ and as the number of chains used goes to infinity, Consensus inference converges to Bayesian inference.
