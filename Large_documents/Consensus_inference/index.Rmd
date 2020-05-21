@@ -5,10 +5,8 @@ date: "`r Sys.Date()`"
 output:
   bookdown::gitbook:
     lib_dir: "book_assets"
-    fig_crop: false
   bookdown::pdf_book:
     keep_tex: yes
-    fig_crop: true
 documentclass: book
 bibliography: [CIbib.bib, packages.bib]
 biblio-style: apalike
@@ -114,6 +112,10 @@ ciSim <- function(true_labels, n_iter, K,
   out
 }
 ```
+
+\newcommand{\argmin}[1]{\underset{#1}{\operatorname{argmin}}}
+\newcommand{\argmax}[1]{\underset{#1}{\operatorname{argmax}}}
+
 
 # Abstract {-#abstract}
 

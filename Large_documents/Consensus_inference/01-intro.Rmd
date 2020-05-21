@@ -19,6 +19,9 @@ some examples of relevant methods and the results they have delivered. This
 background is necessary to understand some of the problems that currently exist, 
 and why I am suggesting Consensus inference as a solution to these.
 
+\newcommand{\argmin}[1]{\underset{#1}{\operatorname{argmin}}}
+\newcommand{\argmax}[1]{\underset{#1}{\operatorname{argmax}}}
+
 ## Cluster analysis {#clusterAnalysis}
 
 Cluster analysis – also known as unsupervised learning – consists of defining
@@ -716,21 +719,9 @@ Thus our marginal likelihood is the ratio of the posterior normalising constants
 
 #### Variational inference
 
-Deterministic
+A different apporach to performing Bayesian inference, vairational inference (**VI**) is a  deterministic method that attempts to approximate the posterior distribution. This method is an _optimisation problem_, a field of problems well studied in the world of machine learning (and of which Expectation-Maximisation is an example). VI, proposes a family of densities, $q(\theta)$, and then tries to find the member of this family that is closest to the target density, where closeness is measured by the Kullback–Leibler divergence [@blei2017variational]. VI is intended as a fast alternative to MCMC when traditional MCMC methods are not computationally tractable.
 
-Origin in calculus of variaitons and work of Euler and Lagrange.
-
-From @jordan1999introduction
-
-Comparison to Newton-Raphson method - use of derivatives to find approximate solutions.
-
->"The idea behind VI is to first posit a family of densities and then to find a member of that family which is close to the target density. Closeness is measured by Kullback–Leibler divergence." 
-`r tufte::quote_footer('@blei2017variational')`
-
->"We emphasize that MCMC and variational inference are dif-ferent approaches to solving the same problem. MCMC algorithms sample a Markov chain; variational algorithms solve an optimization problem. MCMC algorithms approximate the posterior with samples from the chain; variational algorithms approximate the posterior with the result of the optimization."
-`r tufte::quote_footer('@blei2017variational')`
-
-Decomposes log marginal likelihood into the lower bound ($\mathcal{L}(q)$) and the _Kullbach-Leibler divergence_ ($KL(q||p)$.)
+@jordan1999introduction proposed decomposing the log marginal likelihood into the lower bound ($\mathcal{L}(q)$) and the _Kullbach-Leibler divergence_ ($KL(q||p)$.)
 
 \begin{align}
 \ln p(X) = \mathcal{L}(q) + KL(q||p)
@@ -745,16 +736,306 @@ KL(q||p) &= - \int q(\theta) \ln{\frac{p(\theta | X)}{q(\theta)}}d\theta
 
 Maximising $\mathcal{L}(q)$ is equivalent to minimising $KL(q||p)$; if choice of 
 $q(\theta)$ is unrestricted then $\mathcal{L}(q)$ is maximised when $KL(q||p)=0$ 
-(i.e. $q(\theta)$ is the posterior distribution). However, in practice one restricts
-the possible distributions for $q(\theta)$.
+(i.e. $q(\theta)$ is the posterior distribution). 
 
-Tradeoff: want options to be restricted enough to be tractable, sufficiently broad and flexible as to offer a good approximation of the posterior distribution.
+However, $q(\theta)$ is restricted.  The degree of restriction is something of a
+balancing act; we want options to be restricted enough to be tractable, but 
+sufficiently flexible as to offer a good approximation of the target 
+distribution, the posterior distribution.
 
-Restrict possible distribution to use a parametric distribution $q(\theta | \omega)$ governed by the parameters $\omega$. Then $\mathcal{L}(q)$ is a function of $\omega$ and one may treat this as an optimisation problem.
+In practice, $q(\theta)$ is restricted to consists of parametric distributions
+$q(\theta | \omega)$ governed by the parameters $\omega$. Then $\mathcal{L}(q)$
+is a function of $\omega$ and one may treat this as an optimisation problem and
+use the various tools that have been developed to solve optimisation problems.
+The simplest form of VI assumes that one may decompose the distribution as so:
+
+\begin{align}
+q(\theta|\omega) &= \prod_{r=1}^Rq(\theta_r|\omega_r),
+\end{align}
+
+for $R$ latent variables. This form is referred to as _mean field variational inference_.
+More complicated forms of VI have been suggested (e.g. Stochastic VI [@hoffman2013stochastic], Black Box VI [@ranganath2014black]), however these are increasingly opaque in how the inference is performed. This might leave some practitioners of Bayes' uneasy, particularly in combination with the lack of asymptotic guarantees that VI offers [@salimans2015markov]. These issues have inspired @salimans2015markov to attempt to describe inferential methods that combines VI and MCMC, proposing "Markov Chain Variational Inference".
+
+To summarise, the advantage of VI is its speed. in comparison of MCMC, it is very quick to find the mean of a local mode of the posterior and is computationally far more tractable as a result. However, it does have a number of disadvantages:
+
+* VI underestimates the variance [@bishop2006pattern];
+* VI is prone to becoming stuck in local minima, thus several restarts are required (as with EM);
+* VI does not offer theoretical guarantees (unlike MCMC) [@blei2017variational]; and
+* deriving the correct equations to apply VI in a specific situation is non-trivial.
+
+In terms of clustering, the underestimation of the variance means that if one is only interested in a summary clustering, than VI is fine. However, if one wishes to use the quantified uncertainty that Bayesian inference can offer in a downstream analysis, then VI does not provide the solution.
+
+## Bayesian model convergence
+
+### Autocorrelation
+
+The autocorrelation, $\rho(i)$, is the correlation between the current sample 
+and the sample at a lag of $i$. $\rho(0)=1$ as the observation correlates 
+perfectly with itself. If the samples drawn are no longer correlated with 
+previous samples this indicates the chain has achieved stationarity. 
+	
+### Effective sample size {#ess}
+
+The Effective sample size (ESS) [@ripley2009stochastic] is an attempt to convert
+the number of MCMC samples, which can be highly autocorrelated, into an 
+equivalent number of independent samples; consider it as an exchange rate. 
+For $n$ samples and letting $\rho(i)$ denote the correlation between the current
+sample and the sample drawn at a lag of $i$:
+
+\begin{align}
+ESS &= \frac{n}{1 + 2 \sum_{i=1}^\infty \rho(i)}
+(\#eq:ESS)
+\end{align}
+
+If the level of autocorrelation present is 0, then $ESS=n$;  if the 
+autocorrelation decreases sufficiently slowly with regards to the lag that the
+sum in the denominator diverges, then $ESS=0$. 
 
 
+<!-- One can use this to estimate the burn-in required to use samples only from the stationary distribution. One should use the burn-in at which ESS is maximised across all variables, as one wants to maximise the amount of samples available  while also ensuring one is sampling from the correct distribution. -->
 
-@blei2006variational and @blei2017variational
+
+### Geweke standardised scores
+
+@geweke1992evaluating proposed a statistic based upon time-series methods to 
+test the convergence. If the object of interest is a mean then this method is
+appropriate. The concept is based upon the belief that if the samples are all
+from the same distribution (i.e. the whole chain has converged), then the mean 
+of the early samples should be similar to that from the later samples. To do 
+this the samples are considered within two sets; the first $10\%$ and the last 
+$50\%$ of the recorded samples.  The convergence statistic, $Z$, is the 
+difference of the means associated with the samples from each set divided by 
+the asymptotic standard error of their difference. As the number of samples 
+recorded goes to infinity, the sampling distribution of $Z$ goes to 
+$\mathcal{N}(0,1)$ if the chain has converged. Therefore the Geweke plot is 
+inspected to see if many of the $Z$-scores occupy the extreme tails of the 
+$\mathcal{N}(0,1)$ distribution.
+	
+To construct the Geweke plot, the samples are split into disjoint bins. The
+first set of $\frac{n}{2(n_{bins} -1)}$ samples are placed in the first bin, the
+second set of $\frac{n}{2(n_{bins} -1)}$ samples in the second bin, etc. The 
+final bin contains the final $50\%$ of samples. Geweke's $Z$-score is calculated
+comparing each bin of samples to the final $50\%$ of samples. The $Z$-scores are
+then plotted against the iteration number of the first iteration in each bin. If
+the chain has reached stationarity the Z-scores should be described by a 
+standard normal distribution.
+
+### Gelman-Rubin shrinkage factor
+
+The approach described by @gelman1992inference compares sequences across chains.
+If the chains are all sampling from the same distribution this is taken as 
+evidence for convergence. This method tries to check if the samples from 
+different chains are more different than would be expected based upon their
+internal variability; it does this by an analysis of the variance. Convergence
+is supported when the between-sequence variance $B$ is no larger than the 
+within-sequence variance $W$.
+	
+Consider $m$ parallel chains, each of length $n$ of the variable $X$. Denote the
+chain specific samples by $x_i = (x_{i1},\ldots,x_{in})$. Then:
+	
+\begin{align}
+B &= \frac{n}{m-1}\sum_{i=1}^m (\bar{x}_i - \bar{x})^2 \\
+W &= \frac{1}{m}\sum_{i=1}^m s_i^2
+\end{align}
+
+where $\bar{x}_i$ is the sample mean and $s_i$ is the sample standard deviation
+of the $i^{th}$ chain and $\bar{x}$ is the sample mean across chains, defined by:
+	
+\begin{eqnarray}
+\bar{x}_i &=& \frac{1}{n}\sum_{j=1}^n x_{ij} \\
+s_i^2 &=& \frac{1}{n - 1}\sum_{j=1}^n \left( x_{ij} - \bar{x}_i \right) ^2 
+\end{eqnarray}
+
+From these variance components, it is expected that $W$ should be an estimate of 
+$Var(X)$; a second estimate is constructed:
+
+\begin{align}
+\hat{Var}(X) = \frac{n-1}{n}W + \frac{1}{n}B
+\end{align}
+
+If the chains are stationary, this quantity $\hat{Var}(X)$ is an unbiased 
+estimate of $Var(X)$, but if the starting points are over-dispersed it is an 
+over-estimate.
+	
+As $W$ should under-estimate $Var(X)$ for any finite value of $n$ (as the 
+individual chains should not explore the full target distribution and thus will
+underestimate the variance present), there are two quantities estimating 
+$Var(X)$ that should also impose the upper and lower bounds on $Var(X)$. Thus @gelman1992inference proposed using the ratio of these quantities to estimate 
+across-chain convergence. Specifically the estimated potential scale reduction 
+or _shrinkage factor_ if the number of simulations was allowed to grow to 
+infinity:
+
+\begin{align}
+\hat{R} = \sqrt{\frac{\hat{Var}(X)}{W}}
+\end{align}
+
+As the chains converge, $\hat{R}$ falls to 1. This means that the 
+parallel Markov chains  are  essentially  overlapping. If $\hat{R}$ is high, 
+then  one  should  proceed  with further simulations. @gelman2013bayesian 
+suggest a threshold of 1.1 for convergence. 
+
+@vats2018revisiting have extended the concept of $\hat{R}$ attmepting to make
+it more robust and to connect it to the concept of _effective sample size_. They 
+also show that a threshold of 1.1 is far too high, and suggest a far smaller 
+threshold (such as 1.01) or else using their proposed alteration to $\hat{R}$,
+estimating a stopping criteria.
+
+## Model comparison
+
+### Rand Index
+
+A popular metric for comparing the similarity of two clusterings of the data is the _Rand index_ [@rand1971objective]. Let $X=(x_1,\ldots,x_N)$ be a dataset of $N$ items. Define two partitions of $X$ into subsets, $Y=\{Y_1,\ldots,Y_K\}$ and $Y'=\{Y_1',\ldots, Y_{K'}'\}$, let $C=(c_1,\ldots,c_N)$ and $C'=(c_1'\ldots,c_N')$ denote the allocation of each item in $X$ to one of these subsets; then each allocation label pair, $(c_i, c_i') \in [(1, 1),\ldots, (1, K'), (2, 1), \ldots, (K, K')] \forall i \in [1, N]$. For any two points $x_i$ and $x_j$ there can exist one of three possible scenarios regarding their allocation under each partition. Let $\gamma_{ij}$ be a measure between the two points $x_i$ and $x_j$. For the two points, they can have 
+  
+1. The same label in both clusterings ($c_i = c_j \land c'_i = c'_j$) ($\gamma_{ij}=1$);
+2. Different labels in both ($c_i \neq c_j \land c'_i \neq c'_j$) ($\gamma_{ij}=1$); or 
+3. The same label in one but not in the other ($c_i \neq c_j \land c'_i = c'_j \lor c_i = c_j \land c'_i \neq c'_j$) ($\gamma_{ij}=0$).
+
+Thus @rand1971objective proposed counting the number of times any two points have the relationship described by points 1 and 2 from the above list and finding the proportion of these compared to the number of all possible combinations. More formally, this is:
+	
+\begin{eqnarray}
+A \binom{N}{2}^{-1} & = & \frac{1}{\binom{N}{2}} \sum_{i=1}^{N-1}\sum_{j=i + 1}^N\gamma_{ij}
+(\#eq:randIndex)
+\end{eqnarray}
+	
+<!-- This is the quantity of points in agreement between the two clusters. -->
+This can be envisioned as a $K \times K'$ contingency table of the count of overlapping points, as shown in table \@ref(tab:randContingency). Table \@ref(tab:randContingency) uses the following notation:
+
+1. $n_{ij}$ is the number of points that have membership in $Y_i$ in clustering $Y$ and $Y'_j$ in clustering $Y'$;
+2. $n_{\cdot j}$ is the number of points in cluster $Y'_j$ in clustering $Y'$;
+3. $n_{i \cdot}$ is the number of points in cluster $Y_i$ in clustering $Y$; and
+4. $n_{\cdot \cdot} = n$ is the number of points in clusterings $Y$ and $Y'$.
+
+
+<!-- |          | $Y_1'$       | $Y_2'$       | $\cdots$ | $Y_{K'}'$      | Sums              | -->
+<!-- | -------- | :----------: | :----------: | :------: | :------------: | :---------------: | -->
+<!-- | $Y_1$    | $n_{11}$     | $n_{12}$     | $\cdots$ | $n_{1K'}$      | $n_{1\cdot}$      | -->
+<!-- | $Y_1$    | $n_{21}$     | $n_{22}$     | $\cdots$ | $n_{2K'}$      | $n_{2\cdot}$      | -->
+<!-- | $\vdots$ | $\vdots$     | $\vdots$     | $\ddots$ | $\vdots$       | $\vdots$          | -->
+<!-- | $Y_K$    | $n_{K1}$     | $n_{K2}$     | $\cdots$ | $n_{KK'}$      | $n_{K\cdot}$      | -->
+<!-- | **Sums** | $n_{\cdot1}$ | $n_{\cdot2}$ | $\cdots$ | $n_{\cdot K'}$ | $n_{\cdot\cdot}$ | -->
+
+<!-- $ {{} \atop Y}  \!\diagdown\! ^{Y'}$	& $Y'_1$	& $Y'_2$	& $\cdots$	& $Y'_{K'}$	& Sums	\\ -->
+<!-- \hline -->
+<!-- $Y_1$		& $n_{11}$	& $n_{12}$	& $\cdots$	& $n_{1K'}$	& $n_{1 \cdot}$	\\ -->
+<!-- $Y_2$		& $n_{21}$	& $n_{22}$	& $\cdots$	& $n_{2K'}$	& $n_{2 \cdot}$	\\ -->
+<!-- $\vdots$	& $\vdots$	& $\vdots$	& $\ddots$	& $\vdots$	& $\vdots$		 \\ -->
+<!-- $Y_{K}$	& $n_{K1}$	& $n_{K2}$	& $\cdots$	& $n_{KK'}$	& $n_{K \cdot}$	\\ -->
+<!-- \hline -->
+<!-- Sums	& $n_{\cdot 1}$	&  $n_{\cdot 2}$	& $\cdots$	& $n_{\cdot K'}$	& $n_{\cdot \cdot} = n$ -->
+
+```{r randContingency, tidy=FALSE, echo=F}
+table_data <- data.frame(
+  "$Y_1'$" = c("$n_{11}$", "$n_{21}$", "$\\vdots$", "$n_{K1}$", "$n_{\\cdot 1}$"),
+  "$Y_2'$" = c("$n_{12}$", "$n_{22}$", "$\\vdots$", "$n_{K2}$", "$n_{\\cdot 2}$"),
+  "$\\cdots$" = c("$\\cdots$", "$\\cdots$", "$\\ddots$", "$\\cdots$", "$\\cdots$"),
+  "$Y_{K'}'$" = c("$n_{1K'}$", "$n_{2K'}$", "$\\vdots$", "$n_{KK'}$", "$n_{\\cdot K'}$"),
+  "Sums" = c("$n_{1 \\cdot}$", "$n_{2 \\cdot}$", "$\\vdots$", "$n_{K \\cdot}$", "$n_{\\cdot \\cdot}$")
+)
+
+row.names(table_data) <- c("$Y_1$", "$Y_2$", "$\\vdots$", "$Y_K$", "**Sums**")
+colnames(table_data) <- c("$Y_1'$", "$Y_2'$", "$\\cdots$", "$Y_{K'}'$", "Sums")
+
+knitr::kable(
+  table_data,
+  caption = "Contingency table to calculate a measure of similarity between clusterings $Y$ and $Y'$ as used by @rand1971objective.",
+  booktabs = TRUE,
+  escape = FALSE
+)
+```
+
+One can restate equation \@ref(eq:randIndex) in terms of the notation from table \@ref(tab:randContingency) [@brennan1974measuring]:
+
+\begin{eqnarray}
+	A &=& \binom{n}{2} + \sum_{i=1}^K\sum_{j=1}^{K'}n_{ij}^2 - \frac{1}{2}\left(\sum_{i=1}^K n_{i\cdot}^2 + \sum_{j=1}^{K'}n_{\cdot j}^2  \right) \\
+	&=& \binom{n}{2} + 2 \sum_{i=1}^{K}\sum_{j=1}^{K'}\binom{n_{ij}}{2} - \left[\sum_{i=1}^{K}\binom{n_{i \cdot}}{2} + \sum_{j=1}^{K'}\binom{n_{\cdot j}}{2}\right]% \binom{n}{2} ^{-1}
+	(\#eq:randIndex2)
+\end{eqnarray}
+
+<!-- This function, $c$, has three properties. -->
+
+<!--   1. $c(\cdot, \cdot) \in [0,1]$ (0 for no similarity, 1 for high similarity); -->
+<!--   2. $1 - c$ is a distance measure; -->
+<!--   3. if one assumes a distribution to describe $X$, then $c$ is a random variable. -->
+
+### The Adjusted Rand Index
+
+@hubert1985comparing extend the Rand index to account for chance. They include a null hypothesis and assume that there is a probability of some points having a $\gamma$ value of 1 by chance. It can be shown that the expected number of points with common membership in both clusters is non-zero. Specifically:
+
+\begin{eqnarray}
+	\mathbb{E}\left[\sum_{i=1}^K \sum_{j=1}^K\binom{n_{ij}}{2}\right] = \frac{\sum_{i=1}^K \binom{n_{i\cdot}}{2} \sum_{j=1}^K \binom{n_{\cdot j}}{2}}{\binom{n}{2}}
+\end{eqnarray}
+
+This is the product of the number of distinct pairs that can be formed from rows and the number of distinct pairs that can be constructed from columns, divided by the total number of pairs.
+
+The expected number of items with the same label in both partitions can be calculated from table \@ref(tab:randContingency). Say for paired labelling such that items belong to both $\{Y_i, Y_j'\}$ is the product of number of pairs the $i^{th}$ row and the $j^{th}$ column divided by the total number of possible pairings:
+
+\begin{eqnarray} 
+	\mathbb{E}\left[\binom{n_{ij}}{2}\right] = \frac{\binom{n_{i\cdot}}{2}\binom{n_{\cdot j}}{2}}{\binom{n}{2}}
+	(\#eq:expectedNij)
+	\end{eqnarray}
+	
+One can see that as each component of equation \@ref(eq:randIndex2) is some transformation of $\sum_{i,j}\binom{n_{ij}}{2}$, one can directly state the expected value of the Rand index by combining equations \@ref(eq:randIndex2) and \@ref(eq:expectedNij):
+	
+\begin{eqnarray}
+	\mathbb{E}\left[A \binom{n}{2}^{-1}\right] = 1 + 2 \sum_{i=1}^{K} \binom{n_{i \cdot}}{2} \sum_{j=1}^{K'} \binom{n_{\cdot j}}{2} \binom{n}{2}^{-2} - \left[\sum_{i=1}^{K} \binom{n_{i \cdot}}{2} + \sum_{j=1}^{K'} \binom{n_{\cdot j}}{2}\right] \binom{n}{2}^{-1}
+\end{eqnarray}
+
+Defining an index corrected for chance as:
+\begin{eqnarray}
+	\text{Corrected index} = \frac{\text{Index} - \text{Expected index}}{\text{Maximum index} - \text{Expected index}}
+\end{eqnarray}
+
+Assuming a maximum value of 1 for the Rand index then gives a corrected Rand index:
+\begin{eqnarray} 
+	AR(Y, Y') &= \frac{\sum_{i=1}^{K}\sum_{j=1}^{K'} \binom{n_{ij}}{2} - \sum_{i=1}^{K} \binom{n_{i \cdot}}{2} \sum_{j=1}^{K'} \binom{n_{\cdot j}}{2} \binom{n}{2}^{-1}}{\frac{1}{2} \left[\sum_{i=1}^{K} \binom{n_{i \cdot}}{2} + \sum_{j=1}^{K'} \binom{n_{\cdot j}}{2}\right] - \sum_{i=1}^{K} \binom{n_{i \cdot}}{2} \sum_{j=1}^{K'} \binom{n_{\cdot j}}{2} \binom{n}{2}^{-1}}
+	(\#eq:adjustedRandIndex)
+\end{eqnarray}
+
+This quantity is defined as the _adjusted Rand index_ and I use it as my measure of choice for similarity between clusterings.
+
+### Posterior expected adjusted Rand index
+
+@fritsch2009improved propose using posterior expected adjusted Rand (**PEAR**) 
+index to propose a point estimate of a clustering based upon either MCMC samples
+or the PSM. By the PEAR index they refer to two subtly different terms, 
+$\mathbb{E}(AR(c^*, c) | X)$ and $AR(c^*, \mathbb{E}(c | X))$. 
+
+<!-- These differ (where they would not for the posterior expected Rand index) as the ARI is not a linear function of the number of items in a common cluster -->
+
+One can estimate a final clustering $c^*$ using an approximation of the first
+quantity, $\mathbb{E}(AR(c^*, c) | X)$, based upon the $n_{iter}$ recorded MCMC
+samples.
+
+\begin{align}
+\argmax{c^*} \frac{1}{n_{iter}}\sum_{i=1}^{n_{iter}} AR(c^*, c^i).
+	(\#eq:PEAR)
+\end{align}
+
+Here $c^i$ is the $i^{th}$ recorded clustering.
+
+One may use the second quantity, $AR(c^*, \mathbb{E}(c | X))$, through 
+calculation of the PSM. Letting $\pi_{ij}$ represent the $(i, j)^{th}$ entry 
+of the PSM, then:
+
+\begin{align}
+\argmax{c^*} \frac{\sum_{i < j} \mathbb{I}(c^*_i = c^*_j) \pi_{ij} - \sum_{i < j} \mathbb{I}(c^*_i = c^*_j) \sum_{i<j} \pi_{ij} \binom{N}{2}^{-1}}{\frac{1}{2} \left[\sum_{i < j} \mathbb{I}(c^*_i = c^*_j) + \sum_{i < j} \pi_{ij}\right] - \sum_{i < j} \mathbb{I}(c^*_i = c^*_j) \sum_{i < j} \pi_{ij} \binom{N}{2}^{-1}}
+\end{align}
+
+
+The R package ``mcclust`` [@R-mcclust] includes a calculation of this quantity 
+using both approaches.
+
+
+### Frobenius norm
+
+For an $m \times n$ matrix $A$, the _Frobenius norm_ is defined as:
+
+\begin{eqnarray}
+|| A || _F = \sqrt{\sum_{i=1}^m \sum_{j=i}^n |a_{ij}|^2}
+(\#eq:frobeniusProduct)
+\end{eqnarray}
+
+We use this to compare the true coclustering matrix to both the posterior similarity matrix (**PSM**) produced by Bayesian inference and the consensus matrix (**CM**) produced by the Consensus inference. (Note: I will use the phrase _similarity matrix_ in the contexts that apply to both the PSM and CM). This is done by using the Frobenius norm of the difference between these matrices.
 
 ## Consensus clustering 
 
@@ -1758,12 +2039,14 @@ Consensus inference offers several advantages.
 
 1. Speed: the use of parallel chains allows one to use a parallel environment and reduce the runtime of the method (in comparison to a Bayesian approach).
 2. Robust: if initialisation is random, the parallel chains are also independent of one another and thus autocorrelation is removed as a problem. This means that the chains are more likely to explore more modes in finite time in a high-dimensional, multiple mode setting, in contrast to either a Frequentist or Bayesian inference.
-3. Uncertainty quantification: the consensus matrix is a measure of uncertainty. Note, however, that this is not the principled uncertainty quantification of a converged Bayesian model.
-4. Allows one to use Bayesian clustering models (such as the DMA or some of the integrative methods), leveraging some of their strengths.
+3. A measure of belief: the consensus matrix is a measure of how strong our belief about the partitioning is. This is not the principled uncertainty quantification of a converged Bayesian model, but does allow one to carry some uncertainty through an analysis.
+4. Allows one to use Bayesian clustering models (such as the DMA or some of the integrative methods), leveraging some of their strengths such as inferring $K$ and integrating over awkward parameters.
 
 The disadvantages are:
 
 1. No theoretical guarantees or guidelines. Unlike the other forms of inference where there are measures of convergence, consensus inference does not offer advice on judging when a model is converged.
+
+Consensus inference is intended for clustering, where the latent variables of interest are discrete, and in the context that Bayesian inference is not possible due to computation or time constraints.
 
 ### Consensus inference compared to Bayesian inference
 
