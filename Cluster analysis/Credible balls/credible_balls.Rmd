@@ -1,0 +1,165 @@
+---
+title: "Bayesian Cluster Analysis: Point Estimation and Credible Balls"
+author: "Stephen Coleman"
+date: "19/05/2020"
+output: html_document
+bibliography: credible_balls.bib
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+```
+
+\newcommand{\argmin}[1]{\underset{#1}{\operatorname{argmin}}}
+
+NOT MY WORDS
+
+## Summary
+
+* Bayesian nonparametric models provide a posterior over the entire space of 
+partitions.
+* In a Bayesian analysis, the posterior of a real-valued parameter of interest is
+often summarized by reporting a point estimate such as the posterior mean along
+with 95% credible intervals to characterize uncertainty.
+* This paper attempts to develop appropriate point estimates and credible sets
+to summarize the posterior of the clustering structure based on decision and 
+information theoretic techniques
+
+# Introduction
+
+The expectation-maximization (EM) algorithm is typically used for maximum 
+likelihood estimation (MLE) of the mixture model parameters. Given the MLEs of 
+the parameters,the posterior probability that a data point belongs to a class 
+can be computed through Bayes rule.
+
+The cluster assignment of the data point corresponds to the class with maximal 
+posterior probability, with the corresponding posterior probability reported as
+a measure of uncertainty. Importantly, however, this measure of uncertainty 
+ignores uncertainty in the parameter estimates.
+
+As opposed to MLE, Bayesian mixture models incorporate prior information on the 
+parameters and allow one to assess uncertainty in the clustering structure 
+unconditional on the parameter estimates.
+
+Bayesian nonparametric mixture models assume that the number of components is 
+infinite. As opposed to finite mixture models, this not only avoids 
+specification of the number of components but also allows the number of clusters
+present in the data to grow unboundedly as more data is collected. 
+
+Bayesian nonparametric mixture models induce a random partition model 
+[@quintana2006predictive] of the data points into clusters, and the posterior of
+the random partition reflects our belief and uncertainty of the clustering 
+structure given the data.
+
+Questions:
+
+1. what is an appropriate point estimate of the clustering structure given 
+the posterior?
+2. how to summarise the uncertainty about this point estimate?
+
+Often the first question one asks is what is an appropriate point estimate of 
+the clustering structure based on the posterior. Such a point estimate is useful
+for concisely representing the posterior and often needed in applications. 
+
+Moreover, a characterization of the uncertainty around this point estimate would
+be desirable in many applications.
+
+## Ordering partitions
+
+The next properties involve first viewing the space of partitions as a partially
+ordered set. In particular, consider the space of partitions $C$ and the binary 
+relation $\leq$ on $C$ defined by set containment, i.e. for $c,c' \in C$, 
+$c \leq c'$ if for all $i = 1, \ldots, k_N$, $C_i \subseteq C'_j$ for some 
+$j\in \{1, \ldots, k'_N\}$. The partition space $C$ equipped with $\leq$ is a 
+partially ordered set. For any $c,c' \in C$, $c$ is covered by $c'$, denoted 
+$c \prec c'$, if $c < c'$and there is no $\hat{c} \in C$ such that 
+$c < \hat{c} < c'$. This covering relation is used to define the Hasse diagram,
+where the elements of $C$ are represented as nodes of a graph and a line is 
+drawn from $c$ up to $c'$ when $c \prec c'$.
+
+![Example of a Hasse diagram for the semi-ordered set of partitions for 4 items, from @wade2018bayesian.](./wade_hasse_diagram_example.png)
+
+## Point estimate
+
+Could use the mode! Need to be able to compute marginal likelihood and the prior 
+in closed form. Not always the case. 
+
+More generally,the posterior mode can be found by reporting the partition 
+visited most frequently in the sampler. There's issues with this as different
+partitions might be visited and so any specific partition might never have a 
+frequency exceeding 1.
+
+However,it is well-known that the mode can be unrepresentative of the center of 
+a distribution.
+
+Alternative methods involve using the PSM, see @fritsch2009improved for a 
+detailed description of many such methods.
+
+Could use decision theory and a defined loss function. We would like a loss 
+function that can account for similarity between clusterings. Binder's loss 
+[@binder1978bayesian] is the classic go-to, but @wade2018bayesian go to 
+the _variation of information_ proposed by @meilua2007comparing.
+
+This measures the amount of information lost and gained in changing from 
+clustering to clustering.
+
+Both the variation ofinformation and Binder’s loss possess the desirable 
+properties of being metrics on the space of partitions and being _aligned_ 
+with the lattice of partitions. Whatever that means.
+
+It ends up it means it's a metric on the Hasse diagram.
+
+From decision theory, a point estimate is obtained by specifying a loss 
+function, $L(c', c)$, which measures the loss of estimating the true clustering
+$c$ with $c'$. Since the true clustering is unknown, the loss is averaged 
+across all possible true clusterings, where the loss associated to each 
+potential true clustering is weighted by its posterior probability.
+
+The point estimate, $c^*$, corresponds to the estimate which minimizes the
+posterior expected loss:
+
+\begin{align}
+c^* = \argmin{c'} \mathbb{E}[L(c', c) | X] = \argmin{c'} \sum_c L(c', c)p (c | X)
+\end{align}
+
+Constructing a general loss function is not straightforward because, as 
+pointed out by @binder1978bayesian, the loss function should satisfy basic 
+principles such as invariance to permutations of the data point indices and
+invariance to permutations of the cluster labels for both the true and 
+estimated clusterings. From this, he developed a loss function based around the
+Rand Index.
+
+
+### Algorithm
+
+* greedy search
+* based upon the Hasse diagram (using either VI or B)
+*  given some partition $c'$, we consider the $l$ closest partitions that cover 
+$c'$ and the $l$ closest partitions that $c'$ covers ($2l + 1$ partitions). 
+* the distance used to determine the closest partitions corresponds to the 
+selected loss of $VI$ or $B$.
+* the posterior expected loss, $\mathbb{E}[L(c,\hat{c})|X]$ is computed for all 
+proposed partitions $\hat{c}$, and we move in the direction of minimum posterior
+expected loss, that is the partition $c'$ with minimal $\mathbb{E}[L(c,c')|X]$ 
+is selected.
+* the algorithm stops after a local minimum is found or a given number of 
+iterartions have passed.
+* recommend multiple restarts (local minima), for example, at different MCMC 
+samples or the best partition found by other search algorithms. 
+* a larger value of $l$ will allow more exploration and reduce the need for 
+multiple restarts
+* default value of $l=2N$ as this showed good exploration in the examples 
+considered with little sensitivity to the initial value of $c'$. However, for 
+larger datasets, this may be too expensive and multiple restarts withsmaller $l$
+may be preferred
+
+NOTE: An advantage of the greedy search algorithm over simply restricting to 
+partitions visited in the chain is that partitions not explored in the MCMC 
+algorithm can be considered [similarly to ``maxpear`` from @fritsch2009improved]; 
+in fact, in almost all simulated and real examples, the clustering estimate is 
+not among the sampled partitions and results in a lower expected loss than any 
+sampled partition.
+
+
+## References
