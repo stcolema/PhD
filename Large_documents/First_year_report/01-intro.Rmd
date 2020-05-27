@@ -63,7 +63,8 @@ new subtypes include such a diverse range of diseases as breast cancer [@cancer2
 Another interesting application is the defining of subpopulations of patients;
 this application is integral to _precision medicine_, which relies upon 
 "the classification of people into subpopulations using their common genetic
-patterns, lifestyles, drug responses, and environmental and cultural factors" [@gameiro2018precision].
+patterns, lifestyles, drug responses, and environmental and cultural factors" 
+[@gameiro2018precision].
 
 Within cluster analysis there exists a large number of possible methods. 
 Traditional approaches [as taught in many textbooks, see for e.g. 
@@ -75,16 +76,13 @@ solving important practical questions that arise in every cluster analysis (
 such as the number of clusters present, the measure of distance / similarity
 between points, which solution is optimal, etc.) is subjective and informal. 
 This has consequences for the interpretation of the results, as evaluation of
-the significance of results is difficult [@monti2003consensus].
+the significance of results is difficult [@monti2003consensus]. 
 
-Despite this, most of the clustering that is done in practise is based upon these 
-methods; they are intuitively reasonable and, perhaps more importantly, most 
-clustering methods available in commercial software are of this type 
-[@fraley2002model]. However, I am interested in _model-based cluster analysis_ 
-or _mixture models_. This approach embeds the cluster analysis within a 
-statistical framework and offers a principled approach to many issues 
-associated with cluster analysis. Each subpopulation is described within
-the model by a probability distribution (hence the model is a mixture of
+An approach partially inspired by the heuristic nature of these clustering 
+methods is _model-based cluster analysis_ or _mixture models_. This approach 
+embeds the cluster analysis within a statistical framework and offers a 
+principled approach to many issues associated with cluster analysis. Each subpopulation is described
+within the model by a probability distribution (hence the model is a mixture of
 distributions). In this setting, the problem of determining the number of
 clusters can be recast as statistical model choice problem, and 
 models that differ in numbers of components and/or in component distributions 
@@ -114,6 +112,163 @@ mixture model_:
 ```
 
 The flexibility in choice of $f(\cdot)$ means that these models can be applied in many different scenarios. 
+
+Inference of the parameters of these models is normally performed using the Maximum Likelihood 
+Estimates (**MLE**) or Bayesian inference. Due to the complex likelihood equations usually 
+associated with these models, the closed form solution is not possible [@stahl2012model]. 
+For MLE, the Expectation-Maximisation algorithm is used to find a solution, whereas for 
+Bayesian inference one of either stochastic (_sampling based_, such as Markov Chain Monte-Carlo (**MCMC**) methods) or deterministic (_variational inference_, (**VI**)) methods tend to be used.
+
+MLE-based inference tends to be very quick method but suffers from several problems. 
+It is:
+
+1. difficult to combine multiple sources of information [see @singh2005combining for an  example of how to consider this];
+2. sensitive to initialisation, prone to finding local maxima due to the nature of the EM algorithm - normally these models are run from multiple diffferent initialisations. In this case observing the same log‐likelihood values from multiple starting points increases confidence that the solution is a global maximum. Using a some heuristic clustering method to initialise the method [such as in @mclust2016] also offers stability; and
+3. prone to singularities - there are points [@euclid300elements] where the likelihood becomes infinite, resulting in degenerate distributions. Singularities occur when the number of parameters to be estimated is large in relation to the sample size [@stahl2012model], models with unrestrained covariances and large numbers of components are prone to this problem. @fraley2007bayesian suggest using Bayesian inference as a means of overcoming this issue, reccomending use of a _maximum a posteriori_ (*MAP*) estimate instead of an ML estimate.
+
+MCMC samplers are very powerful and have aymptotic guarantees for describing their 
+target distribution. However, there are several problems. Ensuring that a sampler has:
+
+1. reached its stationary distribution;
+2. explored the entire support of the traget distribution; and 
+3. converged to its expectation
+
+is difficult [@robert2018accelerating]. The _Gibbs sampler_ 
+[@geman1984stochastic], a common choice of sampler, and can struggle to achieve 
+these three goals in practice (if not in theory) due to high correlation between
+samples [@bishop2006pattern]. 
+Integrating over nuisance parameters as in a _collapsed Gibbs sampler_
+[@liu1994collapsed] can improve rate of convergence upon the expectation, but 
+can reduce the exploration rate of the chain. There exists many more flavours of 
+MCMC that attack these 3 problems in different ways [@robert2018accelerating]. 
+Methods which attempt to improve the ability of the sampler to explore the 
+support of the target distribution such as simulated annealing 
+[@kirkpatrick1983optimization; @atchade2011towards], global-local moves 
+[] or split-merge steps [@green2001modelling; @jain2004split]; all offer some degree of success, 
+but at the cost of additional computational complexity. For high dimensional 
+data these remain slow to converge and may have more limited success. Other 
+methods attempt to accelerate the speed at which the sampler reaches the target
+distribution, e.g. utilising stochastic optimisation [@welling2011bayesian] or
+to attempt and leverage parallel chains [@ahmed2012scalable; however there is 
+controversy over convergence in parallel methods, @robert2018accelerating].
+
+In short, different MCMC methods tend to trade off different weaknesses to be 
+applicable in different contexts, but there are no general, solve-all solutions
+to the 3 problems listed by @robert2018accelerating.
+
+An alternative means of performing Bayesian inference, VI is an optimisation
+method more similar to EM. This proposes a family of densities, $q(\theta)$, 
+and then tries to find the member of this family that is closest to the target 
+density, where closeness is measured by the Kullback–Leibler divergence  [@blei2017variational]. VI is intended as a fast alternative to MCMC when
+traditional MCMC methods are not computationally tractable. However, it does 
+have a number of disadvantages:
+
+* VI underestimates the variance [@bishop2006pattern];
+* VI is prone to becoming stuck in local minima, thus several restarts are 
+required (as with EM);
+* VI does not offer theoretical guarantees (unlike MCMC) [@blei2017variational]; 
+and
+* deriving the correct equations to apply VI in a specific situation is non-trivial.
+
+A common theme across all of these methods is that they can struggle to converge 
+to the global mode. If one is interested in capturing uncertainty and describing 
+multiple modes, than MCMC appears to be the best option, but it can struggle
+to explore the full distribution. MCMC methods which overcome this issue can be
+very slow. I propose consensus inference as an alternative to MLE or Bayesian 
+inference to overcome these issues of speed and exploration of multiple modes.
+
+Consensus inference is an ensemble method such as _random forest_ 
+[@breiman2001random], and aggregates many (presumably) weak learners to improve 
+ability to explore multiple modes and improve the model's ability to uncover 
+structure. It follows a similar logic to 
+_consensus clustering_ [@monti2003consensus], allowing many models with 
+different random initialisations to contribute equally weighted 
+votes on the clustering. In contrast to consensus clustering, consensus 
+inference does not require model convergence. Furthermore, consensus clustering
+is intended as a method to choose the number of clusters present based upon the
+stability of clusters for different choice of $K$, whereas consensus inference 
+infers $K$, and thus this uncertainty about $K$ is represented in the final 
+consensus matrix. More precisely I define consensus inference as follows for
+this report:
+
+```{definition, consensusInference, name="Consensus inference"}
+A general method for performing inference upon clustering models using MCMC 
+methods. Consensus inference runs $S$ independent chains of a collapsed Gibbs
+sampler run for $R$ iterations saving the sample from the $R^{th}$ iteration. 
+That is, from the $s^{th}$ chain a single value for each variable is recorded,
+$\theta^{(s)}=(\theta_1^{(s)}, \ldots, \theta_Q^{(s)})$.
+
+The samples are then compiled into a $S \times Q$ matrix (where the $(s, q)^{th}$ 
+entry is the sampled value for the $q^{th}$ parameter in the $s^{th}$ chain).
+
+Inference is performed similarly to the case of a Bayesian inference using 
+sampling methods, but the interpretation of results differs in that the 
+uncertainty measured is not necessarily the posterior variance and we do not
+assume that we are sampling from the posterior distribution.
+```
+
+```{definition, consensusMatrix, name = "Consensus matrix"}
+A _consensus matrix_ is an $(N \times N)$ matrix that stores, for each pair of items, the proportion of model runs in which two items are clustered together. The consensus matrix is obtained by taking the average over the coclustering matrices obtained for each model restart.
+
+Let $B^{(s)}$ be the coclustering matrix associated with the $s^{th}$ chain.
+Then, for $S$ model runs, let the consensus matrix, $M$, be defined:
+  
+\begin{align}
+M = \frac{1}{S}\sum_{s=1}^S B^{(s)}
+\end{align}
+
+
+```
+
+
+As consensus inference uses MCMC methods, it may leverage some of the strengths 
+of Bayesian 
+inferenece (e.g. use of a prior, inference of $K$ through use of a 
+_Dirichlet-Multinomial Allocation_ (**DMA**) mixture model [@green2001modelling;
+see @savage2013identifying for an example], suitability for an 
+integrative setting, and some quantification of uncertainty), but does not offer
+the asymptotic guarantees of MCMC sampling. 
+
+As each chain is independent of all others, this means that consensus inference 
+can use a parallel environment to reduce computational time and improve 
+scalability. 
+
+Roughly summarising:
+
+```{r, my_table, echo = F}
+
+col_names <- c("MLE", "Bayesian", "Consensus")
+row_names <- c("Singularities in the likelihood", 
+  "Can infer $K$",
+  "Can use prior knowledge",
+  "Quantifies uncertainty",
+  "Robust to local maxima",
+  "Speed"
+  )
+
+scores <- c(
+  T, F, F,
+  F, T, T,
+  F, T, T,
+  F, T, T,
+  F, F, T,
+  "Fast", "Slow", "Fast"
+) %>% 
+  matrix(byrow = T, ncol = 3) %>%
+  data.frame() %>% 
+  set_rownames(row_names) %>% 
+  set_colnames(col_names)
+
+knitr::kable(scores, row.names = T, escape = F)
+
+
+```
+
+Consensus inference attempts to keep many of the strengths of using MCMC 
+samplers and marry these to the advantages of ensemble learning at the cost of
+asymptotic guarantees about performance.
+
+
 
 <!-- The unobserved variable $c$ is (normally) the object we are most interested in performing inference upon. Thus clustering can be seen as a _latent variable analysis_. -->
 
@@ -1051,15 +1206,15 @@ initialisation is used and the dataset is perturbed using resampling techniques.
 The consensus between the restarts can be then assesed using the 
 _consensus matrix_. 
 
-```{definition, consensusMatrix, name = "Consensus matrix"}
-A _consensus matrix_ is an $(N \times N)$ matrix that stores, for each pair of items, the proportion of clustering runs in which two items are clustered together. The consensus matrix is obtained by taking the average over the coclustering matrices of models restart.
+<!-- ```{definition, consensusMatrix, name = "Consensus matrix"} -->
+<!-- A _consensus matrix_ is an $(N \times N)$ matrix that stores, for each pair of items, the proportion of clustering runs in which two items are clustered together. The consensus matrix is obtained by taking the average over the coclustering matrices of models restart. -->
 
-Let B^{(r)} be the coclustering matrix associated with the $r^{th}$ model run. Then, for $R$ model runs, let the consensus matrix, $M$, be defined:
-  
-\begin{align}
-M = \frac{1}{B}\sum_{r=1}^RZ^{(r)}
-\end{align}
-```
+<!-- Let B^{(r)} be the coclustering matrix associated with the $r^{th}$ model run. Then, for $R$ model runs, let the consensus matrix, $M$, be defined: -->
+
+<!-- \begin{align} -->
+<!-- M = \frac{1}{B}\sum_{r=1}^RZ^{(r)} -->
+<!-- \end{align} -->
+<!-- ``` -->
 
 The driving logic of this method is that if a sub-population does exist, then if 
 a different sent of items had been observed, drawn from the same sub-populations, 

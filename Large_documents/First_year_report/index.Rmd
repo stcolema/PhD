@@ -1,0 +1,206 @@
+--- 
+title: "Consensus inference"
+author: "Stephen Coleman"
+date: "`r Sys.Date()`"
+output:
+  bookdown::gitbook:
+    lib_dir: "book_assets"
+  bookdown::pdf_book:
+    keep_tex: yes
+documentclass: book
+bibliography: [FYRbib.bib, packages.bib]
+biblio-style: apalike
+link-citations: yes
+description: "A description of Consensus inference."
+header-includes:
+- \usepackage{caption}
+- \usepackage{multirow}
+- \usepackage{amsmath}
+- \usepackage{booktabs}
+- \usepackage{longtable}
+- \usepackage{array}
+- \usepackage{wrapfig}
+- \usepackage[normalem]{ulem}
+- \usepackage{makecell}
+- \usepackage{xcolor}
+- \usepackage{mathtools}
+- \usepackage[OT1]{fontenc}
+---
+
+```{r, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+
+library(tidyr)
+library(plot3D)
+library(plotly)
+library(magrittr)
+library(ggplot2)
+library(tibble)
+library(dplyr)
+library(patchwork)
+library(mergeTrees)
+library(pheatmap)
+library(coda)
+library(mclust)
+library(mcclust)
+library(mergeTrees)
+library(clusternomics)
+library(bayesCC)
+library(coca)
+library(klic)
+# library(r.jive)
+
+# automatically create a bib database for R packages
+knitr::write_bib(c(
+  .packages(), "bookdown", "knitr", "rmarkdown"
+), "packages.bib")
+
+library(mdiHelpR)
+set.seed(1)
+# devtools::install_github("sarawade/mcclust.ext")
+# library(mcclust.ext)
+
+# Function for converting surfaces for 3D plot to long data for ggplot2
+surface2Df <- function(x, n_seeds, n_iter) {
+  data.frame(x) %>%
+    set_colnames(1:n_seeds) %>%
+    add_column(N_iter = as.factor(1:n_iter)) %>%
+    pivot_longer(1:n_seeds,
+      names_to = "N_chains",
+      values_to = "ARI",
+      names_ptypes = list(N_chains = factor()),
+      values_ptypes = list(ARI = numeric())
+    )
+}
+
+setMyTheme()
+col_pal <- dataColPal()
+sim_col_pal <- simColPal()
+
+fracTrue <- log(1:1e4) / log(1e4)
+nReq <- length(fracTrue)
+
+ggplot(data.frame(fracTrue = fracTrue, Iter = 1:1e4), aes(x = Iter, y = fracTrue)) +
+  geom_line() +
+  labs(
+    title = "Fraction of items allocated correctly",
+    caption = "Within generated clusterings, the fraction of items allocated correctly as a function of the ``chain length''. ",
+    x = "Number of iterations",
+    y = "Fraction of items correctly allocated"
+  )
+
+# Generate an example clustering
+ciSim <- function(true_labels, n_iter, K,
+                  truth_at = 1e4) {
+
+  # The number of samples present
+  n <- length(true_labels)
+
+  # The number of samples clustered truly
+  n_true <- floor(1 + n * fracTrue[min(floor(1 + nReq * n_iter / truth_at), nReq)])
+
+  # The index of these samples
+  true_ind <- sample(1:n, n_true, replace = F)
+
+  # Random partition
+  out <- sample(1:K, size = n, replace = T)
+
+  # Set the truly clustered correctly
+  out[true_ind] <- true_labels[true_ind]
+
+  out
+}
+```
+
+\newcommand{\argmin}[1]{\underset{#1}{\operatorname{argmin}}}
+\newcommand{\argmax}[1]{\underset{#1}{\operatorname{argmax}}}
+
+
+# Abstract {-#abstract}
+
+I propose Consensus inference as an alternative to Bayesian or Frequentist inference of model-based clustering methods. It requires that methods are sampling-based (such as using Markov-Chain Monte Carlo methods). Consensus inference is proposed as MCMC methods can be slow and often fail to converge in finite time in large clustering problems; in integrative clustering, which makes use of multiple datasets, this problem is particularly prevalent. There exists implementations of MCMC methods that attempt to overcome this problem of convergence in clustering (for instance split-merge moves), but these methods remain very slow to run. I propose Consensus inference as a general solution to these problems. In clustering problems, partially due to the discrete nature of clustering labels, Gibbs sampling normally is quick to find a local mode (often within 10's of iterations). However, the sampler then remains trapped there for a very large number of iterations. This means that there is no variation in samples after burn-in. As a result of this, taking only a single sample from the chain after it becomes trapped is equivalent to taking all of the samples in terms of the inference performed. Consensus inference uses this behaviour to both acquire impressive reductions in runtime, but also to attempt better exploration of possible clusterings. I propose running many short chains using many different random initialisations to try and explore the model space. Taking the first sample after burn-in from each of many chains and translating these into a _consensus matrix_ offers a more robust exploration of realistic clusterings possible in the data than using a single long chain. Furthermore, as the chains can be very short (often on the scale of 10's or 100's of iterations) and are independent of one another, one can take advantage of a parallel environment to drastically reduce runtime. I do not offer any guarantees that consensus inference is sampling the posterior space; rather than as an approximation of Bayesian inference this should be thought of as ensemble method combining many weak models into one more powerful, more robust model. 
+
+<!-- I offer empirical evidence from simulations and real data from the Cancer Genome Atlas to show that Consensus inference does perform comparably to Bayesian and Frequentist inference in many scenarios, even outperforming these approaches in some. -->
+
+## Notation {-}
+
+I refer to objects being clustered as _items_. Each item has observations across some variables that I refer to as _features_. More generally if we are considering a multiple dataset context: 
+
+\newcommand{\myG}[1]{\textnormal{\fontencoding{OT1}\fontfamily{eiadtt}\selectfont {#1} \normalfont}}
+
+
+\begin{eqnarray}
+N & & \textrm{The number of items in each dataset.} \\
+L & & \textrm{The number of datasets present.} \\
+P_l & & \textrm{The number of features in the $lth$ dataset.} \\
+K_l & & \textrm{The number of components present in the $lth$ dataset.} \\
+S & & \textrm{The number of components present in the global context (if applicable).} \\
+X &= (X_1, \ldots, X_L) & \textrm{The datasets.} \\
+X_l &= (x_{l1}, \ldots, x_{lN}) & \textrm{The observed data for the $lth$ dataset.} \\
+% c &= (c_1, \ldots, c_L) & \textrm{ The membership vectors for each dataset (our latent variable).} \\
+c_l &= (c_{l1}, \ldots, c_{lN}) & \textrm{The membership vector in the $lth$ dataset.} \\
+\varsigma &= (\varsigma_1, \ldots, \varsigma_N) & \textrm{The global allocation vector (if applicable).} \\
+\pi_l &= (\pi_{l1,}\ldots, \pi_{lK_l}) & \textrm{The mixture weights in the $lth$ context.} \\
+\varpi &= (\varpi_1, \ldots, \varpi_G) & \textrm{The mixture weights for the global components (if present).}
+\end{eqnarray}
+
+If $K_1 = \ldots = K_L$ then we use $K$ as the number of components in each 
+context. We treat $P_l$ in the same way. If $L=1$ then any subscript used to distinguish datasets is ignored. I denote abbreviations or terms that  will be used in place of another in the format "[Full name] ([name hereafter])". For some variable $\theta=(\theta_1, \ldots, \theta_Q)$, I use $\theta_{-i}$ to denote the vector $(\theta_1, \ldots, \theta_{i-1}, \theta_{i+1}, \ldots, \theta_Q)$.
+
+
+```{definition, allocMatrix, name = "Allocation matrix"}
+Let $\mathbf{Z}$ be a $N \times K$ binary matrix, with 
+
+\[
+z_{ik} = \begin{cases}
+ 1 \textrm{ if items $x_i$ is assigned to cluster $k$}, \\
+ 0 \textrm{ else.}
+\end{cases}
+\]
+
+$\mathbf{Z}$ describes the same information as membership vector $c$ in a different format and is referred to as an _allocation matrix_.
+```
+
+Following from \@ref(def:allocMatrix), I use the following notation:
+
+\[
+\begin{aligned}
+\sum_{k=1}^K z_{ik} &= 1 \textrm{ for all $i \in \{1, \ldots, N\}$ }\\
+N_k &= \sum_{i=1}^N z_{ik}  \\
+\mu_k &= \frac{1}{N_k} \sum_{i=1}^N z_{ik} x_i \textrm{ for all $k \in \{1, \ldots, K\}$}
+\end{aligned}
+\]
+
+```{definition, coclustMatrix, name = "Coclustering matrix"}
+Let $\mathbf{B}$ be a $N \times N$ binary matrix, with 
+
+\[
+b_{ij} = \begin{cases}
+ 1 \textrm{ if items $x_i$ and $x_j$ are assigned to the same cluster}, \\
+ 0 \textrm{ else.}
+\end{cases}
+\]
+
+$\mathbf{B}$ is referred to as the _coclustering matrix_.
+```
+
+## Acknowledge these:
+General:
+@R-base
+@R-dplyr
+@R-ggplot2
+@R-magrittr
+@R-patchwork
+@R-pheatmap
+@R-tibble
+@R-tidyr
+
+Write-up:
+@R-bookdown
+@R-knitr
+@R-rmarkdown
+
+MCMC diagnostics:
+@R-coda
+@R-mcclust
