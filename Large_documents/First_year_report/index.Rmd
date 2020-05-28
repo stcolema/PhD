@@ -117,9 +117,39 @@ ciSim <- function(true_labels, n_iter, K,
 \newcommand{\argmax}[1]{\underset{#1}{\operatorname{argmax}}}
 
 
-# Abstract {-#abstract}
+# Introduction {-#abstract}
 
-I propose Consensus inference as an alternative to Bayesian or Frequentist inference of model-based clustering methods. It requires that methods are sampling-based (such as using Markov-Chain Monte Carlo methods). Consensus inference is proposed as MCMC methods can be slow and often fail to converge in finite time in large clustering problems; in integrative clustering, which makes use of multiple datasets, this problem is particularly prevalent. There exists implementations of MCMC methods that attempt to overcome this problem of convergence in clustering (for instance split-merge moves), but these methods remain very slow to run. I propose Consensus inference as a general solution to these problems. In clustering problems, partially due to the discrete nature of clustering labels, Gibbs sampling normally is quick to find a local mode (often within 10's of iterations). However, the sampler then remains trapped there for a very large number of iterations. This means that there is no variation in samples after burn-in. As a result of this, taking only a single sample from the chain after it becomes trapped is equivalent to taking all of the samples in terms of the inference performed. Consensus inference uses this behaviour to both acquire impressive reductions in runtime, but also to attempt better exploration of possible clusterings. I propose running many short chains using many different random initialisations to try and explore the model space. Taking the first sample after burn-in from each of many chains and translating these into a _consensus matrix_ offers a more robust exploration of realistic clusterings possible in the data than using a single long chain. Furthermore, as the chains can be very short (often on the scale of 10's or 100's of iterations) and are independent of one another, one can take advantage of a parallel environment to drastically reduce runtime. I do not offer any guarantees that consensus inference is sampling the posterior space; rather than as an approximation of Bayesian inference this should be thought of as ensemble method combining many weak models into one more powerful, more robust model. 
+Mixutre models and their extensions are powerful cluster analysis tools, 
+offering insights into complex, heterogeneous datasets such as those found in 
+biology [@pan2002model; @medvedovic2004bayesian; @dahl2006model; 
+@gelman2013bayesian]. These methods can be extended to perform integrative 
+clustering, sharing information across multiple paired datasets [see for 
+example @kirk2012bayesian; @lock2013bayesian; @gabasova2017clusternomics], 
+making them suitable for application in a mutliple 'omics setting. 
+
+However, performing inference for these models is a difficult problem, 
+particularly in the high-dimensional, noisy setting so prevalent in 'omics
+analyses. This is further exacerbated in the multiple dataset case. 
+Normally inference is based upon one of either the Maximum Likelihood Estimates
+(**MLE**) of the variables or else Bayesian inference. These methods and their
+implementations have various advantages and disadvantages.
+In this report, I briefly describe some of these and propose consensus inference 
+as an alternative to overcome some of the problems that I consider particularly 
+limiting while maintaining certain features that I consider attractive in the 
+other methods.
+
+Consensus inference is intended as a general, sampling-based ensemble method 
+that can be used to perform inference upon Bayesian models. As a method it aims
+to reduce the computational cost of inference and provide better exploration of 
+multiple modes. Consensus inference attempts to keep many of the strengths of 
+using MCMC samplers (such as some uncertainty quantification, the ability to use
+Bayesian models and hence the ability to infer the number of clusters present 
+and application to an integrative setting) and marry these to the advantages of 
+ensemble learning. To do this the asymptotic guarantees of Bayesian inference
+are surrendered. I compare the performance of a common implementation for each
+of the three inferential methods within a large simulation study. 
+
+<!-- I propose Consensus inference as an alternative to Bayesian or Frequentist inference of model-based clustering methods. It requires that methods are sampling-based (such as using Markov-Chain Monte Carlo methods). Consensus inference is proposed as MCMC methods can be slow and often fail to converge in finite time in large clustering problems; in integrative clustering, which makes use of multiple datasets, this problem is particularly prevalent. There exists implementations of MCMC methods that attempt to overcome this problem of convergence in clustering (for instance split-merge moves), but these methods remain very slow to run. I propose Consensus inference as a general solution to these problems. In clustering problems, partially due to the discrete nature of clustering labels, Gibbs sampling normally is quick to find a local mode (often within 10's of iterations). However, the sampler then remains trapped there for a very large number of iterations. This means that there is no variation in samples after burn-in. As a result of this, taking only a single sample from the chain after it becomes trapped is equivalent to taking all of the samples in terms of the inference performed. Consensus inference uses this behaviour to both acquire impressive reductions in runtime, but also to attempt better exploration of possible clusterings. I propose running many short chains using many different random initialisations to try and explore the model space. Taking the first sample after burn-in from each of many chains and translating these into a _consensus matrix_ offers a more robust exploration of realistic clusterings possible in the data than using a single long chain. Furthermore, as the chains can be very short (often on the scale of 10's or 100's of iterations) and are independent of one another, one can take advantage of a parallel environment to drastically reduce runtime. I do not offer any guarantees that consensus inference is sampling the posterior space; rather than as an approximation of Bayesian inference this should be thought of as ensemble method combining many weak models into one more powerful, more robust model.  -->
 
 <!-- I offer empirical evidence from simulations and real data from the Cancer Genome Atlas to show that Consensus inference does perform comparably to Bayesian and Frequentist inference in many scenarios, even outperforming these approaches in some. -->
 
@@ -127,7 +157,7 @@ I propose Consensus inference as an alternative to Bayesian or Frequentist infer
 
 I refer to objects being clustered as _items_. Each item has observations across some variables that I refer to as _features_. More generally if we are considering a multiple dataset context: 
 
-\newcommand{\myG}[1]{\textnormal{\fontencoding{OT1}\fontfamily{eiadtt}\selectfont {#1} \normalfont}}
+<!-- \newcommand{\myG}[1]{\textnormal{\fontencoding{OT1}\fontfamily{eiadtt}\selectfont {#1} \normalfont}} -->
 
 
 \begin{eqnarray}
@@ -148,6 +178,9 @@ c_l &= (c_{l1}, \ldots, c_{lN}) & \textrm{The membership vector in the $lth$ dat
 If $K_1 = \ldots = K_L$ then we use $K$ as the number of components in each 
 context. We treat $P_l$ in the same way. If $L=1$ then any subscript used to distinguish datasets is ignored. I denote abbreviations or terms that  will be used in place of another in the format "[Full name] ([name hereafter])". For some variable $\theta=(\theta_1, \ldots, \theta_Q)$, I use $\theta_{-i}$ to denote the vector $(\theta_1, \ldots, \theta_{i-1}, \theta_{i+1}, \ldots, \theta_Q)$.
 
+## Definitions {-}
+
+A number of definitions are required for some recurring concepts in this report.
 
 ```{definition, allocMatrix, name = "Allocation matrix"}
 Let $\mathbf{Z}$ be a $N \times K$ binary matrix, with 
@@ -183,6 +216,40 @@ b_{ij} = \begin{cases}
 \]
 
 $\mathbf{B}$ is referred to as the _coclustering matrix_.
+```
+
+### Similarity matrices {-}
+
+Two closely related concepts are that of the posterior similarity matrix 
+(**PSM**) and the consensus matrix. These are defined as follows:
+
+```{definition, psm, name = "Posterior similarity matrix"}
+A _posterior similarity matrix_ is an $(N \times N)$ matrix that stores, for 
+each pair of items, the proportion of MCMC samples for which the pair are
+clustered together. Thus the $(i, j)^{th}$ entry is the proportion of times
+the $i^{th}$ and $j^{th}$ items are allocated to the same cluster. This means
+that the PSM is a symmetric matrix with all entries between 0 and 1 and 
+diagonal entries of 1.
+
+```
+
+
+```{definition, consensusMatrix, name = "Consensus matrix"}
+Similar to the PSM, a _consensus matrix_ is an $(N \times N)$ matrix that stores,
+for each pair of items, the proportion of model runs in which the pair are 
+clustered together. The consensus matrix is obtained by taking the average over
+the coclustering matrices obtained for each model restart.
+
+Let $B^{(i)}$ be the coclustering matrix associated with the $i^{th}$ chain.
+Then, for $I$ chains, let the consensus matrix, $M$, be defined:
+  
+\begin{align}
+M = \frac{1}{I}\sum_{i=1}^I B^{(i)}.
+\end{align}
+
+As with the PSM, the consensus matrix is a symmetric matrix with all entries 
+between 0 and 1 and diagonal entries of 1.
+
 ```
 
 ## Acknowledge these:

@@ -48,25 +48,45 @@ In short there are $K$ non-empty disjoint sets of data, each of which is referre
 
 ```
 
-Cluster analysis has a myriad of applications. These include data mining, 
+Cluster analysis has a myriad of applications. Some traditional applications
+include data mining, 
 which started from the search for groupings of customers and products in massive
 retail datasets [@fraley2002model]; document clustering and the analysis of 
-internet use data; spatial proteomics [@crook2018bayesian]; and image
-analysis, where clustering is used for image segmentation and quantization. My
-area of interest is in clustering 'omics data to improve understanding of 
-disease aetiology or the underlying biology of a system. Ideally this helps 
-clinical practice through identifying driving mechanisms of a disease or in
-defining subtypes within given diseases. Defining subtypes based upon behaviour
-at the subcellular level rather than on phenotypic patterns can enable more 
-effective treatment. Examples where cluster analysis has been used to propose 
-new subtypes include such a diverse range of diseases as breast cancer [@cancer2012comprehensive; @berger2018comprehensive], Coronary artery disease [@guo2017cluster], tinnitus [@van2017cluster] and asthma [@ortega2014cluster].
-Another interesting application is the defining of subpopulations of patients;
-this application is integral to _precision medicine_, which relies upon 
-"the classification of people into subpopulations using their common genetic
-patterns, lifestyles, drug responses, and environmental and cultural factors" 
-[@gameiro2018precision].
+internet use data; and image analysis, where clustering is used for image segmentation and quantization.
 
-Within cluster analysis there exists a large number of possible methods. 
+Within clinical medicine and molecular biology where complex, heterogeneous 
+datasets are prevalent, cluster analysis and its extensions have provided great
+benefit in many settings, ranging from general tools to enable analysis [e.g. @crook2018bayesian; @dahl2006model] to uncovering novel biology in specific 
+diseases [e.g. breast cancer in @cancer2012comprehensive; 
+@berger2018comprehensive; coronary artery disease from @guo2017cluster; 
+tinnitus in @van2017cluster; and asthma in @ortega2014cluster]. Cluster analysis 
+is also integral to the idea of precision medicine, which is based upon 
+"the classification of people into subpopulations using their common 
+genetic patterns, lifestyles, drug responses, and environmental and cultural 
+factors" [@gameiro2018precision].
+
+<!-- My area of interest is in clustering 'omics data to improve understanding of  -->
+<!-- disease aetiology or the underlying biology of a system. Ideally this helps  -->
+<!-- clinical practice through identifying driving mechanisms of a disease or in -->
+<!-- defining subtypes within given diseases.  -->
+
+<!-- Defining subtypes based upon the 'omics profile rather than upon phenotypic  -->
+<!-- patterns can enable more effective treatment as greater diversity may be  -->
+<!-- observed. Examples where cluster analysis has been used to propose  -->
+<!-- new subtypes include such a diverse range of diseases as breast cancer [@cancer2012comprehensive; @berger2018comprehensive], Coronary artery disease [@guo2017cluster], tinnitus [@van2017cluster] and asthma [@ortega2014cluster]. -->
+
+The extension of cluster analysis to analyse multiple paired datasets
+simultaneously in _integrative clustering_ has enabled deeper understanding of 
+more complex diseases [@hasin2017multi; @integrative2014integrative], for example Parkinson's disease [@markello2020integrated] and cancer [@wang2016integrative; @rappoport2018multi].
+
+<!-- Another interesting application is the defining of subpopulations of patients; -->
+<!-- this application is integral to _precision medicine_, which relies upon  -->
+<!-- "the classification of people into subpopulations using their common genetic -->
+<!-- patterns, lifestyles, drug responses, and environmental and cultural factors"  -->
+<!-- [@gameiro2018precision]. -->
+
+
+Within cluster analysis there exists many methods. 
 Traditional approaches [as taught in many textbooks, see for e.g. 
 @fidell2001using; @manly2016multivariate; @stevens2012applied] include 
 hierarchical and non-hierarchical (normally $k$-means) clustering. These
@@ -77,6 +97,8 @@ such as the number of clusters present, the measure of distance / similarity
 between points, which solution is optimal, etc.) is subjective and informal. 
 This has consequences for the interpretation of the results, as evaluation of
 the significance of results is difficult [@monti2003consensus]. 
+
+### Model-based clustering
 
 An approach partially inspired by the heuristic nature of these clustering 
 methods is _model-based cluster analysis_ or _mixture models_. This approach 
@@ -113,38 +135,54 @@ mixture model_:
 
 The flexibility in choice of $f(\cdot)$ means that these models can be applied in many different scenarios. 
 
+### Inference
+
 Inference of the parameters of these models is normally performed using the Maximum Likelihood 
 Estimates (**MLE**) or Bayesian inference. Due to the complex likelihood equations usually 
 associated with these models, the closed form solution is not possible [@stahl2012model]. 
 For MLE, the Expectation-Maximisation algorithm is used to find a solution, whereas for 
 Bayesian inference one of either stochastic (_sampling based_, such as Markov Chain Monte-Carlo (**MCMC**) methods) or deterministic (_variational inference_, (**VI**)) methods tend to be used.
 
-MLE-based inference tends to be very quick method but suffers from several problems. 
+#### Maximum likelihood estimate
+
+MLE-based inference tends to be very quick but suffers from several problems. 
 It is:
 
 1. difficult to combine multiple sources of information [see @singh2005combining for an  example of how to consider this];
-2. sensitive to initialisation, prone to finding local maxima due to the nature of the EM algorithm - normally these models are run from multiple diffferent initialisations. In this case observing the same log‐likelihood values from multiple starting points increases confidence that the solution is a global maximum. Using a some heuristic clustering method to initialise the method [such as in @mclust2016] also offers stability; and
-3. prone to singularities - there are points [@euclid300elements] where the likelihood becomes infinite, resulting in degenerate distributions. Singularities occur when the number of parameters to be estimated is large in relation to the sample size [@stahl2012model], models with unrestrained covariances and large numbers of components are prone to this problem. @fraley2007bayesian suggest using Bayesian inference as a means of overcoming this issue, reccomending use of a _maximum a posteriori_ (*MAP*) estimate instead of an ML estimate.
+2. sensitive to initialisation; EM is prone to finding local maxima - to account for this these models are run from multiple different initialisations. In this case observing the same log‐likelihood values from multiple starting points increases confidence that the solution is a global maximum. Using a some heuristic clustering method to initialise the method [such as in @mclust2016] also offers stability; and
+3. prone to singularities; there are points [@euclid300elements] where the likelihood becomes infinite, resulting in degenerate distributions. Singularities occur when the number of parameters to be estimated is large in relation to the sample size [@stahl2012model], models with unrestrained covariances and large numbers of components are prone to this problem. @fraley2007bayesian suggest using Bayesian inference as a means of overcoming this issue, recommending use of a _maximum a posteriori_ (*MAP*) estimate instead of an ML estimate.
 
-MCMC samplers are very powerful and have aymptotic guarantees for describing their 
-target distribution. However, there are several problems. Ensuring that a sampler has:
+#### Bayesian inference
+
+Bayesian inference is very powerful. Some of its benefits (in comparison to MLE) include:
+
+1. One may avoid some of the issues in convergence. As one often is only interested in a subset of variables (for example, the allocation variables, $c_i$), one may integrate over the remaining nuisance parameters. This means that one may avoid directly calculating awkward variables (such as covariances matrices) that are prone to causing issues such as singularities in the likelihood function (an example of such a solution is the _collapsed Gibbs sampler_).
+2. The asymptotic guarantees of MCMC methods mean that, in comparison to EM, if one runs the algorithm for long enough, one is guaranteed to describe the full posterior distribution and not only a local maximum [although this does not always hold in practice,
+@robert2018accelerating]. 
+3. Incorporation of prior beliefs into the inference; this also means that one
+may apply Bayesian methods even when the sample size is small.
+4. Inference of $K$ through use of the Dirichlet Process [@ferguson1973bayesian]. 
+5. The graphical models used in Bayesian inference extend naturally to a multiple dataset setting [see @kirk2012bayesian; @gabasova2017clusternomics; and @lock2013bayesian].
+
+Alas not all is roses. The MCMC samplers implementing Bayesian inference are
+very powerful and have asymptotic guarantees for describing their target 
+distribution. However, ensuring that a sampler has:
 
 1. reached its stationary distribution;
-2. explored the entire support of the traget distribution; and 
+2. explored the entire support of the target distribution; and 
 3. converged to its expectation
 
-is difficult [@robert2018accelerating]. The _Gibbs sampler_ 
-[@geman1984stochastic], a common choice of sampler, and can struggle to achieve 
-these three goals in practice (if not in theory) due to high correlation between
-samples [@bishop2006pattern]. 
-Integrating over nuisance parameters as in a _collapsed Gibbs sampler_
-[@liu1994collapsed] can improve rate of convergence upon the expectation, but 
-can reduce the exploration rate of the chain. There exists many more flavours of 
-MCMC that attack these 3 problems in different ways [@robert2018accelerating]. 
-Methods which attempt to improve the ability of the sampler to explore the 
+in practice is difficult [@robert2018accelerating]. For example,
+the _Gibbs sampler_ [@geman1984stochastic], a common choice of sampler, can
+struggle to achieve these three goals due to high correlation between samples [@bishop2006pattern]. Integrating over nuisance parameters as in a
+_collapsed Gibbs sampler_ [@liu1994collapsed] can improve rate of convergence
+upon the expectation, but can reduce the exploration rate of the chain. 
+There exists many more flavours of MCMC that attack these 3 problems in 
+different ways [@robert2018accelerating].  Methods which attempt to improve
+the ability of the sampler to explore the 
 support of the target distribution such as simulated annealing 
-[@kirkpatrick1983optimization; @atchade2011towards], global-local moves 
-[] or split-merge steps [@green2001modelling; @jain2004split]; all offer some degree of success, 
+[@kirkpatrick1983optimization; @atchade2011towards], incorporating  
+global-local moves [] or split-merge steps [@green2001modelling; @jain2004split]; all offer some degree of success, 
 but at the cost of additional computational complexity. For high dimensional 
 data these remain slow to converge and may have more limited success. Other 
 methods attempt to accelerate the speed at which the sampler reaches the target
@@ -157,25 +195,27 @@ applicable in different contexts, but there are no general, solve-all solutions
 to the 3 problems listed by @robert2018accelerating.
 
 An alternative means of performing Bayesian inference, VI is an optimisation
-method more similar to EM. This proposes a family of densities, $q(\theta)$, 
+method more like EM. This proposes a family of densities, $q(\theta)$, 
 and then tries to find the member of this family that is closest to the target 
 density, where closeness is measured by the Kullback–Leibler divergence  [@blei2017variational]. VI is intended as a fast alternative to MCMC when
 traditional MCMC methods are not computationally tractable. However, it does 
-have a number of disadvantages:
+have several disadvantages:
 
-* VI underestimates the variance [@bishop2006pattern];
-* VI is prone to becoming stuck in local minima, thus several restarts are 
+1. VI underestimates the variance [@bishop2006pattern];
+2. VI is prone to becoming stuck in local minima, thus several restarts are 
 required (as with EM);
-* VI does not offer theoretical guarantees (unlike MCMC) [@blei2017variational]; 
+3. VI does not offer theoretical guarantees (unlike MCMC) [@blei2017variational]; 
 and
-* deriving the correct equations to apply VI in a specific situation is non-trivial.
+4. deriving the correct equations to apply VI in a specific situation is non-trivial.
 
-A common theme across all of these methods is that they can struggle to converge 
+A common theme across all these methods is that they can struggle to converge 
 to the global mode. If one is interested in capturing uncertainty and describing 
 multiple modes, than MCMC appears to be the best option, but it can struggle
 to explore the full distribution. MCMC methods which overcome this issue can be
 very slow. I propose consensus inference as an alternative to MLE or Bayesian 
 inference to overcome these issues of speed and exploration of multiple modes.
+
+#### Consensus inference
 
 Consensus inference is an ensemble method such as _random forest_ 
 [@breiman2001random], and aggregates many (presumably) weak learners to improve 
@@ -207,27 +247,13 @@ uncertainty measured is not necessarily the posterior variance and we do not
 assume that we are sampling from the posterior distribution.
 ```
 
-```{definition, consensusMatrix, name = "Consensus matrix"}
-A _consensus matrix_ is an $(N \times N)$ matrix that stores, for each pair of items, the proportion of model runs in which two items are clustered together. The consensus matrix is obtained by taking the average over the coclustering matrices obtained for each model restart.
-
-Let $B^{(s)}$ be the coclustering matrix associated with the $s^{th}$ chain.
-Then, for $S$ model runs, let the consensus matrix, $M$, be defined:
-  
-\begin{align}
-M = \frac{1}{S}\sum_{s=1}^S B^{(s)}
-\end{align}
-
-
-```
-
 
 As consensus inference uses MCMC methods, it may leverage some of the strengths 
-of Bayesian 
-inferenece (e.g. use of a prior, inference of $K$ through use of a 
+of Bayesian inference (e.g. use of a prior, inference of $K$ through use of a 
 _Dirichlet-Multinomial Allocation_ (**DMA**) mixture model [@green2001modelling;
 see @savage2013identifying for an example], suitability for an 
 integrative setting, and some quantification of uncertainty), but does not offer
-the asymptotic guarantees of MCMC sampling. 
+the asymptotic guarantees of Bayesian inference. 
 
 As each chain is independent of all others, this means that consensus inference 
 can use a parallel environment to reduce computational time and improve 
@@ -264,9 +290,9 @@ knitr::kable(scores, row.names = T, escape = F)
 
 ```
 
-Consensus inference attempts to keep many of the strengths of using MCMC 
-samplers and marry these to the advantages of ensemble learning at the cost of
-asymptotic guarantees about performance.
+<!-- Consensus inference attempts to keep many of the strengths of using MCMC  -->
+<!-- samplers and marry these to the advantages of ensemble learning at the cost of -->
+<!-- asymptotic guarantees about performance. -->
 
 
 
@@ -376,7 +402,7 @@ A common class of sampling based methods are the Markov-Chain Monte Carlo (**MCM
 In comparison to the MLE, this approach has some strong advantages. 
 
 1. One may avoid some of the issues in convergence. As one often is only interested in a subset of variables (for example, the allocation varaibles, $c_i$), one may integrate over the remaining nuisance parameters. This means that one may avoid directly calculating awkward variables (such as covariances matrices) that are prone to causing issues such as singularities in the likelihood function (an example of such a solution is the _collapsed Gibbs sampler_).
-2. The aymptotic guarantees of MCMC methods mean that, in comparison to EM, if one runs the algorithm for long enough, one is guaranteed to describe the full posterior distribution and not only a local maximum.
+2. The asymptotic guarantees of MCMC methods mean that, in comparison to EM, if one runs the algorithm for long enough, one is guaranteed to describe the full posterior distribution and not only a local maximum.
 3. As mentioned previously, one may incorporate prior beliefs into the inference and thus may apply Bayesian methods even when the sample size is small.
 4. Using the Dirichlet Process (see section \@ref(dirichletProcess)) one may infer the number of parameters present, reducing the level of subjectivity in cluster analysis.
 
@@ -388,6 +414,8 @@ In summary, Bayesian inference is very powerful, over coming many of the issues 
 @ahmed2012scalable suggest MCMC method that uses parallel environment
 
 #### Dirichlet process {#dirichletProcess}
+
+
 
 I stated in section \@ref(clusterAnalysis) that the problem of choosing $K$ is a 
 non-trivial issue. All of the previously stated methods demand that the user 
