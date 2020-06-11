@@ -1,0 +1,940 @@
+# Simulations {#simulations}
+
+## Introduction
+
+I want to create a simulation study to do two things:
+
+1. absolute evaluation of consensus inference as a inferential technique for mixture models; and 
+2. comparative evaluation of consensus and Bayesian inference of mixture models and Mclust, a popular MLE-based mixture model R package.
+
+I am interested in evaluating:
+
+* Predictive performance - how well each method predicts the true clustering (metric: *Adjusted Rand Index* [@hubert1985comparing] between the predicted clustering from each method and the true clustering);
+* Uncertainty quantification - how well each method quantifies uncertainty about the true clustering (metric: *Frobenius norm* of the difference of the coclustering / consensus / posterior similarity matrices and the true coclustering matrix); and
+* Speed - how long each method takes to run (metric: *seconds*).
+
+## Data generating mechanism
+
+<!-- For this case I use the notation: -->
+
+<!-- * $N$: the number of items generated; -->
+<!-- * $P$: the number of relevant features used; -->
+<!-- * $P_n$: the number of irrelevant features used; -->
+<!-- * $K$: the true number of clusters present; -->
+<!-- * $X = (x_1, \ldots, x_N)$: the items generated; -->
+<!-- * $\pi=(\pi_1, \ldots, \pi_K)$: the expected proportions of the population belonging to each cluster; -->
+<!-- * $c=(c_1, \ldots, c_N)$: the allocation variable for each item; -->
+<!-- * $\theta=(\theta_1, \ldots, \theta_K)$: the parameters associated with each component; and -->
+<!-- * $\phi=(\phi_1,\ldots, \phi_P)$: the indicator variable of feature relevance. -->
+
+Our data generating model is a finite mixture model with independent features where irrelevant features have global parameters rather than component specific parameters:
+
+\[
+\begin{aligned}
+p(x, z, \theta, \pi) &= \prod_{i=1}^N p(x_i | z_i, \theta_{z_i}) \prod_{i=1}^N p (z_i | \pi) p(\pi) p(\theta) \\
+  &= \prod_{i=1}^N \prod_{p=1}^P p(x_{ip} | z_i, \theta_{z_ip})^{(1 - \phi_p)} p(x_{ip} | \theta_p) ^ {\phi_p} \prod_{i=1}^N p (z_i | \pi) p(\pi) p(\theta)
+\end{aligned}
+\]
+
+During my simulations I assume that the model in question is a mixture of *Gaussians* and thus $\theta_{kp}=(\mu_{kp}, \sigma^2_{kp})$.
+
+As each method of inference uses a common model, this data-generating mechanism is not expected to favour any one method over another.
+
+I test seven different scenarios that change various parameters in this model. I will define the component parameters by $\Delta_{\mu}$, the distance between the possible means in each feature, and $\sigma^2$, a common standard deviation across all components and features. The scenarios tested are:
+
+1. The 2D Gaussian case (this is a sense-check);
+2. The lack-of-structure case in 2 dimensions;
+3. The base case for which scenarios 4-6 are variations;
+4. Increasing $\sigma^2$;
+5. Increasing the number of irrelevant features;
+6. Varying the expected proportion of the total population assigned to each sub-population;
+7. The large $N$, small $P$ paradigm; and
+8. The small $N$, large $P$ case.
+
+A more detailed description of each scenario and various sub-scenarios is given in the below table.
+
+```{r scenario_table, echo=F}
+set.seed(1)
+scn_table <- data.frame(
+  Scenario = c("Simple 2D", "No structure", "Base Case", rep("Large N, small P", 3), rep("Large standard deviation", 3), rep("Irrelevant features", 5), rep("Small N, large P", 2), "Varying proportions"),
+  N = c(100, 100, 2e2, 1e4, 1e4, 1e4, 2e2, 2e2, 2e2, 2e2, 2e2, 2e2, 2e2, 2e2, 50, 50, 200),
+  P_s = c(2, 0, 20, 4, 4, 4, 20, 20, 20, 20, 20, 20, 20, 20, 500, 500, 20),
+  P_n = c(0, 2, 0, 0, 0, 0, 0, 0, 0, 2, 10, 20, 100, 200, 0, 0, 0),
+  K = c(5, 1, 5, 5, 50, 50, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5),
+  Delta_mu = c(3, 0, 1, 1, 1, 0.5, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0.2, 1),
+  sigma2 = c(1, 1, 1, 1, 1, 1, 3, 5, 10, 1, 1, 1, 1, 1, 1, 1, 1),
+  Pi = c(rep("vec(1/K)", 16), "(0.5, 0.25, 0.125, 0.0675, 0.0675)")
+)
+
+colnames(scn_table) <- c(
+  "Scenario",
+  "$N$",
+  "$P_s$",
+  "$P_n$",
+  "$K$",
+  "$\\Delta_{\\mu}$",
+  "$\\sigma^2$",
+  "$\\pi$"
+)
+
+sims_used <- scn_table[c(1:3, 7, 8, 11:13, 17, 4:6, 15:16), ] %>%
+  set_rownames(1:nrow(.))
+
+knitr::kable(sims_used, row.names = T, escape = F) # , "latex", longtable = T, booktabs = T, caption = "Longtable")
+```
+
+<!-- \begin{center} -->
+<!-- \captionof{table}{Multirow Table.} -->
+<!-- \begin{tabular}{l|l|r} -->
+<!-- \textbf{Value 1} & \textbf{Value 2} & \textbf{Value 3} \\ -->
+<!-- $\alpha$ & $\beta$ & $\gamma$ \\ \hline -->
+<!-- \multirow{2}{*}{12} & 1110.1 & a \\ -->
+<!--  & 10.1 & b \\ \hline -->
+<!-- 3 & 23.113231 & c \\ -->
+<!-- 4 & 25.113231 & d -->
+<!-- \end{tabular} -->
+<!-- \end{center} -->
+
+### Scenario purposes
+
+Each scenario is seen as testing certain cases or concepts.
+
+#### Simple 2D
+This case is seen as an introduction to method performance. In this case the data can be plotted as a scatter plot (whereas higher dimensions mean any two dimensional representation is missing some information about the data). This means that one may view the data and have an intuition if it is possible for a mixture model to cluster the data; furthermore the small dimsnaionality of the problem means that the distance between modes on the likelihood surface is less so we do not expect the Gibbs sampler to become trapped. This means that we can compare consensus inference to Bayesian inference with a strong belief that our model has converged (given appropriate tests). This means that we can process how well consensus inference performs with a deeper understanding of the context than might be possible in higher dimensional cases.
+
+```{r, simple2dView, echo = F, cache = T}
+scn <- "Simple 2D"
+row_ind <- which(sims_used$Scenario == scn)
+N <- sims_used[["$N$"]][row_ind]
+P_s <- sims_used[["$P_s$"]][row_ind]
+P_n <- sims_used[["$P_n$"]][row_ind]
+K <- sims_used[["$K$"]][row_ind]
+dm <- sims_used[["$\\Delta_{\\mu}$"]][row_ind]
+s2 <- sims_used[["$\\sigma^2$"]][row_ind]
+pi <- sims_used[["$\\pi$"]][row_ind]
+
+if (pi == "vec(1/K)") {
+  pi <- rep(1 / K, K)
+} else {
+  pi <- "(0.5, 0.25, 0.125, 0.0675, 0.0675)" %>%
+    stringr::str_remove_all("[() ]") %>%
+    strsplit(",") %>%
+    unlist() %>%
+    as.numeric()
+}
+
+# Generate dataset
+simple2D_gen <- generateSimulationDataset(K, N, P_s,
+  delta_mu = dm,
+  p_n = P_n,
+  cluster_sd = s2,
+  pi = pi
+)
+
+
+annotatedHeatmap(scale(simple2D_gen$data), simple2D_gen$cluster_IDs,
+  main = "Simple 2D (seed 1)",
+  show_rownames = F,
+  show_colnames = F
+)
+
+simple2D_gen$data %>%
+  scale() %>%
+  data.frame() %>%
+  dplyr::mutate(Cluster = as.factor(simple2D_gen$cluster_IDs)) %>%
+  ggplot(aes(x = Gene_1, y = Gene_2, colour = Cluster)) +
+  geom_point() +
+  scale_colour_viridis_d() +
+  labs(
+    title = "Example: Simple 2D case (seed 1)",
+    x = "Gene 1",
+    y = "Gene 2",
+    subtitle = "Note that multiple clusters may overlap."
+  )
+```
+
+#### No structure
+
+In this case all items are drawn from the same normal distribution. It is meant to be a test to see how the inference methods perform when there is no structure to find. It may be considered an similar to attempting to quantify the false positive rate in a predictive method.
+
+```{r, noStructureView, echo = F, cache = T}
+scn <- "No structure"
+row_ind <- which(sims_used$Scenario == scn)
+N <- sims_used[["$N$"]][row_ind]
+P_s <- sims_used[["$P_s$"]][row_ind]
+P_n <- sims_used[["$P_n$"]][row_ind]
+K <- sims_used[["$K$"]][row_ind]
+dm <- sims_used[["$\\Delta_{\\mu}$"]][row_ind]
+s2 <- sims_used[["$\\sigma^2$"]][row_ind]
+pi <- sims_used[["$\\pi$"]][row_ind]
+
+if (pi == "vec(1/K)") {
+  pi <- rep(1 / K, K)
+} else {
+  pi <- "(0.5, 0.25, 0.125, 0.0675, 0.0675)" %>%
+    stringr::str_remove_all("[() ]") %>%
+    strsplit(",") %>%
+    unlist() %>%
+    as.numeric()
+}
+
+# Generate dataset
+noStructure_gen <- generateSimulationDataset(K, N, P_s,
+  delta_mu = dm,
+  p_n = P_n,
+  cluster_sd = s2,
+  pi = pi
+)
+
+
+annotatedHeatmap(scale(noStructure_gen$data), noStructure_gen$cluster_IDs,
+  main = "No structure (seed 1)",
+  show_rownames = F,
+  show_colnames = F
+)
+
+noStructure_gen$data %>%
+  scale() %>%
+  data.frame() %>%
+  dplyr::mutate(Cluster = as.factor(noStructure_gen$cluster_IDs)) %>%
+  ggplot(aes(x = Noise_1, y = Noise_2, colour = Cluster)) +
+  geom_point() +
+  scale_colour_viridis_d() +
+  labs(
+    title = "Example: No structure case (seed 1)",
+    x = "Gene 1",
+    y = "Gene 2"
+  )
+```
+
+#### Base case
+
+This is the _base case_ which most of the other scenarios are some variation of. This is intended to be a benchmark against which performance may be judged. Each method is expected to perform well here across all metrics, predicting the true clustering correctly and with very little uncertainty.
+
+```{r, baseCase, echo = F, cache = T}
+scn <- "Base Case"
+row_ind <- which(sims_used$Scenario == scn)[1]
+N <- sims_used[["$N$"]][row_ind]
+P_s <- sims_used[["$P_s$"]][row_ind]
+P_n <- sims_used[["$P_n$"]][row_ind]
+K <- sims_used[["$K$"]][row_ind]
+dm <- sims_used[["$\\Delta_{\\mu}$"]][row_ind]
+s2 <- sims_used[["$\\sigma^2$"]][row_ind]
+pi <- sims_used[["$\\pi$"]][row_ind]
+
+if (pi == "vec(1/K)") {
+  pi <- rep(1 / K, K)
+} else {
+  pi <- "(0.5, 0.25, 0.125, 0.0675, 0.0675)" %>%
+    stringr::str_remove_all("[() ]") %>%
+    strsplit(",") %>%
+    unlist() %>%
+    as.numeric()
+}
+
+
+# Generate dataset
+baseCase_gen <- generateSimulationDataset(K, N, P_s,
+  delta_mu = dm,
+  p_n = P_n,
+  cluster_sd = s2,
+  pi = pi
+)
+
+
+annotatedHeatmap(scale(baseCase_gen$data), baseCase_gen$cluster_IDs,
+  main = paste0(scn, " (seed 1)"),
+  show_rownames = F,
+  show_colnames = F
+)
+
+
+# Set labels for facet wrapping
+cluster_labels <- c(paste0("Cluster ", 1:K))
+names(cluster_labels) <- 1:K
+ 
+
+pc1 <- prcomp(baseCase_gen$data)$x
+pcaSeriesPlot(x = pc1, labels = baseCase_gen$cluster_IDs, n_comp = min(P_s, 6)) +
+  facet_wrap(~Cluster, labeller = labeller(Cluster = cluster_labels)) +
+  labs(
+    title = paste0("PCA series for ", scn, " scenario") #,
+    # subtitle = "Notice how the clusters separate across the components."
+  )
+
+# noStructure_gen$data %>%
+#   scale() %>%
+#   data.frame() %>%
+#   dplyr::mutate(Cluster = as.factor(noStructure_gen$cluster_IDs)) %>%
+#   ggplot(aes(x = Gene_1, y = Gene_1, colour = Cluster)) +
+#   geom_point() +
+#   scale_colour_viridis_d() +
+#   labs(
+#     title = "Example: No structure case (seed 1)",
+#     x = "Gene 1",
+#     y = "Gene 2"
+#   )
+```
+
+#### Large standard deviation
+
+This is to test how distinct the clusters must be for the inference to perform well. _A priori_, I would think that Bayesian inference would perform optimally here. The reasonable number of features (20) means that the collapsed Gibbs sampler should explore the space well. The large variance within each cluster means that most of the signal is hidden and teh data might appear more as a continuum with no clustering structure, but I hope that the Bayesian inference will correctly idenitfy some structure but alos capture a large amount of uncertainty. I think consensus inference will perform quite well and do not have a strong intuition for how ``Mclust`` will perform. I think that the clever initialisation based upon ``hclust`` will help in unpicking much structure, but I suspect that the final clustering will be too certain.
+
+```{r, largeStandardDeviation, echo = F, cache = T}
+scn <- "Large standard deviation"
+row_ind <- which(sims_used$Scenario == scn)[1]
+N <- sims_used[["$N$"]][row_ind]
+P_s <- sims_used[["$P_s$"]][row_ind]
+P_n <- sims_used[["$P_n$"]][row_ind]
+K <- sims_used[["$K$"]][row_ind]
+dm <- sims_used[["$\\Delta_{\\mu}$"]][row_ind]
+s2 <- sims_used[["$\\sigma^2$"]][row_ind]
+pi <- sims_used[["$\\pi$"]][row_ind]
+
+if (pi == "vec(1/K)") {
+  pi <- rep(1 / K, K)
+} else {
+  pi <- "(0.5, 0.25, 0.125, 0.0675, 0.0675)" %>%
+    stringr::str_remove_all("[() ]") %>%
+    strsplit(",") %>%
+    unlist() %>%
+    as.numeric()
+}
+
+
+# Generate dataset
+largeStadDev_gen <- generateSimulationDataset(K, N, P_s,
+  delta_mu = dm,
+  p_n = P_n,
+  cluster_sd = s2,
+  pi = pi
+)
+
+
+annotatedHeatmap(scale(largeStadDev_gen$data), largeStadDev_gen$cluster_IDs,
+  main = "Large N, small P (seed 1)",
+  show_rownames = F,
+  show_colnames = F
+)
+
+
+# Set labels for facet wrapping
+cluster_labels <- c(paste0("Cluster ", 1:K))
+names(cluster_labels) <- 1:K
+ 
+
+pc1 <- prcomp(largeStadDev_gen$data)$x
+pcaSeriesPlot(x = pc1, labels = largeStadDev_gen$cluster_IDs, n_comp = min(P_s, 6)) +
+  facet_wrap(~Cluster, labeller = labeller(Cluster = cluster_labels)) +
+  labs(
+    title = "PCA series for large N, small P scenario",
+    subtitle = "Notice how the clusters separate across the components."
+  )
+
+# noStructure_gen$data %>%
+#   scale() %>%
+#   data.frame() %>%
+#   dplyr::mutate(Cluster = as.factor(noStructure_gen$cluster_IDs)) %>%
+#   ggplot(aes(x = Gene_1, y = Gene_1, colour = Cluster)) +
+#   geom_point() +
+#   scale_colour_viridis_d() +
+#   labs(
+#     title = "Example: No structure case (seed 1)",
+#     x = "Gene 1",
+#     y = "Gene 2"
+#   )
+```
+
+To highlight how strongly the clusters overlap within each feature I include a plot of the within-feature distributions.
+
+```{r, example_large_std_dev, echo=F}
+
+
+p1 <- lapply(1:5, function(x){rnorm(5000, x, 5)}) %>% 
+  data.frame() %>%
+  set_colnames(1:5) %>%
+  pivot_longer(everything(), names_to = "Cluster", values_to = "Value") %>% 
+  ggplot(aes(x = Value, colour = Cluster)) +
+  geom_density() +
+  scale_color_viridis_d() +
+  labs(
+    title = "Standard deviation 5"
+  ) +
+  xlim(-15, 25)
+
+
+p2 <- lapply(1:5, function(x){rnorm(5000, x, 3)}) %>% 
+  data.frame() %>%
+  set_colnames(1:5) %>%
+  pivot_longer(everything(), names_to = "Cluster", values_to = "Value") %>% 
+  ggplot(aes(x = Value, colour = Cluster)) +
+  geom_density() +
+  scale_color_viridis_d() +
+  labs(
+    title = "Standard deviation 3"
+  ) +
+  xlim(-15, 25)
+
+(p2 / p1) + plot_annotation(title = "Example of clusters within a feature for large standard deviation data")
+
+
+```
+
+One can see that the clusters overlap severaly within each feature and that unpicking any structure might be highly difficult, partiuclarly in the second case.
+
+#### Large $N$, small $P$
+
+This is to test the _large $N$, small $P$_ scenario. This is a difficult case to
+analyse as visualising the result is difficult for a PSM (due to the $N \times N$ 
+dimension of this), and obtaining a predicted clustering is also very slow.
+
+```{r, largeNsmallP, echo = F, cache = T}
+scn <- "Large N, small P"
+row_ind <- which(sims_used$Scenario == scn)[1]
+N <- sims_used[["$N$"]][row_ind]
+P_s <- sims_used[["$P_s$"]][row_ind]
+P_n <- sims_used[["$P_n$"]][row_ind]
+K <- sims_used[["$K$"]][row_ind]
+dm <- sims_used[["$\\Delta_{\\mu}$"]][row_ind]
+s2 <- sims_used[["$\\sigma^2$"]][row_ind]
+pi <- sims_used[["$\\pi$"]][row_ind]
+
+if (pi == "vec(1/K)") {
+  pi <- rep(1 / K, K)
+} else {
+  pi <- "(0.5, 0.25, 0.125, 0.0675, 0.0675)" %>%
+    stringr::str_remove_all("[() ]") %>%
+    strsplit(",") %>%
+    unlist() %>%
+    as.numeric()
+}
+
+
+# Generate dataset
+largeNsmallP_gen <- generateSimulationDataset(K, N, P_s,
+  delta_mu = dm,
+  p_n = P_n,
+  cluster_sd = s2,
+  pi = pi
+)
+
+
+annotatedHeatmap(scale(largeNsmallP_gen$data), largeNsmallP_gen$cluster_IDs,
+  main = "Large N, small P (seed 1)",
+  show_rownames = F,
+  show_colnames = F
+)
+
+
+# Set labels for facet wrapping
+cluster_labels <- c(paste0("Cluster ", 1:K))
+names(cluster_labels) <- 1:K
+ 
+
+pc1 <- prcomp(largeNsmallP_gen$data)$x
+pcaSeriesPlot(x = pc1, labels = largeNsmallP_gen$cluster_IDs, n_comp = min(P_s, 6)) +
+  facet_wrap(~Cluster, labeller = labeller(Cluster = cluster_labels)) +
+  labs(
+    title = "PCA series for large N, small P scenario",
+    subtitle = "Notice how the clusters separate across the components."
+  )
+
+# noStructure_gen$data %>%
+#   scale() %>%
+#   data.frame() %>%
+#   dplyr::mutate(Cluster = as.factor(noStructure_gen$cluster_IDs)) %>%
+#   ggplot(aes(x = Gene_1, y = Gene_1, colour = Cluster)) +
+#   geom_point() +
+#   scale_colour_viridis_d() +
+#   labs(
+#     title = "Example: No structure case (seed 1)",
+#     x = "Gene 1",
+#     y = "Gene 2"
+#   )
+```
+
+
+#### Small $N$, large $P$
+
+This is to test the _small $N$, large $P$_ scenario so common in genetics. I 
+think all methods will succeed in unpicking structure in the first case, but as
+the distance between means decreases it will be interesting to see how each 
+method performs. If the distance becomes too small and the resulting mixture of 
+Gaussians effectively merge such that unpicking anyone cluster from its 
+neighbours is not feasible, than this will be similar to a high-dimensional 
+extension to the _no structure_ case.
+
+```{r, smallNlargeP, echo = F, cache = T}
+scn <- "Small N, large P"
+row_ind <- which(sims_used$Scenario == scn)[2]
+N <- sims_used[["$N$"]][row_ind]
+P_s <- sims_used[["$P_s$"]][row_ind]
+P_n <- sims_used[["$P_n$"]][row_ind]
+K <- sims_used[["$K$"]][row_ind]
+dm <- sims_used[["$\\Delta_{\\mu}$"]][row_ind]
+s2 <- sims_used[["$\\sigma^2$"]][row_ind]
+pi <- sims_used[["$\\pi$"]][row_ind]
+
+if (pi == "vec(1/K)") {
+  pi <- rep(1 / K, K)
+} else {
+  pi <- "(0.5, 0.25, 0.125, 0.0675, 0.0675)" %>%
+    stringr::str_remove_all("[() ]") %>%
+    strsplit(",") %>%
+    unlist() %>%
+    as.numeric()
+}
+
+
+# Generate dataset
+smallNlargeP_gen <- generateSimulationDataset(K, N, P_s,
+  delta_mu = dm,
+  p_n = P_n,
+  cluster_sd = s2,
+  pi = pi
+)
+
+
+annotatedHeatmap(scale(smallNlargeP_gen$data), smallNlargeP_gen$cluster_IDs,
+  main = "Small N, large P (seed 1)",
+  show_rownames = F,
+  show_colnames = F
+)
+
+
+# Set labels for facet wrapping
+cluster_labels <- c(paste0("Cluster ", 1:K))
+names(cluster_labels) <- 1:K
+ 
+
+pc1 <- prcomp(smallNlargeP_gen$data)$x
+pcaSeriesPlot(x = pc1, labels = smallNlargeP_gen$cluster_IDs, n_comp = min(P_s, 6)) +
+  facet_wrap(~Cluster, labeller = labeller(Cluster = cluster_labels)) +
+  labs(
+    title = "PCA series for small N, large P scenario",
+    subtitle = "The clusters appear to be separable, despite the wide range of loadings within clusters."
+  )
+
+# noStructure_gen$data %>%
+#   scale() %>%
+#   data.frame() %>%
+#   dplyr::mutate(Cluster = as.factor(noStructure_gen$cluster_IDs)) %>%
+#   ggplot(aes(x = Gene_1, y = Gene_1, colour = Cluster)) +
+#   geom_point() +
+#   scale_colour_viridis_d() +
+#   labs(
+#     title = "Example: No structure case (seed 1)",
+#     x = "Gene 1",
+#     y = "Gene 2"
+#   )
+```
+
+#### Irrelevant features
+
+This is to test how robust to noise the methods are. I expect that all methods 
+will perform wll when the number of feautres containing signal is greater than 
+those containing noise, but as the ratio flips and the number of irrelevant 
+features dominates, I expect ``Mclust`` to struggle and I will be interested to
+see how Bayesian and Consensus inference perform. This is of interest in the 
+context of gene expression data where many irrelevant features are present; 
+ideally our method will be robust to this, as it would mean that a practitioner
+could use a less intense feature selection as removing all noisy features 
+would not be a requisite to avoid obscuring subpopulation signal.
+
+```{r, irrelevantFeatures, echo = F, cache = T}
+scn <- "Irrelevant features"
+row_ind <- which(sims_used$Scenario == scn)[3]
+N <- sims_used[["$N$"]][row_ind]
+P_s <- sims_used[["$P_s$"]][row_ind]
+P_n <- sims_used[["$P_n$"]][row_ind]
+K <- sims_used[["$K$"]][row_ind]
+dm <- sims_used[["$\\Delta_{\\mu}$"]][row_ind]
+s2 <- sims_used[["$\\sigma^2$"]][row_ind]
+pi <- sims_used[["$\\pi$"]][row_ind]
+
+if (pi == "vec(1/K)") {
+  pi <- rep(1 / K, K)
+} else {
+  pi <- "(0.5, 0.25, 0.125, 0.0675, 0.0675)" %>%
+    stringr::str_remove_all("[() ]") %>%
+    strsplit(",") %>%
+    unlist() %>%
+    as.numeric()
+}
+
+
+# Generate dataset
+irrelevantFeatures_gen <- generateSimulationDataset(K, N, P_s,
+  delta_mu = dm,
+  p_n = P_n,
+  cluster_sd = s2,
+  pi = pi
+)
+
+
+annotatedHeatmap(scale(irrelevantFeatures_gen$data), irrelevantFeatures_gen$cluster_IDs,
+  main = paste0("Irrelevant features (seed 1, ", P_n, " irrelevant features)"),
+  show_rownames = F,
+  show_colnames = F
+)
+
+
+# Set labels for facet wrapping
+cluster_labels <- c(paste0("Cluster ", 1:K))
+names(cluster_labels) <- 1:K
+ 
+
+pc1 <- prcomp(irrelevantFeatures_gen$data)$x
+pcaSeriesPlot(x = pc1, labels = irrelevantFeatures_gen$cluster_IDs, n_comp = min(P_s, 6)) +
+  facet_wrap(~Cluster, labeller = labeller(Cluster = cluster_labels)) +
+  labs(
+    title = "PCA series for irrelevant features scenario",
+    subtitle = "In this example one might expect clusters 2 and 3 to merge, with cluster 5 also\nin danger of being subsumed."
+  )
+
+# noStructure_gen$data %>%
+#   scale() %>%
+#   data.frame() %>%
+#   dplyr::mutate(Cluster = as.factor(noStructure_gen$cluster_IDs)) %>%
+#   ggplot(aes(x = Gene_1, y = Gene_1, colour = Cluster)) +
+#   geom_point() +
+#   scale_colour_viridis_d() +
+#   labs(
+#     title = "Example: No structure case (seed 1)",
+#     x = "Gene 1",
+#     y = "Gene 2"
+#   )
+```
+
+#### Varying proportions
+
+This simulation is designed to test how sensitive the methods are to relatively 
+small clusters when large clusters are present.
+
+```{r, varyingProportionsView, echo = F, cache = T}
+scn <- "Varying proportions"
+row_ind <- which(sims_used$Scenario == scn)[1]
+N <- sims_used[["$N$"]][row_ind]
+P_s <- sims_used[["$P_s$"]][row_ind]
+P_n <- sims_used[["$P_n$"]][row_ind]
+K <- sims_used[["$K$"]][row_ind]
+dm <- sims_used[["$\\Delta_{\\mu}$"]][row_ind]
+s2 <- sims_used[["$\\sigma^2$"]][row_ind]
+pi <- sims_used[["$\\pi$"]][row_ind]
+
+if (pi == "vec(1/K)") {
+  pi <- rep(1 / K, K)
+} else {
+  pi <- "(0.5, 0.25, 0.125, 0.0675, 0.0675)" %>%
+    stringr::str_remove_all("[() ]") %>%
+    strsplit(",") %>%
+    unlist() %>%
+    as.numeric()
+}
+
+
+# Generate dataset
+varyingProportions_gen <- generateSimulationDataset(K, N, P_s,
+  delta_mu = dm,
+  p_n = P_n,
+  cluster_sd = s2,
+  pi = pi
+)
+
+
+annotatedHeatmap(scale(varyingProportions_gen$data), varyingProportions_gen$cluster_IDs,
+  main = paste0(scn, " (seed 1)"),
+  show_rownames = F,
+  show_colnames = F
+)
+
+
+# Set labels for facet wrapping
+cluster_labels <- c(paste0("Cluster ", 1:K))
+names(cluster_labels) <- 1:K
+ 
+
+pc1 <- prcomp(varyingProportions_gen$data)$x
+pcaSeriesPlot(x = pc1, labels = varyingProportions_gen$cluster_IDs, n_comp = min(P_s, 6)) +
+  facet_wrap(~Cluster, labeller = labeller(Cluster = cluster_labels)) +
+  labs(
+    title = paste0("PCA series for ", scn, " scenario") #,
+    # subtitle = "Notice how the clusters separate across the components."
+  )
+
+# noStructure_gen$data %>%
+#   scale() %>%
+#   data.frame() %>%
+#   dplyr::mutate(Cluster = as.factor(noStructure_gen$cluster_IDs)) %>%
+#   ggplot(aes(x = Gene_1, y = Gene_1, colour = Cluster)) +
+#   geom_point() +
+#   scale_colour_viridis_d() +
+#   labs(
+#     title = "Example: No structure case (seed 1)",
+#     x = "Gene 1",
+#     y = "Gene 2"
+#   )
+```
+
+## Method
+
+### Data-generation
+
+For each of the scenarios described above, I generate 100 different datasets and cluster IDs.
+These cluster IDs are the true labelling from which the subpopulations defining the full dataset are defined.
+
+### Inference
+
+I use the C++ implementation of Bayesian mixture models written by @mason2016mdi. This performs inference upon a mixture model using a Collapsed Gibbs sampler. This is the software for which samples are generated for both consensus inference and Bayesian inference.
+
+For MLE, I use the R package ``Mclust`` [@R-mclust]. This is a popular implementation that uses an initialisation based upon hierarchical clustering (and is therefore a non-random initialisation, unlike the Bayesian and consensus inference).
+
+For each dataset the following inference are performed:
+
+1. Consensus inference using a range of different choices of $R$ and $S$. The sets used are:
+  * $R = \{1, 2, \ldots, 10, 20, \ldots, 100, 200, \ldots, 1000, 2000, \ldots, 10000\}$; and
+  * $S = \{1, 2, \ldots, 100\}$.
+  I will showcase a subset of these combinations, with _Consensus ($r$, $s$)_ denoting the inference performed using the $r^{th}$ sample from $s$ different chains.
+2. Bayeian inference using 10 chains running for 1 million iterations, saving every thousandth sample.
+3. Mclust over a range of possible $K$.
+
+Each method will be timed using the ``time`` bash function.
+
+### Model evaluation
+
+
+In this study we will be considering both within-simulation and across-simulation performance for the $N_{sim}$ simulations run under each scenario.
+
+The aim of each model is uncovering the true clustering of the data, $C'$. The performance of each model may be judged by compaing the predicted clustering, $C^*$, to $C'$ using the adjusted rand index [**${ARI(C^*, C')}$**, @hubert1985comparing]. For Mclust, only the point estimate of the clustering is generated, and thus is trivial to compare. For Bayesian and consensus inference we have a number of samples. These are used to construct a PSM/Consensus matrix from which a point estimate of the clustering is predicted using the ``maxpear`` function in the ``mcclust`` R package [@R-mcclust; theory described by @fritsch2009improved]. 
+How well the inference quantifies uncertainty about the predicted clustering is also of interest. A model may have a low score under the ARI for its predicted clustering, but may have explored the parition space that included the true clustering. Ideally I would like to reward a model that explores sensible partitions even if the final partition is not ideal. To do this I compare the Frobenius norm of the difference of the coclustering matrix of the true clustering with the 
+
+1. posterior similarity matrix for the Bayesian inference;
+2. the coclustering matrix for Mclust; and
+3. the consensus matrix for the consensus inference. 
+
+As Mclust only proposes a single partition its perfomance under this metric is directly linked to the ARI as it has placed all it's eggs in one basket.
+
+The Frobenius norm is a flawed proxy for uncertainty quantification. As a standalone statistic it is not sufficient as if no model is performing well, then the best performer under this metric will probably be that which is most sparse. It is important, particularly in the cases where the ARI is very low, to inspect the heatmaps of the PSMs and consensus matrices to understand what is happening. When the ARI is high and the Frobenius norm is low, it indicates that there is low uncertainty about the true clustering as one would hope. It is the other cases that demand more scrutiny. I use the Frobenius norm though as it does contain _some_ information about how well uncertainty is quantified and is a single number and thus a vector of number can be used, one from each simulation within the scenario. Furthermore, if there is a trend within the distribution of the Frobenius norms for each model than inspection of the PSMs and consensus matrices for a single simulation might be sufficient to understand the behaviour within the entire scenario in combination with the Frobenius norm.
+
+For the Bayesian models I am also interested in within-chain model and across-chain convergence. I calculate the Geweke statistic [@geweke1992evaluating] and the Gelman-Rubin shrinkage parameter [$\hat{R}$, @gelman1992inference] as measures of these respectively.
+If the Geweke statistic of a chain is not appreaing to be a normal-distribution, as tested by a Shapiro-Wilks test, I drop that chain from the analysis. I test if chains are not converged using the extension of $\hat{R}$ proposed by @vats2018revisiting, using a threshold of 1.01 (which is a weaker threshold than @vats2018revisiting propose, but as I am automating the process and will not do much further investigation of this I am erring towards a threshold that will not exagerate the lack of convergence). I plot the original $\hat{R}$ value described by @gelman1992inference, but the summary statistic for the entire simulation is the Vats-Knudson statistic. Note that a low value in this is not sufficient to definitively say that a set of chains have converged, but a high value does indicate a lack of convergence.
+
+The samples from the chains that pass the Shapiro-Wilks test are then pooled for model comparison. I do not drop the entire analysis based upon overall convergence as some scenarios might have a small number of data points for the Bayesian inference in the model comparison plots. Pooling samples is done to avoid model selection problems and to enavble comparison across simulations. The pooling will mean that the Bayesian inference might be more robust to modes (as we might have several different modes present in the pooled samples), thus inflating performance under uncertainty quantification. However, the $\hat{R}$ statistic should indicate the percentage of simulations for which multiple modes are encountered as these chains should not be exploring the same distribution and thus will not be considered converged.
+
+## Results
+
+### Simple 2D
+
+![Comparison of predicted clustering to true labelling across 100 simulations of the Simple 2D scenario. Consensus inference models are represented by _Consensus (chain iteration used, number of chains used)_. Mclust performs very well, unpicking the true structure. The Bayeisan inference also performs well, and we see that Consensus inference improves in performance as more samples are added, but the improvement yielded by increasing chain length stabilises after 10 iterations into the chain. This suggests that either 1) chains have reached their stationary distribution within 10 iterations and therefore sampling from the 10th or 10,000th iteration is the approximately same as the samples are all drawn from the same distribution or 2) chains stop exploring the space and become trapped in a mode after the 10th iteration. In such a low dimensional space, I would expect the chains to be exploring the target distribution. Results represented inthe following plots also support this belief. ](./Images/Simulations/simple_2d/simple_2d_all_model_performance.png)
+
+
+
+![Comparison of the Frobenius norm of the difference of the infered clustering matrices and the true coclustering matrix. Note that 0 is a better score. Mclust performs very well; this unsurprising as inspecting the plot of predictive performance shows that Mclust finds the true clustering in almost all simulations. It is more interesting to see that the Bayesian inference and all of the Consensus inferences have very similar scores; this suggests that the sampler is exploring a relaistic space but that there is high uncertainty. This suggests that it is only through inspecting all of the samples generated that we uncover close to the true structure and that any single sample is expected to be a poor estimate. However, it is worth noticing that a single sample can perform well, as can be seen by the upper tail of the Consensus (1, $s$) boxplots. It is likely that the single sample generated for these happens to be quite good, but similarly the lower tail consists of single samples that were below the average sample in describing the true structure. This trend of the Consensus (1, $s$) models having greater varaibility (both positively and negatively) is something I would expect to see in many of the plots for the remaining scenarios. ](./Images/Simulations/simple_2d/simple_2d_all_model_uncertainty.png)
+
+
+
+![In plotting ARI against the iteration of the sampler used to construct the consensus inference, we can see that it is number of samples that is most important. In each case the performance appears to stabilise very early in the chain. If the chains were allowed run for even a single iteration than the inference is suprisingly good as long as more samples are used. ](./Images/Simulations/simple_2d/simple_2d_ci_model_performance_iterations.png) 
+
+![In this plot of the number of chains/samples used against the ARI, faceted by the iteration used. Again, it is clear that increasing ther number of samples used is the dominant contributor to the quality of the inferenece; increasing chain length has a ngeligible impact. ](./Images/Simulations/simple_2d/simple_2d_ci_model_performance_samples.png) 
+
+
+![Inspecting the PSM we can see that there is a lot uncertainty present; most of entries in the PSMs are closer to 0 than 1. The PSMs are annotated by the true clustering, with the ordering of rows and columns in posed by the final entry in the grid. The sampler appears to be exploring the space quite well, suggesting many different partitions that generally identify some of the true structure. ](./Images/Simulations/simple_2d/PSMs/BayesianSimulation10PSMs.png)
+
+![Similarly comparing the Consensus Matrices for different numebrs of samples and different chain depths, we see a similar space explored. Here the rows of the grid are increasing the depth within the chain that we sample from, the columns are increasing the number of samples used. The rows are $S=\{1, 10, 100, 1000, 10000\}, and the columns are $R=\{1, 10, 30, 50, 100\}$. The ordering is imposed by the matrix in the (5, 5) entry of the grid (i.e. Consensus (10000, 100)), and annotation labels are the true clustering.  ](./Images/Simulations/simple_2d/CMs/ConsensusSimulation10ConsensusMatrixGrid.png)
+
+Looking at these results it appears that Mclust, with it's clever initialisation, is the best performing method in this case, but the Bayesian and Consensus inferences are performing sensibly particularly as the items in this space are not particularly separable under the true labelling. Consider the plot of the data in the scenario description; clusters 1 and 5 could easily be considered a single entity and we would like to see some uncertainty about the existence of clusters 3 and 4 as seperate groups. Furthermore, the level of distance between some points within the clusters is on a similar scale to the distance between the clusters; due to this identifying the true number of clusters is non-trivial.
+
+### No structure
+
+
+![An initial inspection of the perfomance of the models reveals that none of the methods work. However, if one considers how one may describe no structure one should either place all items in the same cluster or else place all items in their own cluster. If the latter is the case than an ARI of 0 is an unsurprising result. Furthermore, deeper inspection of the ``mcclust::arandi`` function reveals that it returns ``NaN`` for the case that all items in both clusterings (i.e. the truth and the inferred) are in the same cluster.  A comparison of a clustering with all items in the same cluster to any other possible partitioning of the items always returns a score of 0; thus this plot contains no useful information other than that some of the models placed items in separate partitions. A deeper inspection of the Mclust results revealed that 96 of the models placed all items in a single component, but the Consensus and Bayesian inference clustered every item as a singleton in every case. ](./Images/Simulations/no_structure/no_structure_all_model_performance.png)
+
+![The success of Mclust is seen here more clearly as a score of 0 indicates that the predicted coclustering matrix perfectly matches the truth. ](./Images/Simulations/no_structure/no_structure_all_model_uncertainty.png)
+
+![The PSMs from each chain place no items together. ](./Images/Simulations/no_structure/PSMs/BayesianSimulation1PSMs.png)
+
+
+![The grid of consensus matrices reveals more information. Inspecting the leftmost column, where each matrix consists of only a single sample (and thus is really a coclustering matrix), one can see that there is no strong structure, items are randomly allocated together. Presumably the likelihood surface is incredibly flat as no particular clustering is particularly probable, and this combined with the small number of features means that every sampled partition is essentially random. It is in the union of these partitions (as represented in the consensus matrices with more samples present) that we can see that items are not allocated together with any consistency. ](./Images/Simulations/no_structure/CMs/ConsensusSimulation1ConsensusMatrixGrid.png)
+
+This is a good result for each method; they do not mistake noise for signal. 
+
+### Base case
+
+![In the base case each method successfully uncovers the true structure, excepting the Consensus (1, $s$) caseses (which still perform quite well). This is not surprising given how informative the data is. This case is the benchmark many of the following cases are being compared against. ](./Images/Simulations/base_case/base_case_all_model_performance.png)
+
+
+![Performing simlarly well to the point estimate, each method has little uncertainty about the true clustering (bar the Consensus (1, $s$) cases, also in keeping with the preceding plot). ](./Images/Simulations/base_case/base_case_all_model_uncertainty.png)
+
+### Large standard deviation
+
+There are two sub-scenarios in this case; in one the standard deviation of each component is set $\sigma_1=3$, in the second $\sigma_2=5$.
+
+![In the first case Mclust does not perform terribly well - most of the consensus infered point estimates and the Bayesian point estimate of the clustering are closer to the truth in the majority of simulations. Performance for consensus inference appears to stabilise after sampling from the 10th iteration of the chains and for 30 or more samples. The clusters are not prominent; based upon the results for the simple 2d case, I would expect that increasing the number of samples contributing to the inference would improve performance. This appears to be happening here too.  ](./Images/Simulations/large_standard_deviation_3/large_standard_deviation_3_all_model_performance.png)
+
+![It is here that Mclust's method starts to be severely punished for proposing a single clustering. As the MCMC based methods explore more of the space there is a better ability to consider various partitions, each of which might, in different ways, overlap better with the truth. ](./Images/Simulations/large_standard_deviation_3/large_standard_deviation_3_all_model_uncertainty.png)
+
+
+![However, once the overlap between clusters in the data becomes too large the methods start to find no structure. If one inspects the data there in no visual evidence for the presence of distinct subgroups; I would argue that the distributions %>% ](./Images/Simulations/large_standard_deviation_5/large_standard_deviation_5_all_model_performance.png)
+
+![Inspeciton of the Frobenius norm of the difference betweeen the inferred consensus / posterior similarity / coclustering matrices and the true coclustering suggests that no method is performing well and that a large amount of uncertainty is present in all cases. The low value of the Consensus (1, $s$) and Consensus (10, $s$) models requires some investigation. ](./Images/Simulations/large_standard_deviation_5/large_standard_deviation_5_all_model_uncertainty.png)
+
+
+
+![Inspecting the consensus matrices within a grid where chain depth increases with the grid rows and the number of chains used increases with the grid columns reveals that the Consensus (1, $s$) and Consensus (10, $s$) models perform best under the Frobenius norm as they are almost empty bar the diagonal. The Frobenius norm rewards sparsity and thus does not work as a proxy to indicate how well the models are quantifying uncertainty in this case as there is no real ability to uncover the true underlying structure. )](./Images/Simulations/large_standard_deviation_5/CMs/ConsensusSimulation1ConsensusMatrixGrid.png)
+
+![The PSMs from the same simulation describe a similar set of partitions as the higher order consensus matrices. ](./Images/Simulations/large_standard_deviation_5/PSMs/BayesianSimulation1PSMs.png)
+
+![In the case that the standard deviation is 3, then the structure is more prominent then the preceding plots. For Consensus (1, $s$) and Consensus ($r$, 1) models,  there is some success in picking out true structure, but the performance is much weaker than in the other consensus matrices. It appears that the sparsity in the Consensus (1, $s$) matrices is again being rewarded by the Frobenius norm. In these, some of the true structure is uncovered; in the  $4 \times 4$ sub-grid in the lower right here, large fractions of clusters 1, 4 and 5 are uncovered with some uncertainty. As the standard deviation of the normal distribution generating each cluster is large relative to the distance between the means, the ability of the method to unpick true structure is quite encouraging, with a reasonable level of uncertainty present. ](./Images/Simulations/large_standard_deviation_3/CMs/ConsensusSimulation1ConsensusMatrixGrid.png)
+
+
+![The PSMs from the same simulation perform very similarly to the higher order Consensus matrices, unpicking similar structure. ](./Images/Simulations/large_standard_deviation_3/PSMs/BayesianSimulation1PSMs.png)
+
+
+### Irrelevant features
+
+![In the first scenario for testing robustness towards irrelevant features, I add features with no signal to the base case dataset. Model perfomance in predicting the true clustering is still very high. In some cases Mclust struggles, and now the Consensus (10, 1) model also begins to perform less well than in the base case. ](./Images/Simulations/irrelevant_features_10/irrelevant_features_10_all_model_performance.png)
+
+![Showing similar information to the plot describing point estimate, the uncertainty in Mclust and all Consensus (10, $s$) models is slightly larger.  ](./Images/Simulations/irrelevant_features_10/irrelevant_features_10_all_model_uncertainty.png)
+
+![As the number of irrelevant features increases to 20 (i.e. the number of signal bearing features and noise features is equal), Mclust and the Consenus (1, $s$) models all degrade in perfomance. In one simulation, Mclust scores 0. The entire suite of Consensus (10, $s$) models begin to be less-than-perfect in finding the true signal. In the case of irrelevant features, it is chain depth that appears most important in uncovering true structure. ](./Images/Simulations/irrelevant_features_20/irrelevant_features_20_all_model_performance.png)
+
+![Note the increasing scale of the X-axis here; the Consensus (1, $s$) and Consensus (10, $s$) are less confident than in the case of only 10 irrelevant features, but Mclust is performing significantly less well. As the true coclustering matrix remains the same as the irrelevant features 10 case the Frobenius norm is directly comparable here. ](./Images/Simulations/irrelevant_features_20/irrelevant_features_20_all_model_uncertainty.png)
+
+![The ability of the Bayesian and consensus models to propose the true clustering as a point estimate is very good. It appears that going deeper within the chain to generate samples does improve performance, but it appears that the behaviour is aymptotic; there is a large improvement in performance between a depth of 1 and 10 and 100, but the improvement between a depth of 10,000 is less. In this case Bayesian inference is outperforming other methods under this metric. ](./Images/Simulations/irrelevant_features_100/irrelevant_features_100_all_model_performance.png)
+
+![The trend here is similar to the Frobenius norm plot above. Bayesian inference appears to be perfroming the best. ](./Images/Simulations/irrelevant_features_100/irrelevant_features_100_all_model_uncertainty.png)
+
+A comparison of the Consensus matrices is interesting.
+
+![For the case with 10 irrelevant features the true structure is uncovered for all models in the lower 4 x 4 grid, i.e. any model with multiple samples from a depth of 10 or more iterations into each chain. As the signal that can be found is so clear a single sample from a depth of more than 10 iterations is sufficient, and a single sample from the 10th iteration of a sampler can perform very well.  ](./Images/Simulations/irrelevant_features_10/CMs/ConsensusSimulation1ConsensusMatrixGrid.png)
+
+![When there are an equal number of relevant and irrelevant features present, it is slightly deeper into the chain that the true structure is uncovered. However, a consensus of samples from the first iteration of many chains still performs quite well, but with much uncertainty. ](./Images/Simulations/irrelevant_features_20/CMs/ConsensusSimulation1ConsensusMatrixGrid.png)
+
+
+
+![Finally, in the case with 100 irrelevant features, it is much deeper into the chain that the sampler must travel before uncovering strong signal. After 10 iteration (the second row in the grid) there is enough true signal that the consensus matrix is useful in indicating the presence of structure; but the level of uncertainty is so great that one would have to use samples from deeper in the chain. By the 100th iteration (row 3 in the grid) many chains find much of the true structure, but the uncertainty present across the columns indicate that no single chain is uncovering all of the structure. However, by the 1,000th iteration (row 4) the matrices begin to stabilise, being only slightly more uncertain the final row where samples are from the 10,000th iteration of each chain used. The Consensus matrices in the final row appear to have more uncertainty present (for example clusters 4 and 5 are considered to have overlap, as are clusters 1 and 2). This suggests that there are several modes present. Only one mode other than the true clustering is explored in the first ten chains (entry (5, 2) in the grid); in the next 20 that clusters 1 and 2 occasionally merge (as represented by the uncertainty between these in the consensus matrix in entry (5, 3) above), with some more general merging of clusters. ](./Images/Simulations/irrelevant_features_100/CMs/ConsensusSimulation1ConsensusMatrixGrid.png)
+
+
+
+![The collection of PSMs for the 10 chains from the same simulation as the consensus matrices above is quite interesting. Most of the chains find true structure, but one chain becomes trapped in a mode where two of the clusters are merged. As the other PSMs have no uncertainty present we can suspect that they do not explore other possible clusterings; this matches the behaviour of the consensus matrices as described above. Thus, while the pooled Bayesian samples perform the best in uncovering the true structure, the Bayesain inference is beginning to show problematic behaviour in struggling to explore the full posterior distribution in a finite time (recall that these PSMs are generated from chains that performed 1 million iterations). ](./Images/Simulations/irrelevant_features_100/PSMs/BayesianSimulation1PSMs.png)
+
+
+
+The behaviour shown here suggests that the sampler most explore the model space for some time to overcome the noise in the irrelevant features. The number of samples is less important, but this is partially due to the very clear signal within the relevant features. One cannot neglect scaling the number of samples used in the consensus inference however. We can see within the PSMs that there can issues for Bayesian inference even in this scale of dimensions as only a single mode is explored. Therefore even though most of the chains explore the main mode of interest, one must include multiple chains in the consensus inference to better capture all modes.
+
+### Varying proportions
+
+![In this case, where some of the clusters make up a small fraction of the totla population but the distinct signal is very clear, each method uncovers the true structure successfully. ](./Images/Simulations/varying_proportions/varying_proportions_all_model_performance.png)
+
+
+![This is seen again in the Frobenius norm; very few partitions are investigated that are not the true partition. It does take some iterations into the sampler to identify this however, but it is still very quick; certainly within 100 iterations and possibly within 20. ](./Images/Simulations/varying_proportions/varying_proportions_all_model_uncertainty.png)
+
+
+![Investigating the consensus matrices shows that the true structure is actually identified instantly; the chain depth increases the certainty that this is the true structure. As can be seen in the (1, 1) entry, the sampler quickly identifies much of the true structure but takes more iterations to merge all of the clusters correctly. As different items are merged at different iterations in different chains, we get some uncertainty in the top two rows of the grid. ](./Images/Simulations/varying_proportions/CMs/ConsensusSimulation1ConsensusMatrixGrid.png)
+
+
+![The PSMs are all entriely certain that they have identified the true structure. ](./Images/Simulations/varying_proportions/PSMs/BayesianSimulation1PSMs.png)
+
+
+### Small $N$ large $P$
+
+![In this case each method performs quite well (Mclust is struggling as it places each item in a singleton). The Consensus ($R$, 1) models have huge variability with very little difference between the Consensus (10, 1), Consensus (100, 1), Consensus (1000, 1) and Consensus (10000, 1) results. This suggests that the chains might be becoming trapped within a mode within 10 iterations and never leaving it (otherwise I would expect some change in results between these Consensus cases). ](./Images/Simulations/small_n_large_p_base/small_n_large_p_base_all_model_performance.png)
+
+
+![We see similar behaviour in the Frobenius norm as to the point estimate of the clustering. ](./Images/Simulations/small_n_large_p_base/small_n_large_p_base_all_model_uncertainty.png)
+
+
+
+![The consensus matrices reveal that the partition sampled does not change after the 10th iteration. Furthermore it is a mode where cluster 3 has not merged. One can see that as more chains are used that some are merging this cluster, but not all (hence the uncertainty about this cluster in the bottom right $4 \times$ 4 sub-grid). A closer inspection reveals that the blcok of entries within the consensus matrices corresponding to cluster 5 is not fully opaque, suggesting that some chains do not successfuly merge this cluster and that at least three modes are present. ](./Images/Simulations/small_n_large_p_base/CMs/ConsensusSimulation2ConsensusMatrixGrid.png)
+
+
+![This is born out by the PSMs. In 4 of these cluster 3 fails to merge, remaining as singletons. In one, the mode where cluster 5 does not merge is present. Furthermore, none of these PSMs contain any vlaues bar 0 and 1. Only a single partition is explored within each chain, highlighting the flaws of the collapsed Gibbs sampler. ](./Images/Simulations/small_n_large_p_base/PSMs/BayesianSimulation2PSMs.png)
+
+
+![The plot of $\hat{R}$ reveals that some simulations are not truly converged. According to the Vats Knudson statistic, 25% of all simulations failed to converge across all chains in this scenario. I have already shown that this is the case in one simulation where different chains became trapped in different modes. This shows that even when signal is very strong (as is the case here) that the collapsed Gibbs sampler consistently fails to converge when the number of features is large. ](./Images/Simulations/small_n_large_p_base/small_n_large_p_baseConvergenceAcrossChains.png)
+
+If we then shrink $\delta \mu$, the distance between the Gaussian distribution that the clusters are generated from within each feature, we see pathological behaviour.
+
+![In this case all the models are apparently failing to predict anything akin to the true structure. ](./Images/Simulations/small_n_large_p_small_dm/small_n_large_p_small_dm_all_model_performance.png)
+
+
+
+
+![Inspection of the consensus matrices reveals that the models are failing to find structure (and as I have shown in the No structure case the ARI does not succeed as a metric of model performance in this case).](./Images/Simulations/small_n_large_p_small_dm/CMs/ConsensusSimulation2ConsensusMatrixGrid.png)
+
+
+
+![The PSMs reveal an interesting story. Each stays in its initial clustering for all 1 million iterations. This suggests that the combinaiton of a large $P$ and low signal is very difficult for the Gibbs sampler.](./Images/Simulations/small_n_large_p_small_dm/PSMs/BayesianSimulation2PSMs.png)
+
+
+![One can see that in all the simulations it is only the seed that defines the results as the $\hat{R}$ values are idential in each simulation regardless of the data, as the example of the PSMs also suggests. ](./Images/Simulations/small_n_large_p_small_dm/small_n_large_p_small_dmConvergenceAcrossChains.png)
+
+
+
+## Conclusions
+
+### Performance
+
+I think that if uncertainty is ever of interst than Mclust has to be dropped. If this is not the case then Mclust is a powerful tool in the absence of irrelevant features.
+
+If $P$ is small that Bayesian inference is ideal; however once $P$ breaks into the hundreds and the attraction of modes becomes more extreme I think one should consider consensus inference as a natural way to represent these in one's analysis, or else consider other types of sampler. However, if $P$ is extreme these samplers might be sufficiently slow as to be infeasible.
+
+#### Small $P$
+
+In a low dimensional, low signal setting Mclust performs excellently. In a real applicaiton where no labels are present and uncertainty quantification is important, than Bayesian inference performs very well, exploring the target distribution thoroughly. Based upon the behaviour of the consensus matrices and the improvement in ARI as a function of chain depth, $R$, it appears that one could use consensus inference in a low dimensional setting as $R=10$ appears sufficient to perform similar inference to the Bayesian inference. Therefore one could use a parallel environment to decrease the time required to perform the analsysis. However, as true Bayesian inference can be performed quickly on this scale and is exploring a range of paritions, I would recommend using Bayesian inference, with all its guarantees in this setting.
+
+#### False structure
+
+It is reassuring to see that the methods all correctly identify no structure. This helps to reassure us that we can use these methods and will not identify noise as structure. The low degree of signal present in the case with $\sigma=5$ and in the small $N$ large $P$ scenario with close cluster means also saw no structure uncovered, suggesting that one may use these methods and be somewhat reassured that any signal uncovered is true. In the high dimensional setting one would have to recognise that the clustering in the PSMs corresponded to the initialisation; for practitioners who might be confused by this and the appearance of 10 modes in their 10 chains, perhaps consensus inference, with it's very clear lack of structure, is preferable.
+
+#### Loud signal
+
+When signal is sufficiently loud that the clustering structure is easily visible within a heatmap, choice of method is less impotant.
+
+#### Weak and hidden signal
+
+As the signal becomes weaker sampler based methods perform better than Mclust, exploring a greater vairety of partitions and clearly stating that the uncertainty is high. If the signal is buried beneath a large amount of noise (rather than being inherently weak as in the large standard deviation cases), then the sampling-based methods perfom very well; these appear very robust to a large number of irrelevant features. However as the number of noise features increases sampling from deeper within the chain becomes more important for consensus inference. I suspect that this is partially a function of the increase in the number of features independant of the ratio of relevant to irrelevant features.
+
+#### Large $P$
+
+In this setting I think consensus inference shines. As the collapsed Gibbs sampler appears to find a sensible partition quite quickly (as seen by the stability of results for consensus inference after $R$ exceeds 1) one can run the chains for a short length of time. Furthermore, one may use the lack of correlation of samples across chains to explore multiple modes. Bayesian inference struggles in this setting, becoming trapped in a mode and never escaping its attraction. It does identify useful structure, but claims of convergence become dubious and some of the main attractions of Bayesian inference, i.e. principled quantification of the uncertainty and the asymptotic guarantees, appear to not truly hold in practice.
+
+### Using consensus inference in practice
+
+Consensus inference has shown significant advantages. As $P$ grows and modes become more extreme, consensus inference is better able to represent multiple modes than Bayesian inference (as seen in the irrelevant features 100 and the small $N$ large $P$ base case). However, if the sampler never explores a sensible space (as is the case in the scenario with small $N$ and large $P$ where the distance between cluster means, $\delta \mu$, is small), than consensus inference does not solve the problems. (Aside: I do think that the small $N$ large $P$ case does not contain strong signal of structure, and in this case finding no structure is an acceptable solution as the consensus inference does.)
+
+I think the performance of consensus inference for even very small values of $R$ is surprising. In many scenarios setting $R=10$ was sufficient to uncover much of the structure or at least indicate it (as is in the case where $P_n=100$ where the consensus matrices corresponding to $R=10$ indicate the true structure with much uncertainty). I think that is exciting, as in cases where each iteration is slow (such as the large $P$ case) than consensus inference performs well even if chains are severely constrained.
+
+Based upon the results seen I would say that in practice Consensus ($R$, $S$) should be driven by the heuristics:
+
+\begin{align}
+ R &\propto P_n \\
+ R &\propto P \\
+ S &\propto \frac{\mu}{\sigma} \\
+ S &\propto \textrm{The number of modes present.}
+\end{align}
+
+Of these, only $P$ can be confidently known. As this is the case I think making use of grids of the consensus matrices could help. They can provide evidence for when increasing $S$ and $R$ no longer offers significant gains. I think the Frobenius norm could be used to construct a stopping rule for these inputs of the inference, e.g. if the Frobenius norm of the difference of the matrix for Consensus $(R, S_1)$ and the matrix for Consensus $(R, S_2)$ (for some $S_1, S_2, R \in \mathbb{N}, S_2 > S_1$) is small than one should stop increasing $S$ and similarly for different values of $R$. One would have to pursued this far enough that one can believe that the stability of the consensus matrix is true. Based upon the results so far I think, letting $CM(r, s)$ denote a consensus matrix for consensus inference using the $r^{th}$ iteration of $s$ chains, that if:
+
+\begin{align}
+&||CM(r, s) - CM(r, s + 10)||_F &< \epsilon \\
+&||CM(r, s) - CM(r + 100, s)||_F &< \epsilon
+\end{align}
+
+for some small $\epsilon$ (which itself will be a function of $N$ as the Frobenius norm does not have an upper bound), then one should stop increasing the parameters of the inference. In practice  I think a visual inspection of the grid would be sufficient. Note that this appears to be asymptotic behaviour and increasing $S$ and $R$ to the largest values possible within one's computational constraints would not do any harm.
+
+## Work remaining
+
+You will notice the absence of the large $N$ small $P$ scenarios from this analysis. These scenarios have yet to be completed as the problem of performing inference upon the PSM/Consensus matrix of size $10,000 \times 10,000$ is proving non-trivial. Beyond these scenarios two additional cases worthy of investigation occur to me; 
+
+1. an additional small $N$ large $P$ case where $\delta \mu$ is a value between that used in the two scenarios presented here; and
+2. a varying proportions scenario where the overlap between clusters is less defined.
+
+Of these, (1) would be inteded to test how much signal is needed in a high-dimensional setting before the collapsed Gibbs sampler explores the space at all. (2) would test how well the methods perform in a more realistic setting where the subpopulations are significantly different in size. In the current scenario of varying proportions, the signal is too clear and identifying the correct number of clusters is non-trivial (all methods perform well).
+
+<!-- ## Clustering performance -->
+
+
+
+<!-- Consider an item $x_i$ that truthfully has allocation label $c_i$. Now say that our similarity matrix has $x_i$ allocated correctly (i.e. with the other items that have allocation $c_i$) with a score of 0.4, but misallocated to some $c_j \neq c_i$ with a score of 0.6. In the predicted clustering calculated from our similarity matrix we will allocate $x_i$ to the wrong cluster and this will lessen the ARI between the truth and the predicted clustering. However, the model has been uncertain about $x_i$'s allocation. The Frobenius inner product will capture this uncertainty and (in this case) reward the model with a higher score. Thus the Frobenius product more accurately describes the model performance. -->
+
