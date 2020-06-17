@@ -4,7 +4,7 @@
 
 I want to create a simulation study to do two things:
 
-1. absolute evaluation of consensus inference as a inferential technique for mixture models; and 
+1. absolute evaluation of consensus clustering as a inferential technique for mixture models; and 
 2. comparative evaluation of consensus and Bayesian inference of mixture models and Mclust, a popular MLE-based mixture model R package.
 
 I am interested in evaluating:
@@ -100,7 +100,7 @@ knitr::kable(sims_used, row.names = T, escape = F) # , "latex", longtable = T, b
 Each scenario is seen as testing certain cases or concepts.
 
 #### Simple 2D
-This case is seen as an introduction to method performance. In this case the data can be plotted as a scatter plot (whereas higher dimensions mean any two dimensional representation is missing some information about the data). This means that one may view the data and have an intuition if it is possible for a mixture model to cluster the data; furthermore the small dimsnaionality of the problem means that the distance between modes on the likelihood surface is less so we do not expect the Gibbs sampler to become trapped. This means that we can compare consensus inference to Bayesian inference with a strong belief that our model has converged (given appropriate tests). This means that we can process how well consensus inference performs with a deeper understanding of the context than might be possible in higher dimensional cases.
+This case is seen as an introduction to method performance. In this case the data can be plotted as a scatter plot (whereas higher dimensions mean any two dimensional representation is missing some information about the data). This means that one may view the data and have an intuition if it is possible for a mixture model to cluster the data; furthermore the small dimsnaionality of the problem means that the distance between modes on the likelihood surface is less so we do not expect the Gibbs sampler to become trapped. This means that we can compare consensus clustering to Bayesian inference with a strong belief that our model has converged (given appropriate tests). This means that we can process how well consensus clustering performs with a deeper understanding of the context than might be possible in higher dimensional cases.
 
 ```{r, simple2dView, echo = F, cache = T}
 scn <- "Simple 2D"
@@ -155,7 +155,7 @@ simple2D_gen$data %>%
 
 #### No structure
 
-In this case all items are drawn from the same normal distribution. It is meant to be a test to see how the inference methods perform when there is no structure to find. It may be considered an similar to attempting to quantify the false positive rate in a predictive method.
+In this case all items are drawn from the same normal distribution. It is meant to be a test to see how the inference methods perform when there is no structure to find. It may be considered as similar to attempting to quantify the false positive rate in a predictive method.
 
 ```{r, noStructureView, echo = F, cache = T}
 scn <- "No structure"
@@ -278,7 +278,7 @@ pcaSeriesPlot(x = pc1, labels = baseCase_gen$cluster_IDs, n_comp = min(P_s, 6)) 
 
 #### Large standard deviation
 
-This is to test how distinct the clusters must be for the inference to perform well. _A priori_, I would think that Bayesian inference would perform optimally here. The reasonable number of features (20) means that the collapsed Gibbs sampler should explore the space well. The large variance within each cluster means that most of the signal is hidden and teh data might appear more as a continuum with no clustering structure, but I hope that the Bayesian inference will correctly idenitfy some structure but alos capture a large amount of uncertainty. I think consensus inference will perform quite well and do not have a strong intuition for how ``Mclust`` will perform. I think that the clever initialisation based upon ``hclust`` will help in unpicking much structure, but I suspect that the final clustering will be too certain.
+This is to test how distinct the clusters must be for the inference to perform well. _A priori_, I would think that Bayesian inference would perform optimally here. The reasonable number of features (20) means that the collapsed Gibbs sampler should explore the space well. The large variance within each cluster means that much of the signal is hidden and the data might appear more as a continuum with no clustering structure; but I hope that the Bayesian inference will correctly idenitfy some structure and capture a large amount of uncertainty. I think consensus clustering will perform quite well and do not have a strong intuition for how ``Mclust`` will perform. I think that the clever initialisation based upon ``hclust`` will help in unpicking much structure, but I suspect that the final clustering will be too certain.
 
 ```{r, largeStandardDeviation, echo = F, cache = T}
 scn <- "Large standard deviation"
@@ -324,13 +324,14 @@ names(cluster_labels) <- 1:K
  
 
 pc1 <- prcomp(largeStadDev_gen$data)$x
-pcaSeriesPlot(x = pc1, labels = largeStadDev_gen$cluster_IDs, n_comp = min(P_s, 6)) +
+suppressWarnings(
+  pcaSeriesPlot(x = pc1, labels = largeStadDev_gen$cluster_IDs, n_comp = min(P_s, 6)) +
   facet_wrap(~Cluster, labeller = labeller(Cluster = cluster_labels)) +
   labs(
     title = "PCA series for large N, small P scenario",
     subtitle = "Notice how the clusters separate across the components."
   )
-
+)
 # noStructure_gen$data %>%
 #   scale() %>%
 #   data.frame() %>%
@@ -345,7 +346,8 @@ pcaSeriesPlot(x = pc1, labels = largeStadDev_gen$cluster_IDs, n_comp = min(P_s, 
 #   )
 ```
 
-To highlight how strongly the clusters overlap within each feature I include a plot of the within-feature distributions.
+To highlight how strongly the clusters overlap within each feature I include a 
+an example of the within-feature distributions for each case.
 
 ```{r, example_large_std_dev, echo=F}
 
@@ -534,8 +536,10 @@ pcaSeriesPlot(x = pc1, labels = smallNlargeP_gen$cluster_IDs, n_comp = min(P_s, 
 This is to test how robust to noise the methods are. I expect that all methods 
 will perform wll when the number of feautres containing signal is greater than 
 those containing noise, but as the ratio flips and the number of irrelevant 
-features dominates, I expect ``Mclust`` to struggle and I will be interested to
-see how Bayesian and Consensus inference perform. This is of interest in the 
+features dominates, I expect ``Mclust`` to struggle. I will be interested to
+see how Bayesian inference and consensus clustering perform, hoping that the Markov chain 
+does produce sensible samples; it might be deeper into the chain before the 
+correct space of partitions is being explored. This is of interest in the 
 context of gene expression data where many irrelevant features are present; 
 ideally our method will be robust to this, as it would mean that a practitioner
 could use a less intense feature selection as removing all noisy features 
@@ -685,17 +689,17 @@ These cluster IDs are the true labelling from which the subpopulations defining 
 
 ### Inference
 
-I use the C++ implementation of Bayesian mixture models written by @mason2016mdi. This performs inference upon a mixture model using a Collapsed Gibbs sampler. This is the software for which samples are generated for both consensus inference and Bayesian inference.
+I use the C++ implementation of Bayesian mixture models written by @mason2016mdi. This performs inference upon a mixture model using a Collapsed Gibbs sampler. This is the software for which samples are generated for both consensus clustering and Bayesian inference.
 
-For MLE, I use the R package ``Mclust`` [@R-mclust]. This is a popular implementation that uses an initialisation based upon hierarchical clustering (and is therefore a non-random initialisation, unlike the Bayesian and consensus inference).
+For MLE, I use the R package ``Mclust`` [@R-mclust]. This is a popular implementation that uses an initialisation based upon hierarchical clustering (and is therefore a non-random initialisation, unlike the Bayesian inference and consensus clustering).
 
 For each dataset the following inference are performed:
 
-1. Consensus inference using a range of different choices of $R$ and $S$. The sets used are:
+1. Consensus clustering using a range of different choices of $R$ and $S$. The sets used are:
   * $R = \{1, 2, \ldots, 10, 20, \ldots, 100, 200, \ldots, 1000, 2000, \ldots, 10000\}$; and
   * $S = \{1, 2, \ldots, 100\}$.
   I will showcase a subset of these combinations, with _Consensus ($r$, $s$)_ denoting the inference performed using the $r^{th}$ sample from $s$ different chains.
-2. Bayeian inference using 10 chains running for 1 million iterations, saving every thousandth sample.
+2. Bayesian inference using 10 chains running for 1 million iterations, saving every thousandth sample.
 3. Mclust over a range of possible $K$.
 
 Each method will be timed using the ``time`` bash function.
@@ -705,49 +709,49 @@ Each method will be timed using the ``time`` bash function.
 
 In this study we will be considering both within-simulation and across-simulation performance for the $N_{sim}$ simulations run under each scenario.
 
-The aim of each model is uncovering the true clustering of the data, $C'$. The performance of each model may be judged by compaing the predicted clustering, $C^*$, to $C'$ using the adjusted rand index [**${ARI(C^*, C')}$**, @hubert1985comparing]. For Mclust, only the point estimate of the clustering is generated, and thus is trivial to compare. For Bayesian and consensus inference we have a number of samples. These are used to construct a PSM/Consensus matrix from which a point estimate of the clustering is predicted using the ``maxpear`` function in the ``mcclust`` R package [@R-mcclust; theory described by @fritsch2009improved]. 
-How well the inference quantifies uncertainty about the predicted clustering is also of interest. A model may have a low score under the ARI for its predicted clustering, but may have explored the parition space that included the true clustering. Ideally I would like to reward a model that explores sensible partitions even if the final partition is not ideal. To do this I compare the Frobenius norm of the difference of the coclustering matrix of the true clustering with the 
+The aim of each model is uncovering the true clustering of the data, $C'$. The performance of each model may be judged by compaing the predicted clustering, $C^*$, to $C'$ using the adjusted rand index [**${ARI(C^*, C')}$**, @hubert1985comparing]. For Mclust, only the point estimate of the clustering is generated, and thus is trivial to compare. For Bayesian inference and consensus clustering we have a number of samples. These are used to construct a PSM/Consensus matrix from which a point estimate of the clustering is predicted using the ``maxpear`` function in the ``mcclust`` R package [@R-mcclust; theory described by @fritsch2009improved]. 
+How well the inference quantifies uncertainty about the predicted clustering is also of interest. A model may have a low score under the ARI for its predicted clustering, but may have explored the partition space that included the true clustering. Ideally I would like to reward a model that explores sensible partitions even if the final partition is not ideal. To do this I compare the Frobenius norm of the difference of the coclustering matrix of the true clustering with the 
 
 1. posterior similarity matrix for the Bayesian inference;
 2. the coclustering matrix for Mclust; and
-3. the consensus matrix for the consensus inference. 
+3. the consensus matrix for the consensus clustering. 
 
-As Mclust only proposes a single partition its perfomance under this metric is directly linked to the ARI as it has placed all it's eggs in one basket.
+As Mclust only proposes a single partition its perfomance under this metric is a linear function of the ARI.
 
-The Frobenius norm is a flawed proxy for uncertainty quantification. As a standalone statistic it is not sufficient as if no model is performing well, then the best performer under this metric will probably be that which is most sparse. It is important, particularly in the cases where the ARI is very low, to inspect the heatmaps of the PSMs and consensus matrices to understand what is happening. When the ARI is high and the Frobenius norm is low, it indicates that there is low uncertainty about the true clustering as one would hope. It is the other cases that demand more scrutiny. I use the Frobenius norm though as it does contain _some_ information about how well uncertainty is quantified and is a single number and thus a vector of number can be used, one from each simulation within the scenario. Furthermore, if there is a trend within the distribution of the Frobenius norms for each model than inspection of the PSMs and consensus matrices for a single simulation might be sufficient to understand the behaviour within the entire scenario in combination with the Frobenius norm.
+The Frobenius norm is a flawed proxy for uncertainty quantification. As a standalone statistic it is not sufficient as if no model is performing well the best performer under this metric will probably be that which is most sparse. It is important, particularly in the cases where the ARI is very low, to inspect the heatmaps of the PSMs and consensus matrices to understand what is happening. When the ARI is high and the Frobenius norm is low, it indicates that there is low uncertainty about the true clustering as one would hope. It is the other cases that demand more scrutiny. I use the Frobenius norm though as it does contain _some_ information about how well uncertainty is quantified and is a single number and thus a vector of number can be used, one from each simulation within the scenario. Furthermore, if there is a trend within the distribution of the Frobenius norms for each model than inspection of the PSMs and consensus matrices for a single simulation might be sufficient to understand the behaviour within the entire scenario in combination with the Frobenius norm.
 
 For the Bayesian models I am also interested in within-chain model and across-chain convergence. I calculate the Geweke statistic [@geweke1992evaluating] and the Gelman-Rubin shrinkage parameter [$\hat{R}$, @gelman1992inference] as measures of these respectively.
-If the Geweke statistic of a chain is not appreaing to be a normal-distribution, as tested by a Shapiro-Wilks test, I drop that chain from the analysis. I test if chains are not converged using the extension of $\hat{R}$ proposed by @vats2018revisiting, using a threshold of 1.01 (which is a weaker threshold than @vats2018revisiting propose, but as I am automating the process and will not do much further investigation of this I am erring towards a threshold that will not exagerate the lack of convergence). I plot the original $\hat{R}$ value described by @gelman1992inference, but the summary statistic for the entire simulation is the Vats-Knudson statistic. Note that a low value in this is not sufficient to definitively say that a set of chains have converged, but a high value does indicate a lack of convergence.
+If the Geweke statistic of a chain is not appreaing to be a normal-distribution, as tested by a Shapiro-Wilks test, I drop that chain from the analysis. I test if chains are not converged using the extension of $\hat{R}$ proposed by @vats2018revisiting, using a threshold of 1.01 (which is a weaker threshold than @vats2018revisiting propose, but as I am automating the process and will not do much further investigation of this; thus I am erring towards a threshold that will not exagerate the lack of convergence). I plot the original $\hat{R}$ value described by @gelman1992inference, but the summary statistic for the entire simulation is the Vats-Knudson statistic. Note that a low value in this is not sufficient to definitively say that a set of chains have converged, but a high value does indicate a lack of convergence.
 
-The samples from the chains that pass the Shapiro-Wilks test are then pooled for model comparison. I do not drop the entire analysis based upon overall convergence as some scenarios might have a small number of data points for the Bayesian inference in the model comparison plots. Pooling samples is done to avoid model selection problems and to enavble comparison across simulations. The pooling will mean that the Bayesian inference might be more robust to modes (as we might have several different modes present in the pooled samples), thus inflating performance under uncertainty quantification. However, the $\hat{R}$ statistic should indicate the percentage of simulations for which multiple modes are encountered as these chains should not be exploring the same distribution and thus will not be considered converged.
+The samples from the chains that pass the Shapiro-Wilks test are then pooled for model comparison. I do not drop the entire analysis based upon overall convergence as doing so might lead some scenarios to having a very small number of data points for the Bayesian inference in the model comparison plots. Pooling samples is done to avoid model selection problems and to enable comparison across simulations. The pooling will mean that the Bayesian inference might be more robust to modes (as we might have several different modes present in the pooled samples), thus inflating performance under uncertainty quantification. However, the $\hat{R}$ statistic should indicate the percentage of simulations for which multiple modes are encountered as these chains should not be exploring the same distribution and thus will not be considered converged.
 
 ## Results
 
 ### Simple 2D
 
-![Comparison of predicted clustering to true labelling across 100 simulations of the Simple 2D scenario. Consensus inference models are represented by _Consensus (chain iteration used, number of chains used)_. Mclust performs very well, unpicking the true structure. The Bayeisan inference also performs well, and we see that Consensus inference improves in performance as more samples are added, but the improvement yielded by increasing chain length stabilises after 10 iterations into the chain. This suggests that either 1) chains have reached their stationary distribution within 10 iterations and therefore sampling from the 10th or 10,000th iteration is the approximately same as the samples are all drawn from the same distribution or 2) chains stop exploring the space and become trapped in a mode after the 10th iteration. In such a low dimensional space, I would expect the chains to be exploring the target distribution. Results represented inthe following plots also support this belief. ](./Images/Simulations/simple_2d/simple_2d_all_model_performance.png)
+![Comparison of predicted clustering to true labelling across 100 simulations of the Simple 2D scenario. Consensus clustering ensembles are represented by _Consensus (chain iteration used, number of chains used)_. Mclust performs very well, unpicking the true structure. The Bayeisan inference also performs well, and we see that consensus clustering improves in performance as more samples are added, but the improvement yielded by increasing chain length stabilises after 10 iterations into the chain. This suggests that either 1) chains have reached their stationary distribution within 10 iterations and therefore sampling from the 10th or 10,000th iteration is the approximately same as the samples are all drawn from the same distribution or 2) chains stop exploring the space and become trapped in a mode after the 10th iteration. In such a low dimensional space, I would expect the chains to be exploring the target distribution. Results represented inthe following plots also support this belief. ](./Images/Simulations/simple_2d/simple_2d_all_model_performance.png)
 
 
 
-![Comparison of the Frobenius norm of the difference of the infered clustering matrices and the true coclustering matrix. Note that 0 is a better score. Mclust performs very well; this unsurprising as inspecting the plot of predictive performance shows that Mclust finds the true clustering in almost all simulations. It is more interesting to see that the Bayesian inference and all of the Consensus inferences have very similar scores; this suggests that the sampler is exploring a relaistic space but that there is high uncertainty. This suggests that it is only through inspecting all of the samples generated that we uncover close to the true structure and that any single sample is expected to be a poor estimate. However, it is worth noticing that a single sample can perform well, as can be seen by the upper tail of the Consensus (1, $s$) boxplots. It is likely that the single sample generated for these happens to be quite good, but similarly the lower tail consists of single samples that were below the average sample in describing the true structure. This trend of the Consensus (1, $s$) models having greater varaibility (both positively and negatively) is something I would expect to see in many of the plots for the remaining scenarios. ](./Images/Simulations/simple_2d/simple_2d_all_model_uncertainty.png)
+![Comparison of the Frobenius norm of the difference of the infered clustering matrices and the true coclustering matrix. Note that 0 is a better score. Mclust performs very well; this unsurprising as inspecting the plot of predictive performance shows that Mclust finds the true clustering in almost all simulations. It is more interesting to see that the Bayesian inference and all of the consensus clusterings have very similar scores; this suggests that the sampler is exploring a relaistic space but that there is high uncertainty. This suggests that it is only through inspecting all of the samples generated that we uncover close to the true structure and that any single sample is expected to be a poor estimate. However, it is worth noticing that a single sample can perform well, as can be seen by the upper tail of the Consensus (1, $s$) boxplots. It is likely that the single sample generated for these happens to be quite good, but similarly the lower tail consists of single samples that were below the average sample in describing the true structure. This trend of the Consensus (1, $s$) models having greater varaibility (both positively and negatively) is something I would expect to see in many of the plots for the remaining scenarios. ](./Images/Simulations/simple_2d/simple_2d_all_model_uncertainty.png)
 
 
 
-![In plotting ARI against the iteration of the sampler used to construct the consensus inference, we can see that it is number of samples that is most important. In each case the performance appears to stabilise very early in the chain. If the chains were allowed run for even a single iteration than the inference is suprisingly good as long as more samples are used. ](./Images/Simulations/simple_2d/simple_2d_ci_model_performance_iterations.png) 
+![In plotting ARI against the iteration of the sampler used to construct the consensus clustering, we can see that it is number of samples that is most important. In each case the performance appears to stabilise very early in the chain. If the chains were allowed run for even a single iteration than the inference is suprisingly good as long as more samples are used. ](./Images/Simulations/simple_2d/simple_2d_ci_model_performance_iterations.png) 
 
 ![In this plot of the number of chains/samples used against the ARI, faceted by the iteration used. Again, it is clear that increasing ther number of samples used is the dominant contributor to the quality of the inferenece; increasing chain length has a ngeligible impact. ](./Images/Simulations/simple_2d/simple_2d_ci_model_performance_samples.png) 
 
 
 ![Inspecting the PSM we can see that there is a lot uncertainty present; most of entries in the PSMs are closer to 0 than 1. The PSMs are annotated by the true clustering, with the ordering of rows and columns in posed by the final entry in the grid. The sampler appears to be exploring the space quite well, suggesting many different partitions that generally identify some of the true structure. ](./Images/Simulations/simple_2d/PSMs/BayesianSimulation10PSMs.png)
 
-![Similarly comparing the Consensus Matrices for different numebrs of samples and different chain depths, we see a similar space explored. Here the rows of the grid are increasing the depth within the chain that we sample from, the columns are increasing the number of samples used. The rows are $S=\{1, 10, 100, 1000, 10000\}, and the columns are $R=\{1, 10, 30, 50, 100\}$. The ordering is imposed by the matrix in the (5, 5) entry of the grid (i.e. Consensus (10000, 100)), and annotation labels are the true clustering.  ](./Images/Simulations/simple_2d/CMs/ConsensusSimulation10ConsensusMatrixGrid.png)
+![Similarly comparing the Consensus Matrices for different numbers of samples and different chain depths, we see a similar space explored. Here the rows of the grid are increasing the depth within the chain that we sample from, the columns are increasing the number of samples used. The rows are $S=\{1, 10, 100, 1000, 10000\}$, and the columns are $R=\{1, 10, 30, 50, 100\}$. The ordering is imposed by the matrix in the (5, 5) entry of the grid (i.e. Consensus (10000, 100)), and annotation labels are the true clustering.  ](./Images/Simulations/simple_2d/CMs/ConsensusSimulation10ConsensusMatrixGrid.png)
 
-Looking at these results it appears that Mclust, with it's clever initialisation, is the best performing method in this case, but the Bayesian and Consensus inferences are performing sensibly particularly as the items in this space are not particularly separable under the true labelling. Consider the plot of the data in the scenario description; clusters 1 and 5 could easily be considered a single entity and we would like to see some uncertainty about the existence of clusters 3 and 4 as seperate groups. Furthermore, the level of distance between some points within the clusters is on a similar scale to the distance between the clusters; due to this identifying the true number of clusters is non-trivial.
+Looking at these results it appears that Mclust, with it's clever initialisation, is the best performing method in this case, but the Bayesian inference and consensus clustering are performing sensibly particularly as the items in this space are not particularly separable under the true labelling. Consider the plot of the data in the scenario description; clusters 1 and 5 could easily be considered a single entity and we would like to see some uncertainty about the existence of clusters 3 and 4 as seperate groups. Furthermore, the level of distance between some points within the clusters is on a similar scale to the distance between the clusters; due to this identifying the true number of clusters is non-trivial.
 
 ### No structure
 
 
-![An initial inspection of the perfomance of the models reveals that none of the methods work. However, if one considers how one may describe no structure one should either place all items in the same cluster or else place all items in their own cluster. If the latter is the case than an ARI of 0 is an unsurprising result. Furthermore, deeper inspection of the ``mcclust::arandi`` function reveals that it returns ``NaN`` for the case that all items in both clusterings (i.e. the truth and the inferred) are in the same cluster.  A comparison of a clustering with all items in the same cluster to any other possible partitioning of the items always returns a score of 0; thus this plot contains no useful information other than that some of the models placed items in separate partitions. A deeper inspection of the Mclust results revealed that 96 of the models placed all items in a single component, but the Consensus and Bayesian inference clustered every item as a singleton in every case. ](./Images/Simulations/no_structure/no_structure_all_model_performance.png)
+![An initial inspection of the perfomance of the models reveals that none of the methods work. However, if one considers how one may describe no structure one should either place all items in the same cluster or else place all items in their own cluster. If the latter is the case than an ARI of 0 is an unsurprising result. Furthermore, deeper inspection of the ``mcclust::arandi`` function reveals that it returns ``NaN`` for the case that all items in both clusterings (i.e. the truth and the inferred) are in a single cluster.  A comparison of a clustering with all items in the same cluster to any other possible partitioning of the items always returns a score of 0; thus this plot contains no useful information other than that some of the models placed items in separate partitions. A deeper inspection of the Mclust results revealed that 96 of the models placed all items in a single component, but the Consensus and Bayesian inference clustered every item as a singleton in every case. ](./Images/Simulations/no_structure/no_structure_all_model_performance.png)
 
 ![The success of Mclust is seen here more clearly as a score of 0 indicates that the predicted coclustering matrix perfectly matches the truth. ](./Images/Simulations/no_structure/no_structure_all_model_uncertainty.png)
 
@@ -769,18 +773,18 @@ This is a good result for each method; they do not mistake noise for signal.
 
 There are two sub-scenarios in this case; in one the standard deviation of each component is set $\sigma_1=3$, in the second $\sigma_2=5$.
 
-![In the first case Mclust does not perform terribly well - most of the consensus infered point estimates and the Bayesian point estimate of the clustering are closer to the truth in the majority of simulations. Performance for consensus inference appears to stabilise after sampling from the 10th iteration of the chains and for 30 or more samples. The clusters are not prominent; based upon the results for the simple 2d case, I would expect that increasing the number of samples contributing to the inference would improve performance. This appears to be happening here too.  ](./Images/Simulations/large_standard_deviation_3/large_standard_deviation_3_all_model_performance.png)
+![In the first case Mclust does not perform terribly well - most of the consensus infered point estimates and the Bayesian point estimate of the clustering are closer to the truth in the majority of simulations. Performance for consensus clustering appears to stabilise after sampling from the 10th iteration of the chains and for 30 or more samples. The clusters are not prominent; based upon the results for the simple 2d case, I would expect that increasing the number of samples contributing to the inference would improve performance. This appears to be happening here too.  ](./Images/Simulations/large_standard_deviation_3/large_standard_deviation_3_all_model_performance.png)
 
 ![It is here that Mclust's method starts to be severely punished for proposing a single clustering. As the MCMC based methods explore more of the space there is a better ability to consider various partitions, each of which might, in different ways, overlap better with the truth. ](./Images/Simulations/large_standard_deviation_3/large_standard_deviation_3_all_model_uncertainty.png)
 
 
-![However, once the overlap between clusters in the data becomes too large the methods start to find no structure. If one inspects the data there in no visual evidence for the presence of distinct subgroups; I would argue that the distributions %>% ](./Images/Simulations/large_standard_deviation_5/large_standard_deviation_5_all_model_performance.png)
+![However, once the overlap between clusters in the data becomes too large the methods start to find no structure. If one inspects the data there in no visual evidence for the presence of distinct subgroups; I would argue that the distributions have no clear distinction and finding no structure is not a misleading claim. ](./Images/Simulations/large_standard_deviation_5/large_standard_deviation_5_all_model_performance.png)
 
 ![Inspeciton of the Frobenius norm of the difference betweeen the inferred consensus / posterior similarity / coclustering matrices and the true coclustering suggests that no method is performing well and that a large amount of uncertainty is present in all cases. The low value of the Consensus (1, $s$) and Consensus (10, $s$) models requires some investigation. ](./Images/Simulations/large_standard_deviation_5/large_standard_deviation_5_all_model_uncertainty.png)
 
 
 
-![Inspecting the consensus matrices within a grid where chain depth increases with the grid rows and the number of chains used increases with the grid columns reveals that the Consensus (1, $s$) and Consensus (10, $s$) models perform best under the Frobenius norm as they are almost empty bar the diagonal. The Frobenius norm rewards sparsity and thus does not work as a proxy to indicate how well the models are quantifying uncertainty in this case as there is no real ability to uncover the true underlying structure. )](./Images/Simulations/large_standard_deviation_5/CMs/ConsensusSimulation1ConsensusMatrixGrid.png)
+![Inspecting the consensus matrices within a grid where chain depth increases with the grid rows and the number of chains used increases with the grid columns reveals that the Consensus (1, $s$) and Consensus (10, $s$) models perform best under the Frobenius norm as they are almost empty bar the diagonal. The Frobenius norm rewards sparsity and thus does not work as a proxy to indicate how well the models are quantifying uncertainty in this case as there is no real ability to uncover the true underlying structure. ](./Images/Simulations/large_standard_deviation_5/CMs/ConsensusSimulation1ConsensusMatrixGrid.png)
 
 ![The PSMs from the same simulation describe a similar set of partitions as the higher order consensus matrices. ](./Images/Simulations/large_standard_deviation_5/PSMs/BayesianSimulation1PSMs.png)
 
@@ -820,7 +824,7 @@ A comparison of the Consensus matrices is interesting.
 
 
 
-The behaviour shown here suggests that the sampler most explore the model space for some time to overcome the noise in the irrelevant features. The number of samples is less important, but this is partially due to the very clear signal within the relevant features. One cannot neglect scaling the number of samples used in the consensus inference however. We can see within the PSMs that there can issues for Bayesian inference even in this scale of dimensions as only a single mode is explored. Therefore even though most of the chains explore the main mode of interest, one must include multiple chains in the consensus inference to better capture all modes.
+The behaviour shown here suggests that the sampler most explore the model space for some time to overcome the noise in the irrelevant features. The number of samples is less important, but this is partially due to the very clear signal within the relevant features. One cannot neglect scaling the number of samples used in the consensus clustering however. We can see within the PSMs that there can issues for Bayesian inference even in this scale of dimensions as only a single mode is explored. Therefore even though most of the chains explore the main mode of interest, one must include multiple chains in the consensus clustering to better capture all modes.
 
 ### Varying proportions
 
@@ -877,15 +881,15 @@ If we then shrink $\delta \mu$, the distance between the Gaussian distribution t
 
 I think that if uncertainty is ever of interst than Mclust has to be dropped. If this is not the case then Mclust is a powerful tool in the absence of irrelevant features.
 
-If $P$ is small that Bayesian inference is ideal; however once $P$ breaks into the hundreds and the attraction of modes becomes more extreme I think one should consider consensus inference as a natural way to represent these in one's analysis, or else consider other types of sampler. However, if $P$ is extreme these samplers might be sufficiently slow as to be infeasible.
+If $P$ is small that Bayesian inference is ideal; however once $P$ breaks into the hundreds and the attraction of modes becomes more extreme I think one should consider consensus clustering as a natural way to represent these in one's analysis, or else consider other types of sampler. However, if $P$ is extreme these samplers might be sufficiently poor at exploring the partition space as to be infeasible regardless of the method of inference.
 
 #### Small $P$
 
-In a low dimensional, low signal setting Mclust performs excellently. In a real applicaiton where no labels are present and uncertainty quantification is important, than Bayesian inference performs very well, exploring the target distribution thoroughly. Based upon the behaviour of the consensus matrices and the improvement in ARI as a function of chain depth, $R$, it appears that one could use consensus inference in a low dimensional setting as $R=10$ appears sufficient to perform similar inference to the Bayesian inference. Therefore one could use a parallel environment to decrease the time required to perform the analsysis. However, as true Bayesian inference can be performed quickly on this scale and is exploring a range of paritions, I would recommend using Bayesian inference, with all its guarantees in this setting.
+In a low dimensional, low signal setting Mclust performs excellently. In a real applicaiton where no labels are present and uncertainty quantification is important, than Bayesian inference performs very well, exploring the target distribution thoroughly. Based upon the behaviour of the consensus matrices and the improvement in ARI as a function of chain depth, $R$, it appears that one could use consensus clustering in a low dimensional setting as $R=10$ appears sufficient to perform similar inference to the Bayesian inference. Therefore one could use a parallel environment to decrease the time required to perform the analsysis. However, as true Bayesian inference can be performed quickly on this scale and is exploring a range of partitions, I would recommend using Bayesian inference, with all its guarantees in this setting.
 
 #### False structure
 
-It is reassuring to see that the methods all correctly identify no structure. This helps to reassure us that we can use these methods and will not identify noise as structure. The low degree of signal present in the case with $\sigma=5$ and in the small $N$ large $P$ scenario with close cluster means also saw no structure uncovered, suggesting that one may use these methods and be somewhat reassured that any signal uncovered is true. In the high dimensional setting one would have to recognise that the clustering in the PSMs corresponded to the initialisation; for practitioners who might be confused by this and the appearance of 10 modes in their 10 chains, perhaps consensus inference, with it's very clear lack of structure, is preferable.
+It is reassuring to see that the methods all correctly identify no structure. This helps to reassure us that we can use these methods and will not identify noise as structure. The low degree of signal present in the case with $\sigma=5$ and in the small $N$ large $P$ scenario with close cluster means also saw no structure uncovered, suggesting that one may use these methods and be somewhat reassured that any signal uncovered is true. In the high dimensional setting one would have to recognise that the clustering in the PSMs corresponded to the initialisation; for practitioners who might be confused by this and the appearance of 10 modes in their 10 chains, perhaps consensus clustering, with it's very clear lack of structure, is preferable.
 
 #### Loud signal
 
@@ -893,17 +897,17 @@ When signal is sufficiently loud that the clustering structure is easily visible
 
 #### Weak and hidden signal
 
-As the signal becomes weaker sampler based methods perform better than Mclust, exploring a greater vairety of partitions and clearly stating that the uncertainty is high. If the signal is buried beneath a large amount of noise (rather than being inherently weak as in the large standard deviation cases), then the sampling-based methods perfom very well; these appear very robust to a large number of irrelevant features. However as the number of noise features increases sampling from deeper within the chain becomes more important for consensus inference. I suspect that this is partially a function of the increase in the number of features independant of the ratio of relevant to irrelevant features.
+As the signal becomes weaker sampler based methods perform better than Mclust, exploring a greater vairety of partitions and clearly stating that the uncertainty is high. If the signal is buried beneath a large amount of noise (rather than being inherently weak as in the large standard deviation cases), then the sampling-based methods perfom very well; these appear very robust to a large number of irrelevant features. However as the number of noise features increases sampling from deeper within the chain becomes more important for consensus clustering. I suspect that this is partially a function of the increase in the number of features independant of the ratio of relevant to irrelevant features.
 
 #### Large $P$
 
-In this setting I think consensus inference shines. As the collapsed Gibbs sampler appears to find a sensible partition quite quickly (as seen by the stability of results for consensus inference after $R$ exceeds 1) one can run the chains for a short length of time. Furthermore, one may use the lack of correlation of samples across chains to explore multiple modes. Bayesian inference struggles in this setting, becoming trapped in a mode and never escaping its attraction. It does identify useful structure, but claims of convergence become dubious and some of the main attractions of Bayesian inference, i.e. principled quantification of the uncertainty and the asymptotic guarantees, appear to not truly hold in practice.
+In this setting I think consensus clustering shines. As the collapsed Gibbs sampler appears to find a sensible partition quite quickly (as seen by the stability of results for consensus clustering after $R$ exceeds 1) one can run the chains for a short length of time. Furthermore, one may use the lack of correlation of samples across chains to explore multiple modes. Bayesian inference struggles in this setting, becoming trapped in a mode and never escaping its attraction. It does identify useful structure, but claims of convergence become dubious and some of the main attractions of Bayesian inference, i.e. principled quantification of the uncertainty and the asymptotic guarantees, appear to not truly hold in practice.
 
-### Using consensus inference in practice
+### Using consensus clustering in practice
 
-Consensus inference has shown significant advantages. As $P$ grows and modes become more extreme, consensus inference is better able to represent multiple modes than Bayesian inference (as seen in the irrelevant features 100 and the small $N$ large $P$ base case). However, if the sampler never explores a sensible space (as is the case in the scenario with small $N$ and large $P$ where the distance between cluster means, $\delta \mu$, is small), than consensus inference does not solve the problems. (Aside: I do think that the small $N$ large $P$ case does not contain strong signal of structure, and in this case finding no structure is an acceptable solution as the consensus inference does.)
+Consensus clustering has shown significant advantages. As $P$ grows and modes become more extreme, consensus clustering is better able to represent multiple modes than Bayesian inference (as seen in the irrelevant features 100 and the small $N$ large $P$ base case). However, if the sampler never explores a sensible space (as is the case in the scenario with small $N$ and large $P$ where the distance between cluster means, $\delta \mu$, is small), than consensus clustering does not solve the problems. (Aside: I do think that the small $N$ large $P$ case does not contain strong signal of structure, and in this case finding no structure is an acceptable solution as the consensus clustering does.)
 
-I think the performance of consensus inference for even very small values of $R$ is surprising. In many scenarios setting $R=10$ was sufficient to uncover much of the structure or at least indicate it (as is in the case where $P_n=100$ where the consensus matrices corresponding to $R=10$ indicate the true structure with much uncertainty). I think that is exciting, as in cases where each iteration is slow (such as the large $P$ case) than consensus inference performs well even if chains are severely constrained.
+I think the performance of consensus clustering for even very small values of $R$ is surprising. In many scenarios setting $R=10$ was sufficient to uncover much of the structure or at least indicate it (as is in the case where $P_n=100$ where the consensus matrices corresponding to $R=10$ indicate the true structure with high uncertainty). I think that is exciting, as in cases where each iteration is slow (such as the large $P$ case) than consensus clustering performs well even if chains are severely constrained.
 
 Based upon the results seen I would say that in practice Consensus ($R$, $S$) should be driven by the heuristics:
 
@@ -914,7 +918,7 @@ Based upon the results seen I would say that in practice Consensus ($R$, $S$) sh
  S &\propto \textrm{The number of modes present.}
 \end{align}
 
-Of these, only $P$ can be confidently known. As this is the case I think making use of grids of the consensus matrices could help. They can provide evidence for when increasing $S$ and $R$ no longer offers significant gains. I think the Frobenius norm could be used to construct a stopping rule for these inputs of the inference, e.g. if the Frobenius norm of the difference of the matrix for Consensus $(R, S_1)$ and the matrix for Consensus $(R, S_2)$ (for some $S_1, S_2, R \in \mathbb{N}, S_2 > S_1$) is small than one should stop increasing $S$ and similarly for different values of $R$. One would have to pursued this far enough that one can believe that the stability of the consensus matrix is true. Based upon the results so far I think, letting $CM(r, s)$ denote a consensus matrix for consensus inference using the $r^{th}$ iteration of $s$ chains, that if:
+Of these, only $P$ can be confidently known. As this is the case I think making use of grids of the consensus matrices could help. They can provide evidence for when increasing $S$ and $R$ no longer offers significant gains. I think the Frobenius norm could be used to construct a stopping rule for these inputs of the inference, e.g. if the Frobenius norm of the difference of the matrix for Consensus $(R, S_1)$ and the matrix for Consensus $(R, S_2)$ (for some $S_1, S_2, R \in \mathbb{N}, S_2 > S_1$) is small than one should stop increasing $S$ and similarly for different values of $R$. One would have to pursued this far enough that one can believe that the stability of the consensus matrix is true. Based upon the results so far I think, letting $CM(r, s)$ denote a consensus matrix for consensus clustering using the $r^{th}$ iteration of $s$ chains, that if:
 
 \begin{align}
 &||CM(r, s) - CM(r, s + 10)||_F &< \epsilon \\

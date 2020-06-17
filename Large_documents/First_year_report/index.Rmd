@@ -1,5 +1,5 @@
 ---
-title: "Consensus inference"
+title: "Consensus clustering for Bayesian model clustering"
 author: "Stephen Coleman"
 date: "`r Sys.Date()`"
 output:
@@ -187,8 +187,8 @@ N & & \textrm{The number of items in each dataset.} \\
 L & & \textrm{The number of datasets present.} \\
 P & & \textrm{The number of features in the dataset.} \\
 K & & \textrm{The number of components present in the dataset.} \\
-R & & \textrm{The number of iterations for which a sampler is run in Bayesian or consensus inference.} \\
-S & & \textrm{The number of samples generated for Bayesian or consensus inference.} \\
+R & & \textrm{The number of iterations for which a sampler is run in Bayesian inference or consensus clustering.} \\
+S & & \textrm{The number of samples generated for Bayesian inference or consensus clustering.} \\
 X &= (x_{1}, \ldots, x_{N}) & \textrm{The observed data.} \\
 c &= (c_{1}, \ldots, c_{N}) & \textrm{The unobserved membership vector.} \\
 \pi &= (\pi_{1,}\ldots, \pi_{K}) & \textrm{The mixture weights.} \\
@@ -493,7 +493,7 @@ different ways [@robert2018accelerating].  Methods which attempt to improve
 the ability of the sampler to explore the
 support of the target distribution such as simulated annealing
 [@kirkpatrick1983optimization; @atchade2011towards], incorporating
-global-local moves [] or split-merge steps [@green2001modelling; @jain2004split];
+global-local moves [@holmes2017adaptive] or split-merge steps [@green2001modelling; @jain2004split];
 all offer some degree of success, but at the cost of additional computational
 complexity. For high dimensional data these remain slow to converge and may have
 more limited success. Other methods attempt to accelerate the speed at which the
@@ -736,5 +736,5 @@ of partitions to the strength is more important that the strength alone,
 with the caveat that each individual performs better than random
 [@breiman2001random]. Prior expectation for a consensus of
 Bayesian mixture models would be that within a single iteration
-each mixutre model would be producing samples that are better than random as the
+each Markov chain would be producing samples that are better than random as the
 sampler proposes a more probable state.
