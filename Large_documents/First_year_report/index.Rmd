@@ -1,5 +1,5 @@
 ---
-title: "Consensus clustering for Bayesian model clustering"
+title: "Consensus clustering for Bayesian model-based clustering"
 author: "Stephen Coleman"
 date: "`r Sys.Date()`"
 output:
@@ -115,26 +115,40 @@ ciSim <- function(true_labels, n_iter, K,
 
 # Introduction {#introduction}
 
-Mixture models are powerful cluster analysis tools,
-offering insights into complex, heterogeneous datasets such as those found in
-biology [@pan2002model; @medvedovic2004bayesian; @dahl2006model;
-@gelman2013bayesian]. Bayesian mixture models may be extended to perform
-integrative clustering, sharing information across multiple paired datasets
-[see for example @kirk2012bayesian; @lock2013bayesian; @gabasova2017clusternomics],
-making them suitable for application in a mutliple 'omics setting.
+<!-- Cluster analysis can answer and inspire biomedical questions. For example, clustering of -->
 
-However, performing inference for these models is a difficult problem,
-particularly in the high-dimensional, noisy setting so prevalent in 'omics
-analyses. This is further exacerbated in the multiple dataset case.
-Normally inference is based upon one of either the Maximum Likelihood Estimates
-(**MLE**) of the variables or else Bayesian inference. These methods and their
-implementations have various advantages and disadvantages, some of which are
-described here. Some of the disadvantages are pathological in high dimensional
-settings and limit the biomedical application of these models. I propose
-aggregating many short MCMC chains to perform inference upon these models,
-in a novel extension of Consensus clustering [@monti2003consensus]. I show
-through extensive simulation studies that this approach marries many of the
-strengths of the Bayesian models with improvements in speed and robustness.
+<!-- * patients based upon disease characteristics (such as the ‘omics profile) and reactions to treatment can be used to define disease subtypes for more specific treatments. Improving understanding of common and unique mechanisms of diseases at the molecular level can enable development of treatments and deepen understanding of disease aetiology. -->
+<!-- * patients based upon their ‘omics profile and environmental and lifestyle factors, “precision medicine”, enables bespoke treatment that attempts to improve the patient outcome. -->
+<!-- *	genes based upon their co-expression can improve our understanding of cellular biology and gene pathways; such holistic understanding of human biology can enable targeted drugs and offer insights into diseases. -->
+
+<!-- Bayesian mixture models are a popular statistical method for performing cluster analysis. However, the computational methods for applying these have certain limitations. MCMC methods, the workhorse of Bayesian inference, struggle to scale to the high dimension of modern biomedical data. Two prevalent issues in high dimensions are that these methods -->
+
+<!-- *	can struggle to explore the full target distribution, becoming trapped in a single, possibly local, mode. -->
+<!-- * become very computationally costly, even a single iteration can be very slow to perform. -->
+
+<!-- Due to the attractions of Bayesian models, we would like to find some computationally tractable method for using them in a biomedical context. I propose a novel extension of the Consensus clustering framework, a general clustering ensemble approach, to Bayesian mixture models to alleviate these issues. In this report I attempt to explain the attraction of mixture models and specifically Bayesian mixture models and their extensions; the limits of current methods for performing inference in mixture models and how I implement consensus clustering in this setting. I then describe results of a simulation study that compares established methods of inference to consensus clustering. I finish with some possible future applications and extensions of the method. -->
+
+
+<!-- Mixture models are powerful cluster analysis tools, -->
+<!-- offering insights into complex, heterogeneous datasets such as those found in -->
+<!-- biology [@pan2002model; @medvedovic2004bayesian; @dahl2006model; -->
+<!-- @gelman2013bayesian]. Bayesian mixture models may be extended to perform -->
+<!-- integrative clustering, sharing information across multiple paired datasets -->
+<!-- [see for example @kirk2012bayesian; @lock2013bayesian; @gabasova2017clusternomics], -->
+<!-- making them suitable for application in a mutliple 'omics setting. -->
+
+<!-- However, performing inference for these models is a difficult problem, -->
+<!-- particularly in the high-dimensional, noisy setting so prevalent in 'omics -->
+<!-- analyses. This is further exacerbated in the multiple dataset case. -->
+<!-- Normally inference is based upon one of either the Maximum Likelihood Estimates -->
+<!-- (**MLE**) of the variables or else Bayesian inference. These methods and their -->
+<!-- implementations have various advantages and disadvantages, some of which are -->
+<!-- described here. Some of the disadvantages are pathological in high dimensional -->
+<!-- settings and limit the biomedical application of these models. I propose -->
+<!-- aggregating many short MCMC chains to perform inference upon these models, -->
+<!-- in a novel extension of Consensus clustering [@monti2003consensus]. I show -->
+<!-- through extensive simulation studies that this approach marries many of the -->
+<!-- strengths of the Bayesian models with improvements in speed and robustness. -->
 
 <!-- Consensus clustering for Bayesian mixture models is an ensemble clustering  -->
 <!-- method. Using this approach, I aim  -->
@@ -176,23 +190,24 @@ used to generate this report [@R-bookdown; @R-knitr; @R-rmarkdown].
 
 ### Notation {-}
 
-I refer to objects being clustered as _items_. Each item has observations across some variables that I refer to as _features_. I use the language of @law2003feature and refer to *relevant* and *irrelevant* features referring to features that provide component specific information and thus contribute to the clustering and those that do not.
+I refer to objects being clustered as _items_. Each item has observations across some variables that I refer to as _features_. I use the language of @law2003feature of *relevant* and *irrelevant* features referring to features that provide component specific information and thus contribute to the clustering and those that do not.
 
-More generally if we are considering a multiple dataset context:
+More generally:
 
 <!-- \newcommand{\myG}[1]{\textnormal{\fontencoding{OT1}\fontfamily{eiadtt}\selectfont {#1} \normalfont}} -->
 
 \begin{eqnarray}
-N & & \textrm{The number of items in each dataset.} \\
-L & & \textrm{The number of datasets present.} \\
-P & & \textrm{The number of features in the dataset.} \\
-K & & \textrm{The number of components present in the dataset.} \\
-R & & \textrm{The number of iterations for which a sampler is run in Bayesian inference or consensus clustering.} \\
-S & & \textrm{The number of samples generated for Bayesian inference or consensus clustering.} \\
+N & & \textrm{The number of items in a dataset.} \\
+ % L & & \textrm{The number of datasets present.} \\ 
+P & & \textrm{The number of features in a dataset.} \\
+K & & \textrm{The number of components present in a dataset.} \\
+R & & \textrm{The number of iterations for which a sampler is run.} \\
+S & & \textrm{The number of samples used to perform inference.} \\
 X &= (x_{1}, \ldots, x_{N}) & \textrm{The observed data.} \\
 c &= (c_{1}, \ldots, c_{N}) & \textrm{The unobserved membership vector.} \\
 \pi &= (\pi_{1,}\ldots, \pi_{K}) & \textrm{The mixture weights.} \\
-\phi &=(\phi_1,\ldots, \phi_P) & \textrm{The indicator variable of feature relevance.}
+\phi &=(\phi_1,\ldots, \phi_P) & \textrm{The indicator variable of feature relevance.} \\
+\theta &= (\theta_1, \ldots, \theta_Q) & \textrm{The generic notation for unobserved variables.}
 \end{eqnarray}
 
 <!-- \begin{eqnarray} -->
@@ -217,35 +232,122 @@ c &= (c_{1}, \ldots, c_{N}) & \textrm{The unobserved membership vector.} \\
 
 I denote abbreviations or terms that  will be used in place of another in the format "[Full name] ([name hereafter])". For some variable $\theta=(\theta_1, \ldots, \theta_Q)$, I use $\theta_{-i}$ to denote the vector $(\theta_1, \ldots, \theta_{i-1}, \theta_{i+1}, \ldots, \theta_Q)$.
 
-### Definitions {-}
+<!-- ### Definitions {-} -->
 
-A number of definitions are required for some recurring concepts in this report.
+<!-- A number of definitions are required for some recurring concepts in this report. -->
 
-```{definition, allocMatrix, name = "Allocation matrix"}
-Let $\mathbf{Z}$ be a $N \times K$ binary matrix, with
+<!-- ```{definition, allocMatrix, name = "Allocation matrix"} -->
+<!-- Let $\mathbf{Z}$ be a $N \times K$ binary matrix, with -->
 
-\[
-z_{ik} = \begin{cases}
- 1 \textrm{ if items $x_i$ is assigned to cluster $k$}, \\
- 0 \textrm{ else.}
-\end{cases}
-\]
+<!-- \[ -->
+<!-- z_{ik} = \begin{cases} -->
+<!--  1 \textrm{ if items $x_i$ is assigned to cluster $k$}, \\ -->
+<!--  0 \textrm{ else.} -->
+<!-- \end{cases} -->
+<!-- \] -->
 
-$\mathbf{Z}$ describes the same information as membership vector $c$ in a different format and is referred to as an _allocation matrix_.
+<!-- $\mathbf{Z}$ describes the same information as membership vector $c$ in a different format and is referred to as an _allocation matrix_. -->
+<!-- ``` -->
+
+<!-- Following from \@ref(def:allocMatrix), I use the following notation: -->
+
+<!-- \[ -->
+<!-- \begin{aligned} -->
+<!-- \sum_{k=1}^K z_{ik} &= 1 \textrm{ for all $i \in \{1, \ldots, N\}$ }\\ -->
+<!-- N_k &= \sum_{i=1}^N z_{ik}  \\ -->
+<!-- \mu_k &= \frac{1}{N_k} \sum_{i=1}^N z_{ik} x_i \textrm{ for all $k \in \{1, \ldots, K\}$} -->
+<!-- \end{aligned} -->
+<!-- \] -->
+
+<!-- ```{definition, coclustMatrix, name = "Coclustering matrix"} -->
+<!-- Let $\mathbf{B}$ be a $N \times N$ binary matrix, with -->
+
+<!-- \[ -->
+<!-- b_{ij} = \begin{cases} -->
+<!--  1 \textrm{ if items $x_i$ and $x_j$ are assigned to the same cluster}, \\ -->
+<!--  0 \textrm{ else.} -->
+<!-- \end{cases} -->
+<!-- \] -->
+
+<!-- $\mathbf{B}$ is referred to as the _coclustering matrix_. -->
+<!-- ``` -->
+
+<!-- #### Similarity matrices {-} -->
+
+<!-- Two closely related concepts are that of the posterior similarity matrix -->
+<!-- (**PSM**) and the consensus matrix (**CM**). These are defined as follows: -->
+
+<!-- ```{definition, consensusMatrix, name = "Consensus matrix"} -->
+<!-- A _consensus matrix_ (**CM**) is an $(N \times N)$ matrix that stores, -->
+<!-- for each pair of items, the proportion of partitions in which the pair are -->
+<!-- clustered together. The consensus matrix is obtained by taking the average over -->
+<!-- the coclustering matrices obtained for partition. -->
+
+<!-- Let $B^{(i)}$ be the coclustering matrix associated with the $i^{th}$ partition. -->
+<!-- Then, for $I$ partitions, let the consensus matrix, $M$, be defined: -->
+
+<!-- \begin{align} -->
+<!-- M = \frac{1}{I}\sum_{i=1}^I B^{(i)}. -->
+<!-- \end{align} -->
+
+<!-- In other words, the $(i, j)^{th}$ entry of the CM is the proportion of partitions -->
+<!-- for which the $i^{th}$ and $j^{th}$ items are allocated to the same cluster. -->
+<!-- Thus, the consensus matrix is a symmetric matrix with all entries between 0 and -->
+<!-- 1 and diagonal entries of 1. -->
+
+<!-- ``` -->
+
+
+
+<!-- ```{definition, psm, name = "Posterior similarity matrix"} -->
+<!-- A _posterior similarity matrix_ (**PSM**) is an $(N \times N)$ matrix that stores, for -->
+<!-- each pair of items, the proportion of paritions sampled from the Markov chain -->
+<!-- for which the pair are clustered together. Thus one may consider the PSM as a -->
+<!-- special case of the consensus matrix where all of the partitions are generated -->
+<!-- from a single Markov chain. -->
+
+<!-- ``` -->
+
+<!-- Note that using the PSM and CM overcome the issues associated with the purely -->
+<!-- symbolic nature of labels in a cluster analysis. -->
+
+
+## Cluster analysis {#clusterAnalysis}
+
+Cluster analysis – also known as unsupervised learning – consists of defining
+partitions of the items within a dataset such that the resulting sets are
+homogeneous and distinct from one another. These groups are known as clusters.
+Clustering is used in multivariate statistics to uncover useful latent groups
+suspected in the data or to discover interesting groups of homogeneous
+observations. In large datasets, such as modern 'omics datasets, estimation of
+clusters is often necessary for improved understanding and interpretation
+[@meinshausen2010stability] - reducing a complex, $P$-dimensional dataset to
+a 1-dimensional, discrete variable can significantly aid interpretation.
+
+Cluster analysis defines $K$ non-empty disjoint sets of data, each of which is
+referred to as a _cluster_, the set of which form a _clustering_. This
+clustering may be described by a collection of allocation labels,
+$c=(c_1, \ldots, c_N)$. For an item $x_i$, the label $c_i=k$ states that
+point $x_i$ is assigned to cluster $Y_k$.
+
+```{definition, clustering, name="Clustering"}
+If one has some collection of data $X=\left(x_1,\ldots,x_N\right)$, let a
+_clustering_ or partition, $Y$, of the data be defined by:
+
+\begin{align}
+	Y &= \left\{Y_1,\ldots,Y_K\right\} \\
+	Y_k &= \left\{x_i : c_i = k \right\}  \\
+	Y_i \cap Y_j &= \emptyset \hspace{4 pt} \forall \hspace{4 pt} i,j \in \{1,\ldots,K\},  i \neq j \\
+	n_k & = \mid Y_k \mid \hspace{4 pt} \geq 1 \hspace{4 pt} \forall \hspace{4 pt} k \in \{1,\ldots,K\} \\
+	\sum_{k=1}^Kn_k &= n
+\end{align}
+	
 ```
 
-Following from \@ref(def:allocMatrix), I use the following notation:
-
-\[
-\begin{aligned}
-\sum_{k=1}^K z_{ik} &= 1 \textrm{ for all $i \in \{1, \ldots, N\}$ }\\
-N_k &= \sum_{i=1}^N z_{ik}  \\
-\mu_k &= \frac{1}{N_k} \sum_{i=1}^N z_{ik} x_i \textrm{ for all $k \in \{1, \ldots, K\}$}
-\end{aligned}
-\]
+The partition, $Y$, may be represented within a _coclustering matrix_. 
 
 ```{definition, coclustMatrix, name = "Coclustering matrix"}
-Let $\mathbf{B}$ be a $N \times N$ binary matrix, with
+Let $\mathbf{B}$ be a $N \times N$ binary matrix, with entries
 
 \[
 b_{ij} = \begin{cases}
@@ -254,13 +356,144 @@ b_{ij} = \begin{cases}
 \end{cases}
 \]
 
-$\mathbf{B}$ is referred to as the _coclustering matrix_.
+for all $i, j \in 1, \ldots, N$. $\mathbf{B}$ is referred to as the _coclustering matrix_.
 ```
 
-### Similarity matrices {-}
 
-Two closely related concepts are that of the posterior similarity matrix
-(**PSM**) and the consensus matrix (**CM**). These are defined as follows:
+Cluster analysis and its extensions have provided great
+benefit in many biomedical settings, ranging from general tools to enable analysis
+[e.g. @crook2018bayesian; @dahl2006model] to uncovering novel biology in specific
+diseases [e.g. cancer in @sorlie2001gene; @lapointe2004gene;
+@cancer2012comprehensive; @berger2018comprehensive; coronary artery disease from
+@guo2017cluster; tinnitus in @van2017cluster; and asthma in @ortega2014cluster].
+Cluster analysis is also integral to the idea of precision medicine, which is
+based upon "the classification of people into subpopulations using their common
+genetic patterns, lifestyles, drug responses, and environmental and cultural
+factors" [@gameiro2018precision].
+
+The extension of cluster analysis to analyse multiple paired datasets
+simultaneously in _integrative clustering_ has enabled deeper understanding of
+more complex diseases [@hasin2017multi; @integrative2014integrative], for
+example Parkinson's disease [@markello2020integrated] and cancer
+[@wang2016integrative; @rappoport2018multi].
+
+In a biomedical setting, different statistical items might be clustered to answer
+different questions. For example, clustering of
+
+* patients based upon their ‘omics profiles, environmental and lifestyle 
+factors, and diseases characterisitics can be used to define disease subtypes
+for more specific treatments. Improving understanding of common and unique mechanisms of diseases 
+at the molecular level can enable development of treatments and deepen 
+understanding of disease aetiology.
+*	genes based upon their co-expression can improve our understanding of cellular
+biology and gene pathways; such holistic understanding of human biology can 
+enable targeted drugs and offer insights into diseases.
+
+By 'omics data I mean the data produced by the high-throughput biochemical assays
+known as "omics technologies". The "omics" notion refers to the comprehensive 
+nature of the assay; all or nearly all instances of the targeted molecular space
+are captured in the assay [@conesa2019making]. Thus, they provide holistic views
+of the biological system. For example, transcriptomics refers to the complete
+set of RNA transcripts produced by the genome under specific conditions or 
+within a specific cell.
+
+<!-- Cluster analysis has a myriad of applications. Some traditional applications -->
+<!-- include data mining,  -->
+<!-- which started from the search for groupings of customers and products in massive -->
+<!-- retail datasets [@fraley2002model]; document clustering and the analysis of  -->
+<!-- internet use data; and image analysis, where clustering is used for image -->
+<!-- segmentation and quantization. -->
+
+<!-- Within clinical medicine and molecular biology where complex, heterogeneous -->
+<!-- datasets are prevalent, cluster analysis and its extensions have provided great -->
+<!-- benefit in many settings, ranging from general tools to enable analysis -->
+<!-- [e.g. @crook2018bayesian; @dahl2006model] to uncovering novel biology in specific -->
+<!-- diseases [e.g. cancer in @sorlie2001gene; @lapointe2004gene; -->
+<!-- @cancer2012comprehensive; @berger2018comprehensive; coronary artery disease from -->
+<!-- @guo2017cluster; tinnitus in @van2017cluster; and asthma in @ortega2014cluster]. -->
+<!-- Cluster analysis is also integral to the idea of precision medicine, which is -->
+<!-- based upon "the classification of people into subpopulations using their common -->
+<!-- genetic patterns, lifestyles, drug responses, and environmental and cultural -->
+<!-- factors" [@gameiro2018precision]. -->
+
+<!-- My area of interest is in clustering 'omics data to improve understanding of  -->
+<!-- disease aetiology or the underlying biology of a system. Ideally this helps  -->
+<!-- clinical practice through identifying driving mechanisms of a disease or in -->
+<!-- defining subtypes within given diseases.  -->
+
+<!-- Defining subtypes based upon the 'omics profile rather than upon phenotypic  -->
+<!-- patterns can enable more effective treatment as greater diversity may be  -->
+<!-- observed. Examples where cluster analysis has been used to propose  -->
+<!-- new subtypes include such a diverse range of diseases as breast cancer [@cancer2012comprehensive; @berger2018comprehensive], Coronary artery disease [@guo2017cluster], tinnitus [@van2017cluster] and asthma [@ortega2014cluster]. -->
+
+
+<!-- Another interesting application is the defining of subpopulations of patients; -->
+<!-- this application is integral to _precision medicine_, which relies upon  -->
+<!-- "the classification of people into subpopulations using their common genetic -->
+<!-- patterns, lifestyles, drug responses, and environmental and cultural factors"  -->
+<!-- [@gameiro2018precision]. -->
+
+
+Within cluster analysis there exists many methods.
+Traditional approaches [as taught in many textbooks, see for e.g.
+@fidell2001using; @manly2016multivariate; @stevens2012applied] include
+hierarchical and non-hierarchical (normally $k$-means) clustering. These
+methods are heuristic in nature; they are not based upon a formal model that
+explicitly models the data-generating process and what guidance there is for
+solving important practical questions that arise in every cluster analysis (
+such as the number of clusters present, the measure of distance / similarity
+between points, which solution is optimal, etc.) is subjective and informal.
+This has consequences for the interpretation of the results, as evaluation of
+the significance of results is difficult [@monti2003consensus].
+
+## Ensemble methods
+
+<!-- I use the same definition of an _ensemble_ as @re2012ensemble.  -->
+
+```{definition, ensemble, name = "Ensemble"}
+A set of learning machines that work together to find some structure within data,
+whether this be a supervised problem such as _classification_ or an unsupervised
+problem such as cluster analysis.
+
+```
+
+<!-- There exists many other terms referring to the same basic concept, e.g. -->
+<!-- a fusion, combination, aggregation, committee of learners, but I will use the  -->
+<!-- term ensemble throughout this report. -->
+
+The concept of an ensemble of learners and its improvements is an old one, and
+not limited to machincal learners [@condorcet1785essay]. Much of the theoretical
+underpinings of ensemble learning has focused upon resampling-based methods
+and classification [@friedman2007bagging; @breiman1996bias; @schapire1998boosting],
+in keeping with the  majority of algorithms, of which _Random forest_
+[@breiman2001random] is possibly the most famous. There have been efforts to
+provide a more general mathematical basis for ensembles; Eugene Kleinberg
+deserves special mention for achievements based upon set theory and
+combinatorics [@kleinberg1977infinitary; @kleinberg1990stochastic;
+@kleinberg1996overtraining; @kleinberg2000mathematically]. More pertinently for
+the practitioner, perhaps, these methods have also displayed great empricial
+success, outperforming state-of-the-art methods in both simulations and
+benchmark datasets [@breiman2001random; @monti2003consensus;
+@sohn2007experimental; @afolabi2018ensemble]. Attractions of ensemble methods
+include their ability to explore multiple modes [@ghaemi2011review] and reducitons
+in computational runtime due to the fact that most
+ensemble methods also enable use of a parallel enivronment to improve
+computation speed [@ghaemi2009survey].
+
+For a more thorough review of ensemble methods with a focus on classification,
+please see @re2012ensemble.
+
+@monti2003consensus proposed a general frameworks for ensembles of clusterers,
+"Consensus clustering". It is an model-independent, sampling-based method, that
+attempts to provide a rule-based approach to choosing $K$ in the model and to
+improve cluster stability. The individual-level algorithm investigated in the
+original publication and implemented in the ``ConsensusClusterPlus`` R package
+[@wilkerson2010consensusclusterplus] is $k$-means clustering. This flavour of
+Consensus clustering has been successfully used in cancer subtyping
+[@verhaak2010integrated; @marisa2013gene].
+
+Consensus clustering creates a _consensus matrix_ and uses this to perform 
+choose $K$ and create a point clustering [@monti2003consensus].
 
 ```{definition, consensusMatrix, name = "Consensus matrix"}
 A _consensus matrix_ (**CM**) is an $(N \times N)$ matrix that stores,
@@ -282,113 +515,42 @@ Thus, the consensus matrix is a symmetric matrix with all entries between 0 and
 
 ```
 
+The original algorithm is described below. 
 
-
-```{definition, psm, name = "Posterior similarity matrix"}
-A _posterior similarity matrix_ (**PSM**) is an $(N \times N)$ matrix that stores, for
-each pair of items, the proportion of paritions sampled from the Markov chain
-for which the pair are clustered together. Thus one may consider the PSM as a
-special case of the consensus matrix where all of the partitions are generated
-from a single Markov chain.
-
-```
-
-Note that using the PSM and CM overcome the issues associated with the purely
-symbolic nature of labels in a cluster analysis.
-
-
-## Cluster analysis {#clusterAnalysis}
-
-Cluster analysis – also known as unsupervised learning – consists of defining
-partitions of the items within a dataset such that the resulting sets are
-homogeneous and distinct from one another. These groups are known as clusters.
-Clustering is used in multivariate statistics to uncover _useful_ latent groups
-suspected in the data or to discover _interesting_ groups of homogeneous
-observations. In large datasets, such as modern 'omics datasets, estimation of
-clusters is often necessary for improved understanding and interpretation
-[@meinshausen2010stability] - reducing a complex, $P$-dimensional dataset to
-a 1-dimensional, discrete variable can significantly aid interpretation.
-
-```{definition, clustering, name="Clustering"}
-If one has some collection of data $X=\left(x_1,\ldots,x_N\right)$, let a
-_clustering_ or partition, $Y$, of the data be defined by:
-
-\begin{align}
-	Y &= \left\{Y_1,\ldots,Y_K\right\} \\
-	Y_k &= \left\{x_i : c_i = k \right\}  \\
-	Y_i \cap Y_j &= \emptyset \hspace{4 pt} \forall \hspace{4 pt} i,j \in \{1,\ldots,K\},  i \neq j \\
-	n_k & = \mid Y_k \mid \hspace{4 pt} \geq 1 \hspace{4 pt} \forall \hspace{4 pt} k \in \{1,\ldots,K\} \\
-	\sum_{k=1}^Kn_k &= n
-\end{align}
-
-In short there are $K$ non-empty disjoint sets of data, each of which is
-referred to as a _cluster_, the set of which form a _clustering_. This
-clustering may be described by a collection of allocation labels,
-$c=(c_1, \ldots, c_N)$. For an item $x_i$, the label $c_i=k$ states that
-point $x_i$ is assigned to cluster $Y_k$.
-
-```
-
-<!-- Cluster analysis has a myriad of applications. Some traditional applications -->
-<!-- include data mining,  -->
-<!-- which started from the search for groupings of customers and products in massive -->
-<!-- retail datasets [@fraley2002model]; document clustering and the analysis of  -->
-<!-- internet use data; and image analysis, where clustering is used for image -->
-<!-- segmentation and quantization. -->
-
-Within clinical medicine and molecular biology where complex, heterogeneous
-datasets are prevalent, cluster analysis and its extensions have provided great
-benefit in many settings, ranging from general tools to enable analysis
-[e.g. @crook2018bayesian; @dahl2006model] to uncovering novel biology in specific
-diseases [e.g. cancer in @sorlie2001gene; @lapointe2004gene;
-@cancer2012comprehensive; @berger2018comprehensive; coronary artery disease from
-@guo2017cluster; tinnitus in @van2017cluster; and asthma in @ortega2014cluster].
-Cluster analysis is also integral to the idea of precision medicine, which is
-based upon "the classification of people into subpopulations using their common
-genetic patterns, lifestyles, drug responses, and environmental and cultural
-factors" [@gameiro2018precision].
-
-<!-- My area of interest is in clustering 'omics data to improve understanding of  -->
-<!-- disease aetiology or the underlying biology of a system. Ideally this helps  -->
-<!-- clinical practice through identifying driving mechanisms of a disease or in -->
-<!-- defining subtypes within given diseases.  -->
-
-<!-- Defining subtypes based upon the 'omics profile rather than upon phenotypic  -->
-<!-- patterns can enable more effective treatment as greater diversity may be  -->
-<!-- observed. Examples where cluster analysis has been used to propose  -->
-<!-- new subtypes include such a diverse range of diseases as breast cancer [@cancer2012comprehensive; @berger2018comprehensive], Coronary artery disease [@guo2017cluster], tinnitus [@van2017cluster] and asthma [@ortega2014cluster]. -->
-
-The extension of cluster analysis to analyse multiple paired datasets
-simultaneously in _integrative clustering_ has enabled deeper understanding of
-more complex diseases [@hasin2017multi; @integrative2014integrative], for
-example Parkinson's disease [@markello2020integrated] and cancer
-[@wang2016integrative; @rappoport2018multi].
-
-<!-- Another interesting application is the defining of subpopulations of patients; -->
-<!-- this application is integral to _precision medicine_, which relies upon  -->
-<!-- "the classification of people into subpopulations using their common genetic -->
-<!-- patterns, lifestyles, drug responses, and environmental and cultural factors"  -->
-<!-- [@gameiro2018precision]. -->
-
-
-Within cluster analysis there exists many methods.
-Traditional approaches [as taught in many textbooks, see for e.g.
-@fidell2001using; @manly2016multivariate; @stevens2012applied] include
-hierarchical and non-hierarchical (normally $k$-means) clustering. These
-methods are heuristic in nature; they are not based upon a formal model that
-explicitly models the data-generating process and what guidance there is for
-solving important practical questions that arise in every cluster analysis (
-such as the number of clusters present, the measure of distance / similarity
-between points, which solution is optimal, etc.) is subjective and informal.
-This has consequences for the interpretation of the results, as evaluation of
-the significance of results is difficult [@monti2003consensus].
+| **PROCEDURE:** Consensus Clustering
+|
+| **Input:** 
+| a dataset $X=(x_1, \ldots, x_N)$
+| a clustering algorithm _Cluster_
+| a resampling scheme _Resample_
+| number of resampling iterations $S$
+| set of cluster numbers to try, $\mathcal{K}=\{K_1, \ldots, K_{max}\}$
+| 
+| **Method:** 
+| for $K$ in $\mathcal{K}$ do 
+|   $B \leftarrow \emptyset$ \{the set of coclustering matrices.\}
+|   for $s$ in $1, 2, \ldots, S$ do
+|     $X^{(s)} \leftarrow$ _Resample_$(X)$ \{generate a peturbed version of $X$.\}
+|     $B^{(s)} \leftarrow$ _Cluster_$(X^{(s)}, K)$ \{cluster $X^{(s)}$ into $K$ clusters.\}
+|     $B \leftarrow B \cup B^{(s)}$
+|   end
+|   $M^{(K)} \leftarrow$ compute consensus matrix from $B$
+| end
+| $\hat{K} \leftarrow$ best $K \in \mathcal{K}$ based upon all $M^{(K)}$
+| $\hat{Y} \leftarrow$ partition $X$ based upon $M^{(\hat{K})}$
+|
+| **Output:** 
+| consensus matrix $M^{(\hat{K})}$
+| partition $\hat{Y}$
 
 ## Model-based clustering
 
-An approach partially inspired by the heuristic nature of these clustering
-methods is _model-based cluster analysis_ or _mixture models_. This approach
-embeds the cluster analysis within a statistical framework and offers a
-principled approach to many issues associated with cluster analysis. Each subpopulation is described
+Although ensemble methods can offer improvements and some more defined 
+rules on choosing $K$, they do not overcome the heuristic nature of the 
+underlying clustering algorithm or analysis decisions. 
+_Model-based cluster analysis_ or _mixture models_ approach embeds the cluster
+analysis within a statistical framework and offers a principled approach to many
+issues associated with cluster analysis. Each subpopulation is described
 within the model by a probability distribution (hence the model is a mixture of
 distributions). In this setting, the problem of determining the number of
 clusters can be recast as statistical model choice problem, and
@@ -422,25 +584,26 @@ The flexibility in choice of $f(\cdot)$ means that these models can be applied
 in many different scenarios.
 
 Inference of the parameters of these models is normally performed using the
-Maximum Likelihood Estimates (**MLE**). Due to the complex
+Maximum Likelihood Estimates (**MLE**) or Bayesian inference. Due to the complex
 likelihood equations usually associated with these models, the closed form
-solution is not possible [@stahl2012model]. For MLE, the
-Expectation-Maximisation (**EM**) algorithm is used to find a solution.
+solution is not possible [@stahl2012model]. For MLE, an
+Expectation-Maximisation (**EM**) algorithm is used to find a solution whereas 
+in Bayesian inference the most common method used is a Markov-Chain Monte Carlo 
+(**MCMC**) method.
 
-<!-- ### Maximum likelihood estimate -->
+### Maximum likelihood estimate
 
-MLE-based inference tends to be very quick but suffers from several problems.
-It is:
+MLE-based inference of mixture models tends to be very quick but it is:
 
-1. difficult to combine multiple sources of information [see @singh2005combining
-for an  example of how to consider this];
-2. sensitive to initialisation; EM is prone to finding local maxima - to account
+<!-- 1. difficult to combine multiple sources of information [see @singh2005combining -->
+<!-- for an  example of how to consider this]; -->
+1. sensitive to initialisation; EM is prone to finding local maxima - to account
 for this these models are run from multiple different initialisations. In this
 case observing the same log‐likelihood values from multiple starting points
 increases confidence that the solution is a global maximum. Using a some
 heuristic clustering method to initialise the method [such as in @mclust2016]
-also offers stability; and
-3. prone to singularities; there are points [@euclid300elements] where the
+also offers stability.
+2. prone to singularities; there are points where the
 likelihood becomes infinite, resulting in degenerate distributions.
 Singularities occur when the number of parameters to be estimated is large in
 relation to the sample size [@stahl2012model], models with unrestrained
@@ -449,83 +612,145 @@ covariances and large numbers of components are prone to this problem.
 this issue, recommending use of a _maximum a posteriori_ (*MAP*) estimate
 instead of an ML estimate.
 
-<!-- ### Bayesian inference -->
+### Bayesian inference
 
-One may use probabilistic, or Bayesian, mixture models. These are very powerful
-methods that, among other things, offer:
+Another choice is to perform Bayesian inference. This allows:
 
 1. Incorporation of prior beliefs into the inference; this also means that one
 may apply Bayesian methods even when the sample size is small.
 2. Inference of $K$ through use of the Dirichlet Process [@ferguson1973bayesian].
-3. Extension to a multiple dataset setting [see @kirk2012bayesian;
-@gabasova2017clusternomics; and @lock2013bayesian for
-examples].
-
-The normal inference of these models is through MCMC methods. Using these means
-that:
-
-1. One may avoid some of the issues in convergence. As one often is only
+3. Avoidance of some of the issues in convergence. As one often is only
 interested in a subset of variables (for example, the allocation variables,
 $c_i$), one may integrate over the remaining nuisance parameters. This means
 that one may avoid directly calculating awkward variables (such as covariances
 matrices) that are prone to causing issues such as singularities in the
-likelihood function (an example of such a solution is the
-_collapsed Gibbs sampler_).
-2. The asymptotic guarantees of MCMC methods mean that, in comparison to EM,
-if one runs the algorithm for infinite length of time, one is guaranteed to
-describe the full posterior distribution and not only a local maximum.
+likelihood function [an example of such a solution is the
+_collapsed Gibbs sampler_; @liu1994collapsed].
+4. Extension to a multiple dataset setting [see @kirk2012bayesian;
+@gabasova2017clusternomics; and @lock2013bayesian for
+examples].
 
-Alas not all is roses. Asymptotic guarantees are all very well, but ensuring
-that a sampler has:
+MCMC methods also offer asymptotic guarantees with regards to exploring the 
+full posterior distribution rather than a single mode. However, in practice 
+ensuring that a sampler has:
 
 1. reached its stationary distribution;
 2. explored the entire support of the target distribution; and
 3. converged to its expectation
 
-in practice is difficult [@robert2018accelerating]. For example,
-the _Gibbs sampler_ [@geman1984stochastic], a common choice of sampler, can
-struggle to achieve these three goals due to high correlation between samples
-[@bishop2006pattern]. Integrating over nuisance parameters as in a
-_collapsed Gibbs sampler_ [@liu1994collapsed] can improve rate of convergence
-upon the expectation, but can reduce the exploration rate of the chain.
+is difficult despite these aysmptotic guarantees [@robert2018accelerating]. 
+<!-- For example, the _Gibbs sampler_ [@geman1984stochastic], a common choice of sampler, can struggle to achieve these three goals due to high correlation between samples [@bishop2006pattern]. Integrating over nuisance parameters as in a _collapsed Gibbs sampler_ [@liu1994collapsed] can improve rate of convergence upon the expectation, but can reduce the exploration rate of the chain. -->
 There exists many more flavours of MCMC that attack these 3 problems in
 different ways [@robert2018accelerating].  Methods which attempt to improve
 the ability of the sampler to explore the
 support of the target distribution such as simulated annealing
 [@kirkpatrick1983optimization; @atchade2011towards], incorporating
-global-local moves [@holmes2017adaptive] or split-merge steps [@green2001modelling; @jain2004split];
+global-local moves [@holmes2017adaptive] or split-merge steps [@jain2004split];
 all offer some degree of success, but at the cost of additional computational
 complexity. For high dimensional data these remain slow to converge and may have
-more limited success. Other methods attempt to accelerate the speed at which the
+limited success. Other methods attempt to accelerate the speed at which the
 sampler reaches the target distribution, e.g. utilising stochastic optimisation
 [@welling2011bayesian] or to attempt and leverage parallel chains
 [@ahmed2012scalable; however there is controversy over convergence in parallel
 methods, @robert2018accelerating].
 
 In short, different MCMC methods tend to trade off different weaknesses to be
-applicable in different contexts, but there are no general, solve-all solutions
-to the 3 problems listed by @robert2018accelerating.
+applicable in different contexts, but there are no general solution to the 3 
+problems listed by @robert2018accelerating.
 
-An alternative means of performing Bayesian inference, VI is an optimisation
-method more like EM. This proposes a family
-of densities, $q(\theta)$, and then tries to find the member of this family that
-is closest to the target density, where closeness is measured by the
-Kullback–Leibler divergence  [@blei2017variational]. VI is intended as a fast
-alternative to MCMC when traditional MCMC methods are not computationally
-tractable. However, it does have several disadvantages:
+<!-- An alternative means of performing Bayesian inference, VI is an optimisation -->
+<!-- method more like EM. This proposes a family -->
+<!-- of densities, $q(\theta)$, and then tries to find the member of this family that -->
+<!-- is closest to the target density, where closeness is measured by the -->
+<!-- Kullback–Leibler divergence  [@blei2017variational]. VI is intended as a fast -->
+<!-- alternative to MCMC when traditional MCMC methods are not computationally -->
+<!-- tractable. However, it does have several disadvantages: -->
 
-1. VI underestimates the variance [@bishop2006pattern];
-2. VI is prone to becoming stuck in local minima, thus several restarts are
-required (as with EM);
-3. VI does not offer theoretical guarantees (unlike MCMC) [@blei2017variational];
-and
-4. deriving the correct equations to apply VI in a specific situation is non-trivial.
+<!-- 1. VI underestimates the variance [@bishop2006pattern]; -->
+<!-- 2. VI is prone to becoming stuck in local minima, thus several restarts are -->
+<!-- required (as with EM); -->
+<!-- 3. VI does not offer theoretical guarantees (unlike MCMC) [@blei2017variational]; -->
+<!-- and -->
+<!-- 4. deriving the correct equations to apply VI in a specific situation is non-trivial. -->
 
-A common theme across all these methods is that they can struggle to converge
-to the global mode. If one is interested in capturing uncertainty and describing
-multiple modes, than MCMC appears to be the best option, but it can struggle
-to explore the full distribution. MCMC methods which overcome this issue can be
-very slow.
+
+Analagous to the consensus matrix within Bayesian inference is the notion of the
+Posterior similarity matrix.
+
+```{definition, psm, name = "Posterior similarity matrix"}
+A _posterior similarity matrix_ (**PSM**) is an $(N \times N)$ matrix that stores, for
+each pair of items, the proportion of partitions sampled from the Markov chain
+for which the pair are clustered together. Thus one may consider the PSM as a
+special case of the consensus matrix where all of the partitions are generated
+from a single Markov chain.
+
+```
+
+<!-- A common theme across all these methods is that they can struggle to converge -->
+<!-- to the global mode. If one is interested in capturing uncertainty and describing -->
+<!-- multiple modes, than MCMC appears to be the best option, but it can struggle -->
+<!-- to explore the full distribution. MCMC methods which overcome this issue can be -->
+<!-- very slow. -->
+
+## Consensus clustering of Bayesian mixture models
+
+As noted above, Bayesian mixture models have many attractive features such as:
+
+1. allowing inference of $K$;
+2. allowing integration of prior information; and
+3. extending naturally to the multiple dataset scenario.
+
+However, MCMC methods, the workhorse of Bayesian inference, have pathological
+behaviour in a high dimensional setting; a setting which is prevalent in modern biomedical 
+data. The sampler becomes very slow to perform a single iteration,
+and can become trapped within a single mode for any realistic length of run time
+[@ronan2016avoiding; @chandra2020bayesian; @robert2018accelerating].
+However, MCMC samplers are often adept at finding _a_ mode. A small
+number of iterations (relative to the number required for convergence) is often
+sufficient to find a mode. Therefore I propose extending Consensus clustering to
+Bayesian mixture models. One may use many short chains each with a random
+initialisation to explore more modes that are present in the data than would be
+investigated in any single chain. One may use this approach to perform inference 
+upon a Bayesian clustering model in contexts where this is normally difficult or
+even impossible, although the inference itself is not Bayesian. Thus one may 
+marry many of the attractions of Bayesian mixture models with those of the ensemble. 
+The algorithm is described below:
+
+| **PROCEDURE:** Consensus clustering for Bayesian mixture models
+|
+| **Input:** 
+| a dataset $X=(x_1, \ldots, x_N)$
+| a non-parametric mixture model with membership vector $c=(c_1, \ldots, c_N)$
+| an MCMC algorithm _Sample_
+| the number of chains to run, $S$
+| the number of iterations within each chain, $R$
+| 
+| **Method:** 
+| $B \leftarrow \emptyset$
+| for $s$ in $1, 2, \ldots, S$ do
+|   $set.seed(s)$ \{set the random seed that controls initialisation.\}
+|   $Y_{(0, s)} \leftarrow$ Initialise(X) \{initial random partition.\}
+|   for $r$ in $1, 2, \ldots, R$ do
+|      $Y_{(r, s)} \leftarrow$ _Sample_$(c)$ \{generate a Markov chain for the membership vector.\}
+|   end
+|   $B^{(s)} \leftarrow Y_{(R, s)}$ \{create a coclustering matrix.\}
+|   $B \leftarrow B \cup B^{(s)}$
+| end
+| 
+| $M \leftarrow$ compute consensus matrix from $B$
+| $\hat{Y} \leftarrow$ partition $X$ based upon $M$
+|
+| **Output:** 
+| consensus matrix $M$
+| partition $\hat{Y}$
+
+In contrast to previosuly implemented versions of Consensus clustering, one does
+not have to set $K$, as this is inferred within the non-parametric mixture model.
+
+<!-- Through use of random initialisation one creates diversity in the coclustering  -->
+<!-- matrices produced, avoiding the need for a sampling method. -->
+
+
 
 
 <!-- ### Consensus inference -->
@@ -603,73 +828,73 @@ very slow.
 
 <!-- ``` -->
 
-## Ensemble methods
+<!-- ## Ensemble methods -->
 
-<!-- I use the same definition of an _ensemble_ as @re2012ensemble.  -->
+<!-- I use the same definition of an _ensemble_ as @re2012ensemble.  --> 
 
-```{definition, ensemble, name = "Ensemble"}
-A set of learning machines that work together to find some structure within data,
-whether this be a supervised problem such as _classification_ or an unsupervised
-problem such as cluster analysis.
+<!-- ```{definition, ensemble, name = "Ensemble"} -->
+<!-- A set of learning machines that work together to find some structure within data, -->
+<!-- whether this be a supervised problem such as _classification_ or an unsupervised -->
+<!-- problem such as cluster analysis. -->
 
-```
+<!-- ``` -->
 
 
-<!-- There exists many other terms referring to the same basic concept, e.g. -->
-<!-- a fusion, combination, aggregation, committee of learners, but I will use the  -->
-<!-- term ensemble throughout this report. -->
+<!-- <!-- There exists many other terms referring to the same basic concept, e.g. --> 
+<!-- <!-- a fusion, combination, aggregation, committee of learners, but I will use the  -->
+<!-- <!-- term ensemble throughout this report. --> 
 
-The concept of an ensemble of learners and its improvements is an old one, and
-not limited to machincal learners [@condorcet1785essay]. Much of the theoretical
-underpinings of ensemble learning has focused upon resampling-based methods
-and classification [@friedman2007bagging; @breiman1996bias; @schapire1998boosting],
-in keeping with the  majority of algorithms, of which _Random forest_
-[@breiman2001random] is probably the most famous. There have been efforts to
-provide a more general mathematical basis for ensembles; Eugene Kleinberg
-deserves special mention for achievements based upon set theory and
-combinatorics [@kleinberg1977infinitary; @kleinberg1990stochastic;
-@kleinberg1996overtraining; @kleinberg2000mathematically]. More pertinently for
-the practitioner, perhaps, these methods have also displayed great empricial
-success, outperforming state-of-the-art methods in both simulations and
-benchmark datasets [@breiman2001random; @monti2003consensus;
-@sohn2007experimental; @afolabi2018ensemble]. Attractions of ensemble methods
-include their ability to explore multiple modes [@ghaemi2011review]. Most
-ensemble methods also enable use of a parallel enivronment to improve
-computation speed [@ghaemi2009survey].
+<!-- The concept of an ensemble of learners and its improvements is an old one, and -->
+<!-- not limited to machincal learners [@condorcet1785essay]. Much of the theoretical -->
+<!-- underpinings of ensemble learning has focused upon resampling-based methods -->
+<!-- and classification [@friedman2007bagging; @breiman1996bias; @schapire1998boosting], -->
+<!-- in keeping with the  majority of algorithms, of which _Random forest_ -->
+<!-- [@breiman2001random] is probably the most famous. There have been efforts to -->
+<!-- provide a more general mathematical basis for ensembles; Eugene Kleinberg -->
+<!-- deserves special mention for achievements based upon set theory and -->
+<!-- combinatorics [@kleinberg1977infinitary; @kleinberg1990stochastic; -->
+<!-- @kleinberg1996overtraining; @kleinberg2000mathematically]. More pertinently for -->
+<!-- the practitioner, perhaps, these methods have also displayed great empricial -->
+<!-- success, outperforming state-of-the-art methods in both simulations and -->
+<!-- benchmark datasets [@breiman2001random; @monti2003consensus; -->
+<!-- @sohn2007experimental; @afolabi2018ensemble]. Attractions of ensemble methods -->
+<!-- include their ability to explore multiple modes [@ghaemi2011review]. Most -->
+<!-- ensemble methods also enable use of a parallel enivronment to improve -->
+<!-- computation speed [@ghaemi2009survey]. -->
 
-For a more thorough review of ensemble methods with a focus on classification,
-please see @re2012ensemble.
+<!-- For a more thorough review of ensemble methods with a focus on classification, -->
+<!-- please see @re2012ensemble. -->
 
-@monti2003consensus proposed a general frameworks for ensembles of clusterers,
-"Consensus clustering". It is an model-independent, sampling-based method, that
-attempts to provide a rule-based approach to choosing $K$ in the model and to
-improve cluster stability. The individual-level algorithm investigated in the
-original publication and implemented in the ``ConsensusClusterPlus`` R package
-[@wilkerson2010consensusclusterplus] is $k$-means clustering. This flavour of
-Consensus clustering has been successfully used in cancer subtyping
-[@verhaak2010integrated; @marisa2013gene].
+<!-- @monti2003consensus proposed a general frameworks for ensembles of clusterers, -->
+<!-- "Consensus clustering". It is an model-independent, sampling-based method, that -->
+<!-- attempts to provide a rule-based approach to choosing $K$ in the model and to -->
+<!-- improve cluster stability. The individual-level algorithm investigated in the -->
+<!-- original publication and implemented in the ``ConsensusClusterPlus`` R package -->
+<!-- [@wilkerson2010consensusclusterplus] is $k$-means clustering. This flavour of -->
+<!-- Consensus clustering has been successfully used in cancer subtyping -->
+<!-- [@verhaak2010integrated; @marisa2013gene]. -->
 
-I propose extending Consensus clustering to Bayesian models. As listed
-previously, Bayesian mixture models have many attractive features such as:
+<!-- I propose extending Consensus clustering to Bayesian models. As listed -->
+<!-- previously, Bayesian mixture models have many attractive features such as: -->
 
-1. allowing inference of $K$;
-2. allowing integration of prior information; and
-3. extending naturally to the multiple dataset scenario.
+<!-- 1. allowing inference of $K$; -->
+<!-- 2. allowing integration of prior information; and -->
+<!-- 3. extending naturally to the multiple dataset scenario. -->
 
-However, MCMC methods, the workhorse of Bayesian inference, have pathological
-behaviour in the context of modern biomedical data which is often of sufficient
-dimensionality that the sampler is both very slow to perform a single iteration,
-and can become trapped within a single mode for any realistic length of run time
-[@ronan2016avoiding; @chandra2020bayesian; @robert2018accelerating].
-However, MCMC samplers are often adept at finding _a_ mode, therefore a small
-number of iterations (relative to the number required for convergence) is often
-sufficient to find a mode. Using many short chains each with a random
-initialisation, one might believe that one will explore more modes that are
-present in the data than would be investigated in any single chain. One may use
-this approach to perform inference upon a Bayesian clustering model in contexts
-where this is normally difficult or even impossible, although the inference
-itself is not Bayesian. Thus one may marry the attractions of Bayesian _models_
-with those of the ensemble.
+<!-- However, MCMC methods, the workhorse of Bayesian inference, have pathological -->
+<!-- behaviour in the context of modern biomedical data which is often of sufficient -->
+<!-- dimensionality that the sampler is both very slow to perform a single iteration, -->
+<!-- and can become trapped within a single mode for any realistic length of run time -->
+<!-- [@ronan2016avoiding; @chandra2020bayesian; @robert2018accelerating]. -->
+<!-- However, MCMC samplers are often adept at finding _a_ mode, therefore a small -->
+<!-- number of iterations (relative to the number required for convergence) is often -->
+<!-- sufficient to find a mode. Using many short chains each with a random -->
+<!-- initialisation, one might believe that one will explore more modes that are -->
+<!-- present in the data than would be investigated in any single chain. One may use -->
+<!-- this approach to perform inference upon a Bayesian clustering model in contexts -->
+<!-- where this is normally difficult or even impossible, although the inference -->
+<!-- itself is not Bayesian. Thus one may marry the attractions of Bayesian _models_ -->
+<!-- with those of the ensemble. -->
 
 <!-- can be slow to  -->
 <!-- explore the target distribution. In practice, particularly for complex,  -->
@@ -684,7 +909,7 @@ with those of the ensemble.
 <!-- Bayesian clustering models are therefore attractive, but  -->
 
 
-This does sacrifice certain qualities about MCMC methods that are attractive.
+Note that this does sacrifice certain qualities about MCMC methods that are attractive.
 
 * there are no aymptotic guarantees here;
 * the uncertainty described across the partitions is not the same as the
@@ -719,15 +944,19 @@ satisfactorily as one might hope.
 For the problem of finding a consensus between partitions, as the labels
 generated for each partition are symbolic, combining clusterings
 can be a difficult problem [@strehl2002cluster]. Aggregating partitions into a 
-PSM or CM [as recommended by @monti2003consensus] offers a representation of the
-partitions that overcomes this label-swapping problem. A point clustering may
-then be estimated from these matrices using one of the methods listed by
+Consensus matrix [as recommended by @monti2003consensus] offers a representation
+of the partitions that overcomes this label-swapping problem. A point clustering
+may then be estimated from these matrices using one of the methods listed by
 @fritsch2009improved.
 
 The source of diversity in my approach is the use random initialisation of the
-sampler. In my simulations I show that a single MCMC chain can struggle to
-produce a diverse range of partitions and that using many different
-initialisations helps to overcome this problem.
+sampler, in contrast to the original consensus clustering algorithm where 
+diversity is introduced via peturbation of the dataset using some sampling
+method. In my simulations I show that a single MCMC chain can struggle to 
+produce a diverse range of partitions and that using many different 
+initialisations helps to overcome this problem. I also display cases where the
+diversity of partitions is very limited, but this is due to each chain finding 
+the global maximum and thus a lack of diversity in the final samples is ideal.
 
 I will investigate the strength of each individual in my simulation study,
 showing emprical results for both the consensus and individual learners.
