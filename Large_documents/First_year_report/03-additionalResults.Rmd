@@ -1,0 +1,151 @@
+# (APPENDIX) Appendix {-} 
+
+# Additional results {#addResults}
+
+## Simple 2D
+
+![Comparison of predicted clustering to true labelling across 100 simulations of the Simple 2D scenario. Consensus clustering ensembles are represented by _Consensus (chain iteration used, number of chains used)_. Mclust performs very well, unpicking the true structure. The Bayeisan inference also performs well, and we see that consensus clustering improves in performance as more samples are added, but the improvement yielded by increasing chain length stabilises after 10 iterations into the chain. This suggests that either 1) chains have reached their stationary distribution within 10 iterations and therefore sampling from the 10th or 10,000th iteration is the approximately same as the samples are all drawn from the same distribution or 2) chains stop exploring the space and become trapped in a mode after the 10th iteration. In such a low dimensional space, I would expect the chains to be exploring the target distribution. Results represented inthe following plots also support this belief. ](./Images/Simulations/simple_2d/simple_2d_all_model_performance.png)
+
+
+
+![Comparison of the Frobenius norm of the difference of the infered clustering matrices and the true coclustering matrix. Note that 0 is a better score. Mclust performs very well; this unsurprising as inspecting the plot of predictive performance shows that Mclust finds the true clustering in almost all simulations. It is more interesting to see that the Bayesian inference and all of the consensus clusterings have very similar scores; this suggests that the sampler is exploring a relaistic space but that there is high uncertainty. This suggests that it is only through inspecting all of the samples generated that we uncover close to the true structure and that any single sample is expected to be a poor estimate. However, it is worth noticing that a single sample can perform well, as can be seen by the upper tail of the Consensus (1, $s$) boxplots. It is likely that the single sample generated for these happens to be quite good, but similarly the lower tail consists of single samples that were below the average sample in describing the true structure. This trend of the Consensus (1, $s$) models having greater varaibility (both positively and negatively) is something I would expect to see in many of the plots for the remaining scenarios. ](./Images/Simulations/simple_2d/simple_2d_all_model_uncertainty.png)
+
+
+
+![In plotting ARI against the iteration of the sampler used to construct the consensus clustering, we can see that it is number of samples that is most important. In each case the performance appears to stabilise very early in the chain. If the chains were allowed run for even a single iteration than the inference is suprisingly good as long as more samples are used. ](./Images/Simulations/simple_2d/simple_2d_ci_model_performance_iterations.png) 
+
+![In this plot of the number of chains/samples used against the ARI, faceted by the iteration used. Again, it is clear that increasing ther number of samples used is the dominant contributor to the quality of the inferenece; increasing chain length has a ngeligible impact. ](./Images/Simulations/simple_2d/simple_2d_ci_model_performance_samples.png) 
+
+
+![Inspecting the PSM we can see that there is a lot uncertainty present; most of entries in the PSMs are closer to 0 than 1. The PSMs are annotated by the true clustering, with the ordering of rows and columns in posed by the final entry in the grid. The sampler appears to be exploring the space quite well, suggesting many different partitions that generally identify some of the true structure. ](./Images/Simulations/simple_2d/PSMs/BayesianSimulation10PSMs.png)
+
+![Similarly comparing the Consensus Matrices for different numbers of samples and different chain depths, we see a similar space explored. Here the rows of the grid are increasing the depth within the chain that we sample from, the columns are increasing the number of samples used. The rows are $S=\{1, 10, 100, 1000, 10000\}$, and the columns are $R=\{1, 10, 30, 50, 100\}$. The ordering is imposed by the matrix in the (5, 5) entry of the grid (i.e. Consensus (10000, 100)), and annotation labels are the true clustering.  ](./Images/Simulations/simple_2d/CMs/ConsensusSimulation10ConsensusMatrixGrid.png)
+
+Looking at these results it appears that Mclust, with it's clever initialisation, is the best performing method in this case, but the Bayesian inference and consensus clustering are performing sensibly particularly as the items in this space are not particularly separable under the true labelling. Consider the plot of the data in the scenario description; clusters 1 and 5 could easily be considered a single entity and we would like to see some uncertainty about the existence of clusters 3 and 4 as seperate groups. Furthermore, the level of distance between some points within the clusters is on a similar scale to the distance between the clusters; due to this identifying the true number of clusters is non-trivial.
+
+## No structure
+
+
+![An initial inspection of the perfomance of the models reveals that none of the methods work. However, if one considers how one may describe no structure one should either place all items in the same cluster or else place all items in their own cluster. If the latter is the case than an ARI of 0 is an unsurprising result. Furthermore, deeper inspection of the ``mcclust::arandi`` function reveals that it returns ``NaN`` for the case that all items in both clusterings (i.e. the truth and the inferred) are in a single cluster.  A comparison of a clustering with all items in the same cluster to any other possible partitioning of the items always returns a score of 0; thus this plot contains no useful information other than that some of the models placed items in separate partitions. A deeper inspection of the Mclust results revealed that 96 of the models placed all items in a single component, but the Consensus and Bayesian inference clustered every item as a singleton in every case. ](./Images/Simulations/no_structure/no_structure_all_model_performance.png)
+
+![The success of Mclust is seen here more clearly as a score of 0 indicates that the predicted coclustering matrix perfectly matches the truth. ](./Images/Simulations/no_structure/no_structure_all_model_uncertainty.png)
+
+![The PSMs from each chain place no items together. ](./Images/Simulations/no_structure/PSMs/BayesianSimulation1PSMs.png)
+
+
+![The grid of consensus matrices reveals more information. Inspecting the leftmost column, where each matrix consists of only a single sample (and thus is really a coclustering matrix), one can see that there is no strong structure, items are randomly allocated together. Presumably the likelihood surface is incredibly flat as no particular clustering is particularly probable, and this combined with the small number of features means that every sampled partition is essentially random. It is in the union of these partitions (as represented in the consensus matrices with more samples present) that we can see that items are not allocated together with any consistency. ](./Images/Simulations/no_structure/CMs/ConsensusSimulation1ConsensusMatrixGrid.png)
+
+This is a good result for each method; they do not mistake noise for signal. 
+
+## Base case
+
+![In the base case each method successfully uncovers the true structure, excepting the Consensus (1, $s$) caseses (which still perform quite well). This is not surprising given how informative the data is. This case is the benchmark many of the following cases are being compared against. ](./Images/Simulations/base_case/base_case_all_model_performance.png)
+
+
+![Performing simlarly well to the point estimate, each method has little uncertainty about the true clustering (bar the Consensus (1, $s$) cases, also in keeping with the preceding plot). ](./Images/Simulations/base_case/base_case_all_model_uncertainty.png)
+
+## Large standard deviation
+
+There are two sub-scenarios in this case; in one the standard deviation of each component is set $\sigma_1=3$, in the second $\sigma_2=5$.
+
+![In the first case Mclust does not perform terribly well - most of the consensus infered point estimates and the Bayesian point estimate of the clustering are closer to the truth in the majority of simulations. Performance for consensus clustering appears to stabilise after sampling from the 10th iteration of the chains and for 30 or more samples. The clusters are not prominent; based upon the results for the simple 2d case, I would expect that increasing the number of samples contributing to the inference would improve performance. This appears to be happening here too.  ](./Images/Simulations/large_standard_deviation_3/large_standard_deviation_3_all_model_performance.png)
+
+![It is here that Mclust's method starts to be severely punished for proposing a single clustering. As the MCMC based methods explore more of the space there is a better ability to consider various partitions, each of which might, in different ways, overlap better with the truth. ](./Images/Simulations/large_standard_deviation_3/large_standard_deviation_3_all_model_uncertainty.png)
+
+
+![However, once the overlap between clusters in the data becomes too large the methods start to find no structure. If one inspects the data there in no visual evidence for the presence of distinct subgroups; I would argue that the distributions have no clear distinction and finding no structure is not a misleading claim. ](./Images/Simulations/large_standard_deviation_5/large_standard_deviation_5_all_model_performance.png)
+
+![Inspeciton of the Frobenius norm of the difference betweeen the inferred consensus / posterior similarity / coclustering matrices and the true coclustering suggests that no method is performing well and that a large amount of uncertainty is present in all cases. The low value of the Consensus (1, $s$) and Consensus (10, $s$) models requires some investigation. ](./Images/Simulations/large_standard_deviation_5/large_standard_deviation_5_all_model_uncertainty.png)
+
+
+
+![Inspecting the consensus matrices within a grid where chain depth increases with the grid rows and the number of chains used increases with the grid columns reveals that the Consensus (1, $s$) and Consensus (10, $s$) models perform best under the Frobenius norm as they are almost empty bar the diagonal. The Frobenius norm rewards sparsity and thus does not work as a proxy to indicate how well the models are quantifying uncertainty in this case as there is no real ability to uncover the true underlying structure. ](./Images/Simulations/large_standard_deviation_5/CMs/ConsensusSimulation1ConsensusMatrixGrid.png)
+
+![The PSMs from the same simulation describe a similar set of partitions as the higher order consensus matrices. ](./Images/Simulations/large_standard_deviation_5/PSMs/BayesianSimulation1PSMs.png)
+
+![In the case that the standard deviation is 3, then the structure is more prominent then the preceding plots. For Consensus (1, $s$) and Consensus ($r$, 1) models,  there is some success in picking out true structure, but the performance is much weaker than in the other consensus matrices. It appears that the sparsity in the Consensus (1, $s$) matrices is again being rewarded by the Frobenius norm. In these, some of the true structure is uncovered; in the  $4 \times 4$ sub-grid in the lower right here, large fractions of clusters 1, 4 and 5 are uncovered with some uncertainty. As the standard deviation of the normal distribution generating each cluster is large relative to the distance between the means, the ability of the method to unpick true structure is quite encouraging, with a reasonable level of uncertainty present. ](./Images/Simulations/large_standard_deviation_3/CMs/ConsensusSimulation1ConsensusMatrixGrid.png)
+
+
+![The PSMs from the same simulation perform very similarly to the higher order Consensus matrices, unpicking similar structure. ](./Images/Simulations/large_standard_deviation_3/PSMs/BayesianSimulation1PSMs.png)
+
+
+## Irrelevant features
+
+![In the first scenario for testing robustness towards irrelevant features, I add features with no signal to the base case dataset. Model perfomance in predicting the true clustering is still very high. In some cases Mclust struggles, and now the Consensus (10, 1) model also begins to perform less well than in the base case. ](./Images/Simulations/irrelevant_features_10/irrelevant_features_10_all_model_performance.png)
+
+![Showing similar information to the plot describing point estimate, the uncertainty in Mclust and all Consensus (10, $s$) models is slightly larger.  ](./Images/Simulations/irrelevant_features_10/irrelevant_features_10_all_model_uncertainty.png)
+
+![As the number of irrelevant features increases to 20 (i.e. the number of signal bearing features and noise features is equal), Mclust and the Consenus (1, $s$) models all degrade in perfomance. In one simulation, Mclust scores 0. The entire suite of Consensus (10, $s$) models begin to be less-than-perfect in finding the true signal. In the case of irrelevant features, it is chain depth that appears most important in uncovering true structure. ](./Images/Simulations/irrelevant_features_20/irrelevant_features_20_all_model_performance.png)
+
+![Note the increasing scale of the X-axis here; the Consensus (1, $s$) and Consensus (10, $s$) are less confident than in the case of only 10 irrelevant features, but Mclust is performing significantly less well. As the true coclustering matrix remains the same as the irrelevant features 10 case the Frobenius norm is directly comparable here. ](./Images/Simulations/irrelevant_features_20/irrelevant_features_20_all_model_uncertainty.png)
+
+![The ability of the Bayesian and consensus models to propose the true clustering as a point estimate is very good. It appears that going deeper within the chain to generate samples does improve performance, but it appears that the behaviour is aymptotic; there is a large improvement in performance between a depth of 1 and 10 and 100, but the improvement between a depth of 10,000 is less. In this case Bayesian inference is outperforming other methods under this metric. ](./Images/Simulations/irrelevant_features_100/irrelevant_features_100_all_model_performance.png)
+
+![The trend here is similar to the Frobenius norm plot above. Bayesian inference appears to be perfroming the best. ](./Images/Simulations/irrelevant_features_100/irrelevant_features_100_all_model_uncertainty.png)
+
+A comparison of the Consensus matrices is interesting.
+
+![For the case with 10 irrelevant features the true structure is uncovered for all models in the lower 4 x 4 grid, i.e. any model with multiple samples from a depth of 10 or more iterations into each chain. As the signal that can be found is so clear a single sample from a depth of more than 10 iterations is sufficient, and a single sample from the 10th iteration of a sampler can perform very well.  ](./Images/Simulations/irrelevant_features_10/CMs/ConsensusSimulation1ConsensusMatrixGrid.png)
+
+![When there are an equal number of relevant and irrelevant features present, it is slightly deeper into the chain that the true structure is uncovered. However, a consensus of samples from the first iteration of many chains still performs quite well, but with much uncertainty. ](./Images/Simulations/irrelevant_features_20/CMs/ConsensusSimulation1ConsensusMatrixGrid.png)
+
+
+
+![Finally, in the case with 100 irrelevant features, it is much deeper into the chain that the sampler must travel before uncovering strong signal. After 10 iteration (the second row in the grid) there is enough true signal that the consensus matrix is useful in indicating the presence of structure; but the level of uncertainty is so great that one would have to use samples from deeper in the chain. By the 100th iteration (row 3 in the grid) many chains find much of the true structure, but the uncertainty present across the columns indicate that no single chain is uncovering all of the structure. However, by the 1,000th iteration (row 4) the matrices begin to stabilise, being only slightly more uncertain the final row where samples are from the 10,000th iteration of each chain used. The Consensus matrices in the final row appear to have more uncertainty present (for example clusters 4 and 5 are considered to have overlap, as are clusters 1 and 2). This suggests that there are several modes present. Only one mode other than the true clustering is explored in the first ten chains (entry (5, 2) in the grid); in the next 20 that clusters 1 and 2 occasionally merge (as represented by the uncertainty between these in the consensus matrix in entry (5, 3) above), with some more general merging of clusters. ](./Images/Simulations/irrelevant_features_100/CMs/ConsensusSimulation1ConsensusMatrixGrid.png)
+
+
+
+![The collection of PSMs for the 10 chains from the same simulation as the consensus matrices above is quite interesting. Most of the chains find true structure, but one chain becomes trapped in a mode where two of the clusters are merged. As the other PSMs have no uncertainty present we can suspect that they do not explore other possible clusterings; this matches the behaviour of the consensus matrices as described above. Thus, while the pooled Bayesian samples perform the best in uncovering the true structure, the Bayesain inference is beginning to show problematic behaviour in struggling to explore the full posterior distribution in a finite time (recall that these PSMs are generated from chains that performed 1 million iterations). ](./Images/Simulations/irrelevant_features_100/PSMs/BayesianSimulation1PSMs.png)
+
+
+
+The behaviour shown here suggests that the sampler most explore the model space for some time to overcome the noise in the irrelevant features. The number of samples is less important, but this is partially due to the very clear signal within the relevant features. One cannot neglect scaling the number of samples used in the consensus clustering however. We can see within the PSMs that there can issues for Bayesian inference even in this scale of dimensions as only a single mode is explored. Therefore even though most of the chains explore the main mode of interest, one must include multiple chains in the consensus clustering to better capture all modes.
+
+## Varying proportions
+
+![In this case, where some of the clusters make up a small fraction of the totla population but the distinct signal is very clear, each method uncovers the true structure successfully. ](./Images/Simulations/varying_proportions/varying_proportions_all_model_performance.png)
+
+
+![This is seen again in the Frobenius norm; very few partitions are investigated that are not the true partition. It does take some iterations into the sampler to identify this however, but it is still very quick; certainly within 100 iterations and possibly within 20. ](./Images/Simulations/varying_proportions/varying_proportions_all_model_uncertainty.png)
+
+
+![Investigating the consensus matrices shows that the true structure is actually identified instantly; the chain depth increases the certainty that this is the true structure. As can be seen in the (1, 1) entry, the sampler quickly identifies much of the true structure but takes more iterations to merge all of the clusters correctly. As different items are merged at different iterations in different chains, we get some uncertainty in the top two rows of the grid. ](./Images/Simulations/varying_proportions/CMs/ConsensusSimulation1ConsensusMatrixGrid.png)
+
+
+![The PSMs are all entriely certain that they have identified the true structure. ](./Images/Simulations/varying_proportions/PSMs/BayesianSimulation1PSMs.png)
+
+
+## Small $N$ large $P$
+
+![In this case each method performs quite well (Mclust is struggling as it places each item in a singleton). The Consensus ($R$, 1) models have huge variability with very little difference between the Consensus (10, 1), Consensus (100, 1), Consensus (1000, 1) and Consensus (10000, 1) results. This suggests that the chains might be becoming trapped within a mode within 10 iterations and never leaving it (otherwise I would expect some change in results between these Consensus cases). ](./Images/Simulations/small_n_large_p_base/small_n_large_p_base_all_model_performance.png)
+
+
+![We see similar behaviour in the Frobenius norm as to the point estimate of the clustering. ](./Images/Simulations/small_n_large_p_base/small_n_large_p_base_all_model_uncertainty.png)
+
+
+
+![The consensus matrices reveal that the partition sampled does not change after the 10th iteration. Furthermore it is a mode where cluster 3 has not merged. One can see that as more chains are used that some are merging this cluster, but not all (hence the uncertainty about this cluster in the bottom right $4 \times$ 4 sub-grid). A closer inspection reveals that the blcok of entries within the consensus matrices corresponding to cluster 5 is not fully opaque, suggesting that some chains do not successfuly merge this cluster and that at least three modes are present. ](./Images/Simulations/small_n_large_p_base/CMs/ConsensusSimulation2ConsensusMatrixGrid.png)
+
+
+![This is born out by the PSMs. In 4 of these cluster 3 fails to merge, remaining as singletons. In one, the mode where cluster 5 does not merge is present. Furthermore, none of these PSMs contain any vlaues bar 0 and 1. Only a single partition is explored within each chain, highlighting the flaws of the collapsed Gibbs sampler. ](./Images/Simulations/small_n_large_p_base/PSMs/BayesianSimulation2PSMs.png)
+
+
+![The plot of $\hat{R}$ reveals that some simulations are not truly converged. According to the Vats Knudson statistic, 25% of all simulations failed to converge across all chains in this scenario. I have already shown that this is the case in one simulation where different chains became trapped in different modes. This shows that even when signal is very strong (as is the case here) that the collapsed Gibbs sampler consistently fails to converge when the number of features is large. ](./Images/Simulations/small_n_large_p_base/small_n_large_p_baseConvergenceAcrossChains.png)
+
+If we then shrink $\delta \mu$, the distance between the Gaussian distribution that the clusters are generated from within each feature, we see pathological behaviour.
+
+![In this case all the models are apparently failing to predict anything akin to the true structure. ](./Images/Simulations/small_n_large_p_small_dm/small_n_large_p_small_dm_all_model_performance.png)
+
+
+
+
+![Inspection of the consensus matrices reveals that the models are failing to find structure (and as I have shown in the No structure case the ARI does not succeed as a metric of model performance in this case).](./Images/Simulations/small_n_large_p_small_dm/CMs/ConsensusSimulation2ConsensusMatrixGrid.png)
+
+
+
+![The PSMs reveal an interesting story. Each stays in its initial clustering for all 1 million iterations. This suggests that the combinaiton of a large $P$ and low signal is very difficult for the Gibbs sampler.](./Images/Simulations/small_n_large_p_small_dm/PSMs/BayesianSimulation2PSMs.png)
+
+
+![One can see that in all the simulations it is only the seed that defines the results as the $\hat{R}$ values are idential in each simulation regardless of the data, as the example of the PSMs also suggests. ](./Images/Simulations/small_n_large_p_small_dm/small_n_large_p_small_dmConvergenceAcrossChains.png)
+
+
