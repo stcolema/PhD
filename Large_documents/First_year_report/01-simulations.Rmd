@@ -2,7 +2,7 @@
 
 ## Introduction
 
-I want to create a simulation study to do two things:
+The simulation study has two goals:
 
 1. absolute evaluation of consensus clustering as a inferential technique for mixture models; and 
 2. comparative evaluation of consensus and Bayesian inference of mixture models and Mclust, a popular MLE-based mixture model R package.
@@ -31,26 +31,40 @@ Our data generating model is a finite mixture model with independent features wh
 
 \[
 \begin{aligned}
-p(x, z, \theta, \pi) &= \prod_{i=1}^N p(x_i | z_i, \theta_{z_i}) \prod_{i=1}^N p (z_i | \pi) p(\pi) p(\theta) \\
-  &= \prod_{i=1}^N \prod_{p=1}^P p(x_{ip} | z_i, \theta_{z_ip})^{(1 - \phi_p)} p(x_{ip} | \theta_p) ^ {\phi_p} \prod_{i=1}^N p (z_i | \pi) p(\pi) p(\theta)
+p(x, c, \theta, \pi) &= \prod_{i=1}^N p(x_i | c_i, \theta_{c_i}) \prod_{i=1}^N p (c_i | \pi) p(\pi) p(\theta) \\
+  &= \prod_{i=1}^N \prod_{p=1}^P p(x_{ip} | c_i, \theta_{c_ip})^{(1 - \phi_p)} p(x_{ip} | \theta_p) ^ {\phi_p} \prod_{i=1}^N p (c_i | \pi) p(\pi) p(\theta)
 \end{aligned}
 \]
 
-During my simulations I assume that the model in question is a mixture of *Gaussians* and thus $\theta_{kp}=(\mu_{kp}, \sigma^2_{kp})$.
+In the simultatiuon study described here, the model is a mixture of *Gaussian* distribution and thus $\theta_{kp}=(\mu_{kp}, \sigma^2_{kp})$.
 
 As each method of inference uses a common model, this data-generating mechanism is not expected to favour any one method over another.
 
-I test seven different scenarios that change various parameters in this model. I will define the component parameters by $\Delta_{\mu}$, the distance between the possible means in each feature, and $\sigma^2$, a common standard deviation across all components and features. 
+I test seven different scenarios that change various parameters in this model. The components are defined by parameters $(\mu_{kp}, \sigma^2)$ for each cluster within each feature. Within a scenario there is a common vector of possible means for each feature:
+
+\begin{align}
+\mu = (\mu_1, \ldots, \mu_K)
+\end{align}
+
+The indices here do not necessarily associated with the corresponding cluster (i.e. $\mu_1$ does not necessarily define cluster 1). Instead the mean associated with each cluster is randomly sampled without replacement for each feature. Let $\mu$ be ordered by increasing magnitude, i.e. $\mu_i < \mu_j \forall i < j$. Then $\Delta \mu$ be the distance between two consecutive means, i.e. $\mu$ may be re-written:
+
+\begin{align}
+\mu = (\mu_1, \mu_1 + \Delta \mu, \ldots, \mu_1 + ( K - 1 ) \times \Delta \mu).
+\end{align}
+
+Thus $\Delta \mu$ may be considered a defining parameter for the scenario rather than $\mu$ itself.
+
+As the mean of a cluster in a feature is sampled from $\mu$, this means that additional features imparts more information about the clustering structure. There is $K!$ possible unique permutations of $\mu$. This means that as the number of relevant features grows the clarity of the structure becomes improves.
 
 The scenarios tested are:
 
-1. The 2D Gaussian case (this is a sense-check);
+1. The 2D case;
 2. The lack-of-structure case in 2 dimensions;
-3. The base case for which scenarios 4-6 are variations;
+3. The base case for which scenarios 4-6 are direct variations;
 4. Increasing $\sigma^2$;
 5. Increasing the number of irrelevant features;
 6. Varying the expected proportion of the total population assigned to each sub-population;
-7. The large $N$, small $P$ paradigm; and
+7. The large $N$, small $P$ setting; and
 8. The small $N$, large $P$ case.
 
 <!-- A more detailed description of each scenario and various sub-scenarios is given in the below table. -->
@@ -97,12 +111,16 @@ The scenarios tested are:
 <!-- \end{tabular} -->
 <!-- \end{center} -->
 
-### Scenario purposes
-
 Each scenario is seen as testing certain cases or concepts.
 
-#### Simple 2D
-This case is seen as an introduction to method performance. In this case the data can be plotted as a scatter plot (whereas higher dimensions mean any two dimensional representation is missing some information about the data). This means that one may view the data and have an intuition if it is possible for a mixture model to cluster the data; furthermore the small dimensionality means that the distance between modes on the likelihood surface is less so we do not expect the Gibbs sampler to become trapped. This means that we can compare consensus clustering to Bayesian inference with a strong belief that the Markov chain has converged (given appropriate tests). This means that we can process how well consensus clustering performs with a deeper understanding of the context than might be possible in higher dimensional cases.
+### 2D
+This case is seen as an introduction to method performance. The small dimensionality and coherent structure means that one does expect the collapsed Gibbs sampler to explore the target distribution quite thoroughly. This is not intended to be a realistic dataset; it is intended as a setting where both ``Mclust`` and the collapsed Gibbs sampler will perform as expected, displaying no patholgical behaviour.
+
+<!-- providing an insight into how the sampling compares in consensus clustering and Bayesian inference.  -->
+
+<!-- This scenario thus provides reassurance that the comparisons between the methods in more extreme scenarios are not representative of some underlying issue in the methods rather than  -->
+
+<!-- This means that we can compare consensus clustering to Bayesian inference with a strong belief that the Markov chain has converged (given appropriate tests). This means that we can process how well consensus clustering performs with a deeper understanding of the context than might be possible in higher dimensional cases. -->
 
 <!-- ```{r, simple2dView, echo = F, cache = T} -->
 <!-- scn <- "Simple 2D" -->
@@ -155,9 +173,9 @@ This case is seen as an introduction to method performance. In this case the dat
 <!--   ) -->
 <!-- ``` -->
 
-#### No structure
+### No structure
 
-In this case all items are drawn from the same normal distribution. It is meant to be a test to see how the inference methods perform when there is no structure to find. It may be considered as similar to attempting to quantify the false positive rate in a predictive method.
+In this case all items are drawn from the same normal distribution. It is meant to be a test to see how the inference methods perform when there is no structure to find. It may be considered as analagous to attempting to quantify the false positive rate.
 
 <!-- ```{r, noStructureView, echo = F, cache = T} -->
 <!-- scn <- "No structure" -->
@@ -209,9 +227,9 @@ In this case all items are drawn from the same normal distribution. It is meant 
 <!--   ) -->
 <!-- ``` -->
 
-#### Base case
+### Base case
 
-This is the _base case_ which most of the other scenarios are some variation of. This is intended to be a benchmark against which performance may be judged. Each method is expected to perform well here across all metrics, predicting the true clustering correctly and with very little uncertainty.
+This is the _base case_ which most of the following scenarios are some variation of. This is intended to be a benchmark against which performance may be judged. Due to the clarity of the structure, the lack of irrelevant features and the relatively low dimensionality each method is expected to perform well here across all metrics, predicting the true clustering correctly and with very little uncertainty.
 
 <!-- ```{r, baseCase, echo = F, cache = T} -->
 <!-- scn <- "Base Case" -->
@@ -278,7 +296,7 @@ This is the _base case_ which most of the other scenarios are some variation of.
 <!-- #   ) -->
 <!-- ``` -->
 
-#### Large standard deviation
+### Large standard deviation
 
 This is to test how distinct the clusters must be for the inference to perform well. In many datasets there is no reason to believe that the clusters should be strongly separable; this setting is intended to better understand how sensitive the different approaches are to overlap of subpopulations.
 
@@ -388,9 +406,9 @@ This is to test how distinct the clusters must be for the inference to perform w
 
 <!-- One can see that the clusters overlap severaly within each feature and that unpicking any structure might be highly difficult, partiuclarly in the second case. -->
 
-#### Large $N$, small $P$
+### Large $N$, small $P$
 
-This is to test the _large $N$, small $P$_ scenario.
+This is to test the _large $N$, small $P$_ scenario reminiscent of CytoSeq data.
 
 <!-- This is a difficult case to -->
 <!-- analyse as visualising the result is difficult for a PSM (due to the $N \times N$  -->
@@ -462,13 +480,12 @@ This is to test the _large $N$, small $P$_ scenario.
 <!-- ``` -->
 
 
-#### Small $N$, large $P$
+### Small $N$, large $P$
 
 This is to test the _small $N$, large $P$_ scenario so common in genetics. An 
 example of this data would be in clustering patients based upon their gene 
-expression data. Such datasets arise consistently in precision medicine, 
-many of the the Cancer Genome Atlas (**TCGA**) datasets correspond to this 
-setting.
+expression data. Such datasets arise consistently in precision medicine.  
+Many of the the Cancer Genome Atlas (**TCGA**) datasets have this characteristic.
 
 <!-- I  -->
 <!-- think all methods will succeed in unpicking structure in the first case, but as -->
@@ -543,7 +560,7 @@ setting.
 <!-- #   ) -->
 <!-- ``` -->
 
-#### Irrelevant features
+### Irrelevant features
 
 This is to test how robust to noise the methods are. In many settings, such as 
 gene expression data, a large number of noisy features that contribute little 
@@ -552,6 +569,9 @@ Investigating how robust each method is to irrelevant features is important; if
 methods are highly sensitive to noise, feature selection becomes a far more 
 important part of the analysis. Feature selection is a highly difficult problem
 and presents an opportunity to remove valuable information if done incorrectly. 
+Thus, if the methods are both able to uncover the true structure despite noise
+and unlikely to uncover false structure then one can reduce the degree of feature
+selection required.
 
 
 <!-- I expect that all methods  -->
@@ -631,12 +651,15 @@ and presents an opportunity to remove valuable information if done incorrectly.
 <!-- #   ) -->
 <!-- ``` -->
 
-#### Varying proportions
+### Varying proportions
 
 This simulation is designed to test how sensitive the methods are to relatively 
-small clusters when large clusters are present. In precision medicine, one might
-beleive that some of the clusters present might be singletons; uncovering such 
-structure in an analysis could be very important for clinical outcomes.
+small clusters when large clusters are present. For example, in precision 
+medicine one might believe that some of the clusters of patients present might
+be very small, possibly even singletons; uncovering such structure in an 
+analysis could be very important for clinical outcomes. This scenario is 
+intended to offer insight into how the different inferential appraoches perform
+in such a setting.
 
 <!-- ```{r, varyingProportionsView, echo = F, cache = T} -->
 <!-- scn <- "Varying proportions" -->
@@ -707,12 +730,11 @@ structure in an analysis could be very important for clinical outcomes.
 
 ### Data-generation
 
-For each of the scenarios described above, I generate 100 different datasets and cluster IDs.
-These cluster IDs are the true labelling from which the subpopulations defining the full dataset are defined.
+For each of the scenarios described above, I generate 100 membership vectors. Using the specific parameters associated with each scenario (the details of which are listed in a table in appendix A), 100 datasetsare then generated, defined by the membership vectors. These membership vectors will be the true clustering used in model comparison. Each pairing of a dataset and membership vector, $(X^{(i)}, c^{(i)})$, is referred to as a _simulation_ within a scenario.
 
 ### Inference
 
-I use the C++ implementation of Bayesian mixture models written by @mason2016mdi. This performs inference upon a mixture model using a Collapsed Gibbs sampler. This is the software for which samples are generated for both consensus clustering and Bayesian inference.
+I use the C++ implementation of Bayesian mixture models provided by @mason2016mdi. This performs inference upon a mixture model using a Collapsed Gibbs sampler and assumes indepedent features. This is the software for which samples are generated for both consensus clustering and Bayesian inference.
 
 For MLE, I use the R package ``Mclust`` [@R-mclust]. This is a popular implementation that uses an initialisation based upon hierarchical clustering (and is therefore a non-random initialisation, unlike the Bayesian inference and consensus clustering).
 
@@ -721,7 +743,7 @@ For each dataset the following inference are performed:
 1. Consensus clustering using a range of different choices of $R$ and $S$. The sets used are:
   * $R = \{1, 2, \ldots, 10, 20, \ldots, 100, 200, \ldots, 1000, 2000, \ldots, 10000\}$; and
   * $S = \{1, 2, \ldots, 100\}$.
-  I will showcase a subset of these combinations, with _Consensus ($r$, $s$)_ denoting the inference performed using the $r^{th}$ sample from $s$ different chains.
+  I will showcase a subset of these combinations, with _Consensus ($r$, $s$)_ denoting the inference performed using the $r^{th}$ sample from $s$ different chains for all $s \in S, r \in R$.
 2. Bayesian inference using 10 chains running for 1 million iterations, saving every thousandth sample.
 3. Mclust over a range of possible $K$.
 
@@ -732,56 +754,89 @@ Each method will be timed using the ``time`` bash function.
 
 In this study we will be considering both within-simulation and across-simulation performance for the $N_{sim}$ simulations run under each scenario.
 
-The aim of each model is uncovering the true clustering of the data, $C'$. The performance of each model may be judged by compaing the predicted clustering, $C^*$, to $C'$ using the adjusted rand index [**${ARI(C^*, C')}$**, @hubert1985comparing]. For Mclust, only the point estimate of the clustering is generated, and thus is trivial to compare. For Bayesian inference and consensus clustering we have a number of samples. These are used to construct a PSM/Consensus matrix from which a point estimate of the clustering is predicted using the ``maxpear`` function in the ``mcclust`` R package [@R-mcclust; theory described by @fritsch2009improved]. 
-How well the inference quantifies uncertainty about the predicted clustering is also of interest. A model may have a low score under the ARI for its predicted clustering, but may have explored the partition space that included the true clustering. Ideally I would like to reward a model that explores sensible partitions even if the final partition is not ideal. To do this I compare the Frobenius norm of the difference of the coclustering matrix of the true clustering with the 
+The aim of each model is uncovering the true clustering of the data, $C'$. The performance of each model may be judged by compaing the predicted clustering, $C^*$, to $C'$ using the adjusted rand index [**${ARI(C^*, C')}$**, @hubert1985comparing]. For ``Mclust``, only the point estimate of the clustering is generated, and thus is trivial to compare. For Bayesian inference and consensus clustering we have a number of samples. These are used to construct a PSM/Consensus matrix from which a point estimate of the clustering is predicted using the ``maxpear`` function in the ``mcclust`` R package [@R-mcclust; theory described by @fritsch2009improved]. 
+
+How well the inference quantifies uncertainty about the predicted clustering is also of interest. A model may have a low score under the ARI for its predicted clustering, but may have explored the partition space that included the true clustering. Ideally a model that explores sensible partitions is rewarded, even if the final partition is not ideal. The Frobenius norm of the difference of the coclustering matrix of the true clustering with the 
 
 1. posterior similarity matrix for the Bayesian inference;
 2. the coclustering matrix for Mclust; and
-3. the consensus matrix for the consensus clustering. 
+3. the consensus matrix for the consensus clustering
 
-As Mclust only proposes a single partition its perfomance under this metric is a linear function of the ARI.
+is used to attempt to quantify performance here. Note that as Mclust only proposes a single partition its perfomance under this metric is a linear function of the ARI whereas this is not necessarily the case for Bayesian inference and consensus clustering.
 
-The Frobenius norm is a flawed proxy for uncertainty quantification. As a standalone statistic it is not sufficient as if no model is performing well the best performer under this metric will probably be that which is most sparse. It is important, particularly in the cases where the ARI is very low, to inspect the heatmaps of the PSMs and consensus matrices to understand what is happening. When the ARI is high and the Frobenius norm is low, it indicates that there is low uncertainty about the true clustering as one would hope. It is the other cases that demand more scrutiny. I use the Frobenius norm though as it does contain _some_ information about how well uncertainty is quantified and is a single number and thus a vector of number can be used, one from each simulation within the scenario. Furthermore, if there is a trend within the distribution of the Frobenius norms for each model than inspection of the PSMs and consensus matrices for a single simulation might be sufficient to understand the behaviour within the entire scenario in combination with the Frobenius norm.
+The Frobenius norm is a flawed proxy for uncertainty quantification. As a standalone statistic it is not sufficient as if no model is performing well the best performer under this metric will probably be that which is most sparse. It is important, particularly in the cases where the ARI is very low, to inspect the heatmaps of the PSMs and consensus matrices to understand what is happening. The Frobenius norm is used as it does contain _some_ information about how well uncertainty is quantified and describes this within a single number. This means that it translates well to comparison across many simulations within a single scenario. Furthermore, if there is a trend within the distribution of the Frobenius norms for each model than inspection of the PSMs and consensus matrices for a single simulation might be sufficient to understand the behaviour within the entire scenario in combination with the Frobenius norm.
 
 For the Bayesian models I am also interested in within-chain model and across-chain convergence. I calculate the Geweke statistic [@geweke1992evaluating] and the Gelman-Rubin shrinkage parameter [$\hat{R}$, @gelman1992inference] as measures of these respectively.
-If the Geweke statistic of a chain is not appreaing to be a normal-distribution, as tested by a Shapiro-Wilks test, I drop that chain from the analysis. I test if chains are not converged using the extension of $\hat{R}$ proposed by @vats2018revisiting, using a threshold of 1.01. I plot the original $\hat{R}$ value described by @gelman1992inference, but the summary statistic for the entire simulation is the Vats-Knudson statistic. Note that a low value in this is not sufficient to definitively say that a set of chains have converged, but a high value does indicate a lack of convergence.
+If the Geweke statistic of a chain is not appreaing to be a normal-distribution, as tested by a Shapiro-Wilks test, that chain is removed from the analysis. Chains are tested for the failure to converge using the extension of $\hat{R}$ proposed by @vats2018revisiting, using a threshold of 1.01. This is a summary statistic for entire set of chains; the original $\hat{R}$ value described by @gelman1992inference is plotted as a function of the chain iteration as a visual aid in assessing convergence. Note that a low value in these statistics is not sufficient to definitively claim convergence, but a high value **does** indicate a lack of convergence.
 
-The samples from the chains that pass the Shapiro-Wilks test are then pooled for the comparison beyond methods. I do not drop the entire analysis based upon overall convergence as doing so might lead some scenarios to having a very small number of data points for the Bayesian inference in the model comparison plots. Pooling samples is done to avoid model selection problems and to enable comparison across simulations. The pooling will mean that the Bayesian inference might be more robust to modes (as we might have several different modes present in the pooled samples), thus inflating performance under uncertainty quantification. However, the $\hat{R}$ statistic should indicate the percentage of simulations for which multiple modes are encountered as these chains should not be exploring the same distribution and thus will not be considered converged.
+The samples from the chains that pass the Shapiro-Wilks test are then pooled for the comparison beyond methods. I do not drop the entire analysis based upon overall convergence as doing so might lead some scenarios to having a very small number of data points for the Bayesian inference in the model comparison plots. Pooling samples is done to avoid model selection problems and to enable comparison across simulations. The pooling will mean that the statistics for the Bayesian inference in model comparison will might be more robust to modes (as we might have several different modes present in the pooled samples), thus inflating performance. This will be an upper limit on the performance of the Bayesian method.
 
 ## Results
 
-In a low dimensional setting the collapsed Gibbs sampler appears to quickly reaches the target distribution. This is based upon a comparison of consensus clustering results for different values of $R$. I assume that if the consensus matrices are both consistent with the PSMs and unchanging beyond a given value of $R$ that the chain has reached the staitonary distribution by said value of $R$ (albeit possibly a single mode of the target distribution). 
+I assume that if the consensus matrices are both consistent with the PSMs and unchanging beyond a given value of $R$ that the chain has reached the staitonary distribution by said value of $R$ (albeit possibly a single mode of the target distribution). 
 
-One can see that the for a constant number of samples, that the consensus clustering results stabilise for all $R \geq 10$ in the two-dimensional case. 
-
-In considering both the PSMs and CMs, one can see that the large number of low magnitude values here suggests that many different possible partitions are being sampled. The fact that this occurs within each individual chain, as represented by the PSMs, and that there is no obvious difference between the different chains suggests that the sampler is exploring the full support of the distribution  within a single chain. 
-
-The consensus clustering of short chains produces a similar distribution to the set of samples from a single long chain. No individual partition in any chain finds the true structure, but the distribution explored appears reasonable. In this setting it is the number of chains/samples, $S$, that is most important for improving performance.
-
-As more relevant features are added the geometry of the likelihood surface becomes more complex. The sampler reaches a mode of the stationary distribution very quickly but appears to explore a decreasing number of possible partitions in any single chain; the attraction of each mode becomes greater, the distance between each mode increasing and the chain becomes more prone to finding a local mode. For example, in the PSMs from the small $N$, large $P$ case one can see that three different modes are present despite. However, consensus clustering can describe all of these modes. Again, a shallow chain depth, $R$, is sufficient and it is the number of chains that is important. 
-
-As more irrelevant features are added the behaviour of the sampler changes. In this case the samples do not appear to be being drawn from the stationary distribution until much further into the chain. If one compares the consensus matrices for the scenario with 20 relevant features and 100 irrelevant feature, there is evidence of stabilising only by using $R=10,000$ (i.e. the bottom row of figure). This suggests that deeper chain depth is ideal for more noisy data. Despite this, consensus clustering can find the true structure using very short chains, although the uncertainty present is quite high. This is due to the different chains clustering different groups of items in different orders; the individual chains have not merged all of the possible clusters correctly and the partitions presented contain too many clusters in the early samples from the Markov chain. However, the chains do not appear to cluster items that are from different subpopulations in any sample. This means that the union of partitions from the short chains used in forming the consensus matrix does capture the true structure. Thus the predicted clustering matches the true clustering even if the level of uncertainty present is high. This shows that the consensus clustering does work even in the case that each individual learner is very weak; as long as each contains some signal the ensemble can perform very well. This is reassuring as in the case that the number of irrelevant features is high, one would ideally sample from deeper in the chain; that one may avoid this and still perform meaningful inference means that consensus clustering may be used in settings where a single iteration is very slow and thus many short chains are necessary. 
-
-
-
+For a collapsed Gibbs sampler the number of features present influences how diverse a range of partitions the sampler can explore. One can see in figure [exploration] that for a small number features the sampler suggests a different partition with every sample, but as  the number of features scales the diversity becomes more and more limited. This is not inherently a flaw; as the number of features increases so too does the amount of information pertaining to the structure in the dataset. However, this does mean that it is more probable that the sampler becomes trapped in any modes it encounters as the attraction of any single mode becomes more extreme as too does the distance between modes. 
 
 ![As the number of features present increases the collapsed Gibbs sampler struggles to sample a wide range of partitions. If the clarity of the underlying structure is low, this can be pathologically poor (only a single partition, the initialisation, is sampled). These results are for a datasets of similar structrue to the small $N$, large $P$ case; i.e. $N=50$, $K=5$. There is a single dataset generated for each value of $P \in \[1, 500\]$ for each different value of $\Delta \mu$. ](./Images/Simulations/Exploration.png)
 
 
-The combined results of the scenarios with high numbers of irrelevant features but some true structure and the scenario where no clustering signal is present is highly reassuring. These show that one can use consensus clustering on real, noisy data with the expectation that any structure uncovered is present in the data and not uncovering false structure within the noise.
+For inference using a single chain this does represent a problem. In the PSMs in figure [psms for large P], the chains all converge to a mode, but there is diversity in the modes reached. The chains do not converge or all reach the global mode, and none appear to explore a range of partitions regardless of the number of iterations. Therefore no individual chain appears to describe the uncertainty present well as they repeatedly sample the same partition whereas the use of  consensus clustering enables inclusion of many of the modes (possibly all) present in the data in the inference. In the results shown in this report it appears that the global mode is represented within the first ten chains, but one can imagine that there will be cases where the global mode is not reached in the initial chains. Thus, consensus clustering offers greater confidence that the distribution described by the ensemble has captured the global mode and that this will be the predominant mode in a set of 100 chains.
+
+<!-- This means that for higher number of features the probability of becoming trapped within a single mode grows; thus when applying consensus clustering in this setting a larger number of chains should be included in the consensus clustering. -->
 
 
-As the number of dimensions increases the attraction of different modes becomes more extreme. It can be seen that different chains converge to a mode, but not all reach the global mode or explore any range of partitions regardless of the number of iterations. In this setting the benefits of the ensemble become clear as a number of modes can be represented in the analysis rather than the individual mode in each individual chain. However, if the distinction between the subpopulations is sufficiently small the sampler never explores any new partitions at all. The likelihood surface is very spiky due to the number of features (recall that the likelihood is an $(N \times P)$-polynomial for independent features). The results suggest that as the clarity of the structure weakens (i.e. no single mode is uniquely attractive) and the number of features scales, then the collapsed Gibbs sampler struggles more and more to explore any range of partitions. 
+![The PSMs for the 8 chains that have passed the Shapiro-Wilks test of normality for the Geweke Z-score indicating within-chain stationarity in simulation 2 from a scenario with 50 items, 500 features and $(\Delta \mu, \sigma^2)=(1, 1)$. Three distinct modes can be identified here; consensus clustering can successfully include all of these within the inference where inference using any one chain cannot. Indeed it appears that consensus clustering finds an additional mode not described here (shown in appendix A). ](./Images/Simulations/small_n_large_p_base/PSMs/BayesianSimulation2PSMs.png)
 
-These results also show that one can include features in the analysis that do not necessarily contain structure, allowing one to be less rigorous or even avoid feature selection. However, it appears that in an 'omics scenario where there may be thousands or tens of thousands of possible feautres that feature selection is possibly an unavoidable part of an analysis pipeline.
+
+However, in the cases where the clarity of the structure is less (i.e. as the distance between the means of the generating distributions becomes less), the sampler can display pathological behviour for large numbers of features. There is no new partition sampled after the initialisation (seen in the lines for $\Delta \mu = (0.2, 0.4, 0.6)$ in figure [ref exploraiton]). This is a fundamental problem for the collapsed Gibbs sampler that cannot be overcome by using consensus clustering. If one were to use consensus clustering in a context where the sampler cannot sample any partitions bar initialisation, then the CM will have approximately the same value in every off-diagonal entry once a sufficiently large number of chains is used for the CM to have stabilised. This indicates no clustering structure - no two items are considered more similar than any other two. However, the clustering structure is not clear in this data; possibly no subpopulation structure would be uncovered regardless of the ability of the sampler to explore partitions. The range of partitions sampled might be close to random even if the sampler is free to explore a diverse range of partitions. Additional investigation is required to understand how effectively consensus clustering can uncover true structure for different degrees of signal and dimensionality.
+
+Based upon the results for the scenarios where the clarity of the subpopulation structure becomes weaker, whether as a source of irrelevant features or increasing overlap between generating distributions (whether this be due to small $\Delta \mu$ or large $\sigma^2$), the samples are more representative of the true structure the deeper into the chain they are generated, assuming that the chain explores a range of partitions.
+
+![The predictive performance of the different methods for the 100 simulations of the scenario with 20 relevant and 100 irrelevant features. Consensus ($r, s$) refers to $s$ samples drawn from the $r^{th}$ iteration of $s$ different chains. ``Mclust`` cannot uncover the true structure. For the sampling-based methods it appears that deeper into the chain the parttions become closer to the truth, as seen by the continuing improvement for higher values of $r$ and the excellent performance of the pooled long chains in the Bayesian inference. ](./Images/Simulations/irrelevant_features_100/irrelevant_features_100_all_model_performance.png)
+
+
+Thus, for as the subpopulations become more similar deeper samples are preferred. There is evidence (see figure [ari-boxplots]) that if a point estimate is only of interest than extremely short chains can still suffice if enough learners are present in the final ensemble. 
+
+![A grid of consensus matrices from the first simulation within the scenario with 20 relevant and 100 irrelevant features annotated by the true clustering, ordered by the CM from Consensus (10000, 100). Within the grid, each row has a constant $R$ and each column is a constant $S$ for $R \in (1, 10, 100, 1000, 10000)$ and $S \in (1, 10, 30, 50, 100)$. One can see that no structure is uncovered in the first iteration (corresponding to the result in figure ari-boxplots). The uncertainty is very high for $R=10$ and $S \neq 1$, but the structure is beginning to be uncovered (again this corresponds with the result in figure ari-boxplots). By the 100th iteration the structure is uncovered with a large degree of confidence. If one instead compares the columns of the grid, the 4 leftmost columns appear practically identical - the benefits of using more than 10 chains is less than the benefit of using more than 10 iterations within each chain. ](./Images/Simulations/irrelevant_features_100/CMs/ConsensusSimulation1ConsensusMatrixGrid.png)
+
+<!-- ![For the scenario with 20 relevant features and $\sigma^2=9$, there is a similar process. Increasing $R$ appears to be more important than increasing $S$ as the (4, 2) entry in the grid corresponds closely to the (5, 5) entry .  ](./Images/Simulations/large_standard_deviation_3/CMs/ConsensusSimulation1ConsensusMatrixGrid.png) -->
+
+
+<!-- The likelihood surface is very spiky due to the number of features (recall that the likelihood is an $(N \times P)$-polynomial for a mixture of Gaussian distributions with a diagonal covariance structure). -->
+
+
+<!-- In this setting the benefits of the ensemble become clear as a number of modes can be represented in the analysis rather than the individual mode in each individual chain. However, if the distinction between the subpopulations is sufficiently small the sampler never explores any new partitions at all.  The results suggest that as the clarity of the structure weakens (i.e. no single mode is uniquely attractive) and the number of features scales, then the collapsed Gibbs sampler struggles more and more to explore **any** range of partitions, remaining trapped in the initialisation. This is a fundamental problem for the collapsed Gibbs sampler; using consensus clustering here returns a very sparse CM that implies no clustering structure as no two items will be expected to cluster together any more frequently than any other combination of items. -->
+
+
+
+<!-- One can see that the for a constant number of samples, that the consensus clustering results stabilise for all $R \geq 10$ in the two-dimensional case.  -->
+
+<!-- In considering both the PSMs and CMs, one can see that the large number of low magnitude values here suggests that many different possible partitions are being sampled. The fact that this occurs within each individual chain, as represented by the PSMs, and that there is no obvious difference between the different chains suggests that the sampler is exploring the full support of the distribution  within a single chain.  -->
+
+<!-- The consensus clustering of short chains produces a similar distribution to the set of samples from a single long chain. No individual partition in any chain finds the true structure, but the distribution explored appears reasonable. In this setting it is the number of chains/samples, $S$, that is most important for improving performance. -->
+
+<!-- As more relevant features are added the geometry of the likelihood surface becomes more complex. The sampler reaches a mode of the stationary distribution very quickly but appears to explore a decreasing number of possible partitions in any single chain; the attraction of each mode becomes greater, the distance between each mode increasing and the chain becomes more prone to finding a local mode. For example, in the PSMs from the small $N$, large $P$ case one can see that three different modes are present despite. However, consensus clustering can describe all of these modes. Again, a shallow chain depth, $R$, is sufficient and it is the number of chains that is important.  -->
+
+As more irrelevant features are added the behaviour of the sampler changes. In this case the samples do not appear to be being drawn from the target distribution until much further into the chain. If one compares the consensus matrices for the scenario with 20 relevant features and 100 irrelevant feature, there is evidence of stabilising only by using $R=10,000$ (i.e. the bottom row of figure). This suggests that deeper chain depth is ideal for more noisy data. Despite this, consensus clustering can find the true structure using very short chains, although the uncertainty present is quite high. This is due to the different chains clustering different groups of items in different orders; the individual chains have not merged all of the possible clusters correctly and the partitions presented contain too many clusters in the early samples from the Markov chain. However, the chains do not appear to cluster items that are from different subpopulations in any sample. This means that the union of partitions from the short chains used in forming the consensus matrix does capture the true structure. Thus the predicted clustering matches the true clustering even if the level of uncertainty present is high. This shows that the consensus clustering does work even in the case that each individual learner is very weak; as long as each contains some signal the ensemble can perform very well. This is reassuring as in the case that the number of irrelevant features is high, one would ideally sample from deeper in the chain; that one may avoid this and still perform meaningful inference means that consensus clustering may be used in settings where a single iteration is very slow and thus many short chains are necessary. 
+
+
+The advantages of being able to use independent short chains in terms of run time is significant. Figure [time] shows that the run time of a sampler is has a linear dependance upon the number of iterations run. In the scenario that there is only a single CPU present a consensus clustering using the 10th iteration from 100 independant chains is expected to be approximately the same as running a single chain for 10,000 iterations (a not unreasonable number of samples in Bayesian inference). In the more realistic scenario that one has access to multiple CPUs and is running several long chains to test convergence, than the gains are immediate.
+
+
+<!-- The combined results of the scenarios with high numbers of irrelevant features but some true structure and the scenario where no clustering signal is present is highly reassuring. -->
+
+<!-- These show that one can use consensus clustering on real, noisy data with the expectation that any structure uncovered is of interest and not  in the data and not uncovering structure within the noise. -->
+
+
+
+
+<!-- These results also show that one can include features in the analysis that do not necessarily contain structure, allowing one to be less rigorous or even avoid feature selection.  -->
+
+<!-- However, it appears that in an 'omics scenario where there may be thousands or tens of thousands of possible features that feature selection is possibly an unavoidable part of an analysis pipeline. -->
 
 
 
 ![The time taken for each Markov chain to finish appears to scale linearly with the number of samples generated. This suggests that using shorter chains will reduce the computational time linearly; thus if the individual chains may be run in parallel significant time savings may be available. Assume one has 4 CPUs available to run chains upon and a single iteration takes $t$ seconds. Then based upon the relationship shown here, 10 chains of 10,000 iterations would take approximately $3 \times 10^4 t$ seconds and 100 chains of 10 iterations would take roughly $2.5 \times 10^2 t$ seconds, a difference of several orders of magnitude. ](./Images/Simulations/base_case/base_caseTimeComparisonGibbs.png)
-
-
-
-
 
 
 
@@ -842,7 +897,7 @@ for some small $\epsilon$ (which itself will be a function of $N$ as the Frobeni
 
 You will notice the absence of the large $N$ small $P$ scenarios from this analysis. These scenarios have yet to be completed as the problem of performing inference upon the PSM/Consensus matrix of size $10,000 \times 10,000$ is proving non-trivial. Beyond these scenarios two additional cases worthy of investigation occur to me; 
 
-1. an additional small $N$ large $P$ case where $\delta \mu$ is a value between that used in the two scenarios presented here; and
+1. an additional small $N$ large $P$ case where $\Delta \mu$ is a value between that used in the two scenarios presented here; and
 2. a varying proportions scenario where the overlap between clusters is less defined.
 
 Of these, (1) would be inteded to test how much signal is needed in a high-dimensional setting before the collapsed Gibbs sampler explores the space at all. (2) would test how well the methods perform in a more realistic setting where the subpopulations are significantly different in size. In the current scenario of varying proportions, the signal is too clear and identifying the correct number of clusters is non-trivial (all methods perform well).
