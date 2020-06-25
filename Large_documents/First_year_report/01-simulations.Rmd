@@ -777,7 +777,7 @@ I assume that if the consensus matrices are both consistent with the PSMs and un
 
 For a collapsed Gibbs sampler the number of features present influences how diverse a range of partitions the sampler can explore. One can see in figure [exploration] that for a small number features the sampler suggests a different partition with every sample, but as  the number of features scales the diversity becomes more and more limited. This is not inherently a flaw; as the number of features increases so too does the amount of information pertaining to the structure in the dataset. However, this does mean that it is more probable that the sampler becomes trapped in any modes it encounters as the attraction of any single mode becomes more extreme as too does the distance between modes. 
 
-![As the number of features present increases the collapsed Gibbs sampler struggles to sample a wide range of partitions. If the clarity of the underlying structure is low, this can be pathologically poor (only a single partition, the initialisation, is sampled). These results are for a datasets of similar structrue to the small $N$, large $P$ case; i.e. $N=50$, $K=5$. There is a single dataset generated for each value of $P \in \[1, 500\]$ for each different value of $\Delta \mu$. ](./Images/Simulations/Exploration.png)
+![As the number of features present increases the collapsed Gibbs sampler struggles to sample a wide range of partitions. If the clarity of the underlying structure is low, this can be pathologically poor (only a single partition, the initialisation, is sampled). These results are for a datasets of similar structrue to the small $N$, large $P$ case; i.e. $N=50$, $K=5$. There is a single dataset generated for each value of $P \in \{1, \ldots, 500\}$ for each different value of $\Delta \mu$. ](./Images/Simulations/Exploration.png)
 
 
 For inference using a single chain this does represent a problem. In the PSMs in figure [psms for large P], the chains all converge to a mode, but there is diversity in the modes reached. The chains do not converge or all reach the global mode, and none appear to explore a range of partitions regardless of the number of iterations. Therefore no individual chain appears to describe the uncertainty present well as they repeatedly sample the same partition whereas the use of  consensus clustering enables inclusion of many of the modes (possibly all) present in the data in the inference. In the results shown in this report it appears that the global mode is represented within the first ten chains, but one can imagine that there will be cases where the global mode is not reached in the initial chains. Thus, consensus clustering offers greater confidence that the distribution described by the ensemble has captured the global mode and that this will be the predominant mode in a set of 100 chains.
@@ -841,57 +841,83 @@ The advantages of being able to use independent short chains in terms of run tim
 
 
 
-## Conclusions
+## Discussion
 
-### Performance
+Based upon the results shown above and those in the supplementary material, consensus clustering is a powerful method for performing inference using Bayesian mixture models. 
 
-I think that if uncertainty is ever of interst than Mclust has to be dropped. If this is not the case then Mclust is a powerful tool in the absence of irrelevant features.
+Even for extremely short chains, an ensemble of clsuterers can produce powerful results. In many scenarios consensus clustering of mixture models correctly identifies the true number of clusters present and the membership of these clusters. 
 
-If $P$ is small that Bayesian inference is ideal; however once $P$ breaks into the hundreds and the attraction of modes becomes more extreme I think one should consider consensus clustering as a natural way to represent these in one's analysis, or else consider other types of sampler. However, if $P$ is extreme these samplers might be sufficiently poor at exploring the partition space as to be infeasible regardless of the method of inference.
+In settings where a single chain does not display pathological issues (i.e. it explores the full support of the target distribution), consensus clustering performs competitvely with Bayesian inference.
 
-#### Small $P$
+However, it is the settings where any single chain struggles to represent more than a single mode of the target distribution that consensus clustering offers the greatest benefits. In this setting consensus clustering enables inclusion of many modes in the inference, capturing more of the model uncertainty than any single chain. Furthermore, these settings tend to be high dimensional and thus the sampler tends to be slower to perform a single iteration and the possible computational gains offered by the ensemble in a parallel environment become more significant.
 
-In a low dimensional, low signal setting Mclust performs excellently. In a real applicaiton where no labels are present and uncertainty quantification is important, than Bayesian inference performs very well, exploring the target distribution thoroughly. Based upon the behaviour of the consensus matrices and the improvement in ARI as a function of chain depth, $R$, it appears that one could use consensus clustering in a low dimensional setting as $R=10$ appears sufficient to perform similar inference to the Bayesian inference. Therefore one could use a parallel environment to decrease the time required to perform the analsysis. However, as true Bayesian inference can be performed quickly on this scale and is exploring a range of partitions, I would recommend using Bayesian inference, with all its guarantees in this setting.
+Additionally, I have shown that the short chains are robust to irrelevant features, outperforming ``Mclust`` when the dataset is dominated by irrelevant features. 
 
-#### False structure
+However, a question for the practitioner is, how does one choose $S$ and $R$, the parameters of the ensemble? This is not a problem with an analytic solution. In theory, and similarly to Bayesian inference, the solution is to let $S \to \infty, R \to \infty$. In practice this is not an answer. If the data is noisy, believed to contain many irrelevant features or poor distinction between sub-populations, one should try increase the value of $R$. As the total number of features scales so too should $S$, the number of learners used in the ensemble. I think comparing the consensus matrices for different values of $S$ and $R$ is also useful. Consider this method for deciding if $(R', S')$ are sufficiently large:
 
-It is reassuring to see that the methods all correctly identify no structure. This helps to reassure us that we can use these methods and will not identify noise as structure. The low degree of signal present in the case with $\sigma=5$ and in the small $N$ large $P$ scenario with close cluster means also saw no structure uncovered, suggesting that one may use these methods and be somewhat reassured that any signal uncovered is true. In the high dimensional setting one would have to recognise that the clustering in the PSMs corresponded to the initialisation; for practitioners who might be confused by this and the appearance of 10 modes in their 10 chains, perhaps consensus clustering, with it's very clear lack of structure, is preferable.
-
-#### Loud signal
-
-When signal is sufficiently loud that the clustering structure is easily visible within a heatmap, choice of method is less impotant.
-
-#### Weak and hidden signal
-
-As the signal becomes weaker sampler based methods perform better than Mclust, exploring a greater vairety of partitions and clearly stating that the uncertainty is high. If the signal is buried beneath a large amount of noise (rather than being inherently weak as in the large standard deviation cases), then the sampling-based methods perfom very well; these appear very robust to a large number of irrelevant features. However as the number of noise features increases sampling from deeper within the chain becomes more important for consensus clustering. I suspect that this is partially a function of the increase in the number of features independant of the ratio of relevant to irrelevant features.
-
-#### Large $P$
-
-In this setting I think consensus clustering shines. As the collapsed Gibbs sampler appears to find a sensible partition quite quickly (as seen by the stability of results for consensus clustering after $R$ exceeds 1) one can run the chains for a short length of time. Furthermore, one may use the lack of correlation of samples across chains to explore multiple modes. Bayesian inference struggles in this setting, becoming trapped in a mode and never escaping its attraction. It does identify useful structure, but claims of convergence become dubious and some of the main attractions of Bayesian inference, i.e. principled quantification of the uncertainty and the asymptotic guarantees, appear to not truly hold in practice.
-
-### Using consensus clustering in practice
-
-Consensus clustering has shown significant advantages. As $P$ grows and modes become more extreme, consensus clustering is better able to represent multiple modes than Bayesian inference (as seen in the irrelevant features 100 and the small $N$ large $P$ base case). However, if the sampler never explores a sensible space (as is the case in the scenario with small $N$ and large $P$ where the distance between cluster means, $\Delta \mu$, is small), than consensus clustering does not solve the problems. (Aside: I do think that the small $N$ large $P$ case does not contain strong signal of structure, and in this case finding no structure is an acceptable solution as the consensus clustering does.)
-
-I think the performance of consensus clustering for even very small values of $R$ is surprising. In many scenarios setting $R=10$ was sufficient to uncover much of the structure or at least indicate it (as is in the case where $P_n=100$ where the consensus matrices corresponding to $R=10$ indicate the true structure with high uncertainty). I think that is exciting, as in cases where each iteration is slow (such as the large $P$ case) than consensus clustering performs well even if chains are severely constrained.
-
-Based upon the results seen I would say that in practice Consensus ($R$, $S$) should be driven by the heuristics:
+1. Generate $S'$ Markov chains of $R'$ partitions.
+2. Use these to construct 3 consensus matrices. For some $a, b \in [0,1]$ (for example $a=b=\frac{3}{4}$), compure CMs for each of:
+  <!-- * Consensus$(0.75 R', 0.75 S')$; -->
+  * Consensus$(a R', S')$;
+  * Consensus$(R', b S')$;
+  * Consensus$(R', S')$;
+3. If the consensus matrices are sufficiently stabilised, stop. Possibly a stopping rule could be created base upon some threshold $\epsilon \in \mathbb{R_{+}}$ (for example see equation \@ref(eq:stoppingRule)), though in practice a visual comparison of the CMs should be sufficient. If the matrices are not considered sufficiently stable for the increase in $R$, repeat for some $R'' > R'$; and similarly for the value used for $S$.
 
 \begin{align}
- R &\propto P_n \\
- R &\propto P \\
- S &\propto \frac{\mu}{\sigma} \\
- S &\propto \textrm{The number of modes present.}
+&||CM(R', S') - CM(R', b S')||_F &< \epsilon \\
+&||CM(R', S') - CM(a R', S')||_F &< \epsilon
+(\#eq:stoppingRule) 
 \end{align}
 
-Of these, only $P$ can be confidently known. As this is the case I think making use of grids of the consensus matrices could help. They can provide evidence for when increasing $S$ and $R$ no longer offers significant gains. I think the Frobenius norm could be used to construct a stopping rule for these inputs of the inference, e.g. if the Frobenius norm of the difference of the matrix for Consensus $(R, S_1)$ and the matrix for Consensus $(R, S_2)$ (for some $S_1, S_2, R \in \mathbb{N}, S_2 > S_1$) is small than one should stop increasing $S$ and similarly for different values of $R$. One would have to pursued this far enough that one can believe that the stability of the consensus matrix is true. Based upon the results so far I think, letting $CM(r, s)$ denote a consensus matrix for consensus clustering using the $r^{th}$ iteration of $s$ chains, that if:
+<!-- ### Performance -->
 
-\begin{align}
-&||CM(r, s) - CM(r, s + 10)||_F &< \epsilon \\
-&||CM(r, s) - CM(r + 100, s)||_F &< \epsilon
-\end{align}
+<!-- I think that if uncertainty is ever of interst than Mclust has to be dropped. If this is not the case then Mclust is a powerful tool in the absence of irrelevant features. -->
 
-for some small $\epsilon$ (which itself will be a function of $N$ as the Frobenius norm does not have an upper bound), then one should stop increasing the parameters of the inference. In practice  I think a visual inspection of the grid would be sufficient. Note that this appears to be asymptotic behaviour and increasing $S$ and $R$ to the largest values possible within one's computational constraints would not do any harm.
+<!-- If $P$ is small that Bayesian inference is ideal; however once $P$ breaks into the hundreds and the attraction of modes becomes more extreme I think one should consider consensus clustering as a natural way to represent these in one's analysis, or else consider other types of sampler. However, if $P$ is extreme these samplers might be sufficiently poor at exploring the partition space as to be infeasible regardless of the method of inference. -->
+
+<!-- #### Small $P$ -->
+
+<!-- In a low dimensional, low signal setting Mclust performs excellently. In a real applicaiton where no labels are present and uncertainty quantification is important, than Bayesian inference performs very well, exploring the target distribution thoroughly. Based upon the behaviour of the consensus matrices and the improvement in ARI as a function of chain depth, $R$, it appears that one could use consensus clustering in a low dimensional setting as $R=10$ appears sufficient to perform similar inference to the Bayesian inference. Therefore one could use a parallel environment to decrease the time required to perform the analsysis. However, as true Bayesian inference can be performed quickly on this scale and is exploring a range of partitions, I would recommend using Bayesian inference, with all its guarantees in this setting. -->
+
+<!-- #### False structure -->
+
+<!-- It is reassuring to see that the methods all correctly identify no structure. This helps to reassure us that we can use these methods and will not identify noise as structure. The low degree of signal present in the case with $\sigma=5$ and in the small $N$ large $P$ scenario with close cluster means also saw no structure uncovered, suggesting that one may use these methods and be somewhat reassured that any signal uncovered is true. In the high dimensional setting one would have to recognise that the clustering in the PSMs corresponded to the initialisation; for practitioners who might be confused by this and the appearance of 10 modes in their 10 chains, perhaps consensus clustering, with it's very clear lack of structure, is preferable. -->
+
+<!-- #### Loud signal -->
+
+<!-- When signal is sufficiently loud that the clustering structure is easily visible within a heatmap, choice of method is less impotant. -->
+
+<!-- #### Weak and hidden signal -->
+
+<!-- As the signal becomes weaker sampler based methods perform better than Mclust, exploring a greater vairety of partitions and clearly stating that the uncertainty is high. If the signal is buried beneath a large amount of noise (rather than being inherently weak as in the large standard deviation cases), then the sampling-based methods perfom very well; these appear very robust to a large number of irrelevant features. However as the number of noise features increases sampling from deeper within the chain becomes more important for consensus clustering. I suspect that this is partially a function of the increase in the number of features independant of the ratio of relevant to irrelevant features. -->
+
+<!-- #### Large $P$ -->
+
+<!-- In this setting I think consensus clustering shines. As the collapsed Gibbs sampler appears to find a sensible partition quite quickly (as seen by the stability of results for consensus clustering after $R$ exceeds 1) one can run the chains for a short length of time. Furthermore, one may use the lack of correlation of samples across chains to explore multiple modes. Bayesian inference struggles in this setting, becoming trapped in a mode and never escaping its attraction. It does identify useful structure, but claims of convergence become dubious and some of the main attractions of Bayesian inference, i.e. principled quantification of the uncertainty and the asymptotic guarantees, appear to not truly hold in practice. -->
+
+<!-- ### Using consensus clustering in practice -->
+
+<!-- Consensus clustering has shown significant advantages. As $P$ grows and modes become more extreme, consensus clustering is better able to represent multiple modes than Bayesian inference (as seen in the irrelevant features 100 and the small $N$ large $P$ base case). However, if the sampler never explores a sensible space (as is the case in the scenario with small $N$ and large $P$ where the distance between cluster means, $\Delta \mu$, is small), than consensus clustering does not solve the problems. (Aside: I do think that the small $N$ large $P$ case does not contain strong signal of structure, and in this case finding no structure is an acceptable solution as the consensus clustering does.) -->
+
+<!-- I think the performance of consensus clustering for even very small values of $R$ is surprising. In many scenarios setting $R=10$ was sufficient to uncover much of the structure or at least indicate it (as is in the case where $P_n=100$ where the consensus matrices corresponding to $R=10$ indicate the true structure with high uncertainty). I think that is exciting, as in cases where each iteration is slow (such as the large $P$ case) than consensus clustering performs well even if chains are severely constrained. -->
+
+<!-- Based upon the results seen I would say that in practice Consensus ($R$, $S$) should be driven by the heuristics: -->
+
+<!-- \begin{align} -->
+<!--  R &\propto P_n \\ -->
+<!--  R &\propto P \\ -->
+<!--  S &\propto \frac{\mu}{\sigma} \\ -->
+<!--  S &\propto \textrm{The number of modes present.} -->
+<!-- \end{align} -->
+
+<!-- Of these, only $P$ can be confidently known. As this is the case I think making use of grids of the consensus matrices could help. They can provide evidence for when increasing $S$ and $R$ no longer offers significant gains. I think the Frobenius norm could be used to construct a stopping rule for these inputs of the inference, e.g. if the Frobenius norm of the difference of the matrix for Consensus $(R, S_1)$ and the matrix for Consensus $(R, S_2)$ (for some $S_1, S_2, R \in \mathbb{N}, S_2 > S_1$) is small than one should stop increasing $S$ and similarly for different values of $R$. One would have to pursued this far enough that one can believe that the stability of the consensus matrix is true. Based upon the results so far I think, letting $CM(r, s)$ denote a consensus matrix for consensus clustering using the $r^{th}$ iteration of $s$ chains, that if: -->
+
+<!-- \begin{align} -->
+<!-- &||CM(r, s) - CM(r, s + 10)||_F &< \epsilon \\ -->
+<!-- &||CM(r, s) - CM(r + 100, s)||_F &< \epsilon -->
+<!-- \end{align} -->
+
+<!-- for some small $\epsilon$ (which itself will be a function of $N$ as the Frobenius norm does not have an upper bound), then one should stop increasing the parameters of the inference. In practice  I think a visual inspection of the grid would be sufficient. Note that this appears to be asymptotic behaviour and increasing $S$ and $R$ to the largest values possible within one's computational constraints would not do any harm. -->
 
 ## Work remaining
 
