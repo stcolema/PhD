@@ -1,122 +1,118 @@
 # Future work {#futureWork}
 
-There are two main aspects to my curently-planned future work; 
+<!-- There are two main aspects to future work within my PhD:  -->
 
-1. the immediate next-step, the work to explore consensus clustering more fully; and
-2. the long-term plans for the scope of my PhD.
+<!-- 1. the immediate next-step, the work to explore consensus clustering more fully; and -->
+<!-- 2. the long-term focus. -->
 
-(1) requires investigation of consensus clustering in the multiple dataset case. This involves applying consensus clustering to:
-  * multiple-dataset simulations (similar to the single-dataset simulations described in the preceding chapter); and
-  * real data.
-  
-With regards to (2), there are two broad areas that are becoming more interesting to me as possible applications of integrative clustering:
- 
-* immunology; and
-* cancer.
+<!-- (1) requires investigation of consensus clustering in the multiple dataset case. This involves applying consensus clustering to: -->
+<!--   * multiple-dataset simulations (similar to the single-dataset simulations described in the preceding chapter); and -->
+<!--   * real data. -->
+
+<!-- With regards to (2), there are two broad areas that are becoming more interesting to me as possible applications of integrative clustering: -->
+
+<!-- * immunology; and -->
+<!-- * cancer. -->
 
 ## Consensus clustering
 
 ### Current project
 
-Currently I have explored the performance of consensus clustering for Bayesian mixture models. The next step is to extend the simulation study to cover the multiple dataset case. That consensus clustering may be used as an alternative to Bayesian inference in integrative clustering is one of its attractions. Investigating performance in this setting, which is an area where MLE models do not extend to and sampling-based Bayesian models can struggle to scale within, is key to displaying the value of consensus clustering. I have already shown that when many features are present that consensus clustering performs well and quickly in comparison to Bayesian inference. In multi-'omics analyses this problem is present in **each dataset**, exacerbating the problems present in the single dataset case. This can make Bayesian inference unfeasible in this setting. As I have already shown in the single dataset case, a Gibbs sampler can struggle as dimensionality scales, becoming trapped in modes as the likelihood function is a $P$-polynomial. Adding additional parameters for each dataset means that the likelihood surface becomes even more extreme and modes are extremely dense relative to the surrounding space. In this setting I hope that consensus clustering would perform well. A natural comparison for the simulation 
-is the ``iCluster`` software [@shen2009integrative; @mo2018fully], a popular 
-integrative clustering method.
+I have explored the performance of consensus clustering for Bayesian mixture models. The next step is to extend the simulation study to cover the multiple dataset case. That consensus clustering may be used as an alternative to Bayesian inference in integrative clustering is one of its attractions. Investigating performance in this setting within which sampling-based Bayesian models can struggle to scale, is key to displaying the value of consensus clustering. The results described in the preceding section show that consensus clustering overcomes some of the problem associated with Bayesian inference of high-dimensional data, i.e. multiple modes and the computational cost. In multi-'omics analyses this problem is present in **each dataset**, exacerbating the problems present in the single dataset case for using Bayesian inference. 
 
-To finish my current project, I then intend to apply consensus clustering to a real dataset. The Cancer Genome Atlas (**TCGA**) has many datasets that are used in several integrative methods papers. Cancer data is seen as useful for validating a clustering method, as the subtypes (of many cancers) are defined by their 'omics profile. This means that there exists known structure in the data that a method should uncover (at least to some degree). Furthermore, many of the specific datasets have already been studied, so a comparison between methods is enabled. The TCGA Pan-Cancer dataset [@hoadley2014multiplatform] is an ideal example of this; a large enough dimensionality that sampling-based Bayesian inference is not possible and so consensus clustering is a way of applying Bayesian models on this dataset.
+Investigating the advantages of consensus clustering for Bayesian integrative clustering models is therefore of interest. Multiple Dataset Integration [**MDI**, @kirk2012bayesian] and Bayesian Consensus Clustering [**BCC**, @lock2013bayesian] are two examples of Bayesian integrative clustering models that have publically available implementations driven by MCMC methods. I intend to use one of these as the model for which Bayesian inference and consensus clustering are compared. An MLE-based method that could be used within the comparison would be the ``iCluster`` software [@shen2009integrative; @mo2018fully], a popular integrative clustering tool.
 
-To uncover subtypes within cancer data requires that we infer a global clustering. 
-I would propose using either Bayesian Consensus Clustering [**BCC**, @lock2013bayesian], Clusternomics [@gabasova2017clusternomics] or else a pipeline applying Kernel Learning Integrative Clustering [**KLIC**, @cabassi2019multiple] to the dataset specific PSMs inferred by Multiple Dataset Integration [**MDI**, @kirk2012bayesian] to generate a global clustering. However, the Clusternomics R package as available on Github does not work in its current state, leaving BCC or else MDI + KLIC.
+A range of scenarios will be analysed. I will then compare the three methods of inferring a clustering under the same metrics as the single dataset case.
+
+<!-- The Gibbs sampler struggles to explore a range of partitions as the dimensionality scales. becoming trapped in modes as the likelihood function is a $P$-polynomial. Adding additional parameters for each dataset means that the likelihood surface becomes even more extreme and modes are extremely dense relative to the surrounding space. In this setting I hope that consensus clustering would perform well. A natural comparison for the simulation is the ``iCluster`` software [@shen2009integrative; @mo2018fully], a popular integrative clustering method. -->
+
+To finish the current project, consensus clustering of Bayesian mixture models should be validated using real data. The Cancer Genome Atlas (**TCGA**) has many datasets that are used in several integrative methods papers. Cancer data useful for validating a clustering method, as the subtypes (of many cancers) are defined by their molecular profile. This means that there exists known structure in the data that a method should uncover. Furthermore, many of the specific datasets have already been studied, so a comparison between methods is enabled. The TCGA Pan-Cancer dataset studied by @hoadley2014multiplatform is an ideal example of this. The dataset is of sufficiently high dimensionality that sampling-based Bayesian inference is not practical and there is known structure within the data.
+
+To uncover subtypes within cancer data requires that we infer a global clustering.  This means that a method such as MDI, which infers local, dataset specific clusterings informed by correlated clustering in the other datasets, is not sufficient in itself. A pipeline applying Kernel Learning Integrative Clustering [**KLIC**, @cabassi2019multiple] to the dataset specific PSMs inferred by MDI would generate a global clustering.
+
+<!-- This option presents a suitable comparison with the @hoadley2014multiplatform analysis, the global clustering of which was estimated using Cluster-of-Cluster-Analysis. -->
 
 ### Future extensions
 
-Expansions to consensus clustering are possible. Currently consensus clustering
-has many of the strengths of Bayesian inference. Extensions to leverage
-some of the strengths of _sampling techniques_ could also improve
-the ability of consensus clustering to uncover structure. This is not a new idea,
-@mclachlan1987bootstrapping proposed bootstrapping as a tool to enable the test
-of a single normal density versus a mixture of two normal densities in the 
-univariate case and @monti2003consensus proposed used of sampling within their 
-implementation of consensus clustering. More recently, Sampling items without 
-replacement and feature-selection have been shown to yield control of the sample
-familywise error and also improve structure estimation [@meinshausen2010stability].
-The idea of sampling features and items is the underlying mechanism of the 
-Random Forest algorithm [@breiman2001random]. Inspired by these, I propose
-extending consensus clustering and investigating:
+Expansions to consensus clustering are possible. Currently consensus clustering has many of the strengths of Bayesian inference. Extensions to leverage some of the strengths of _sampling techniques_ could also improve the ability of consensus clustering to uncover structure. This is not a new idea, @mclachlan1987bootstrapping proposed bootstrapping as a tool to enable the test of a single normal density versus a mixture of two normal densities in the  univariate case and @monti2003consensus proposed used of sampling within their implementation of consensus clustering. More recently, sampling items without replacement and feature-selection have been shown to yield control of the sample familywise error and also improve structure estimation [@meinshausen2010stability]. The idea of sampling features and items is the underlying mechanism of the Random Forest algorithm [@breiman2001random]. Inspired by these, I propose extending consensus clustering of Bayesian mixture models and investigating the effect of sampling:
 
-1. The effect of sampling items across chains;
-2. The effect of sampling features across chains; and
-3. Simultaneously sampling both features and items across chains.
+1. items across chains;
+2. features across chains; and
+3. features and items simultaneously across chains.
 
-Note that I am proposing random sampling of features rather than feature 
-selection in contrast to @meinshausen2010stability. This will lose some of the 
-guarantees of sample familywise error, but @meinshausen2010stability state that
-their results hold for slightly smaller constants if feature selection is no
-better than random.
+I am proposing random sampling of features rather than feature selection in contrast to @meinshausen2010stability. This means that some of the guarantees of sample familywise error will be weakened, but still hold [@meinshausen2010stability].
 
-A problem here is identifying which models find no structure without a visual 
-inspection. Finding which chains find which partitions seems non-trivial.
-One could take an average consensus matrix as with the implementation described
-in the previous sections of this report. However, I think that indentifying
-different structures present and identifying which features contribute signal 
-would be part of the attraction of this approach (also, which features do not 
-contribute). Taking only the average consensus matrix removes this.
+Sampling the items and features would increase the quantity of chains required for stable results. However, I think that reducing the size of the dataset could help uncover structure and improve one's insight into the structure uncovered, thus validating the additional complexity of the pipeline. Furthermore, as each peturbed dataset would be less complex, each chain would be better able to explore partitions. This means that one would expect that shorter chains would be sufficient to explore useful partitions, thus reducing the computational cost of each individual chain.
 
-Ideally sampling the items would reveal the stability of clusters and provide an
-argument for how likely the clusters are to be present in the larger population 
-as well as providing some insight into which clusters might split / merge if 
-more data is provided. 
+#### Sampling features
 
-As dimensionality is the source of so many problems for the inference, sampling 
-features would reduce the relative density of modes enabling better mixing. If 
-we sample features that contain no signal, we have seen in the no structure case
-that a chain will not discover false signal (although if the number of features 
-is not small enough it may stay in the initialised clustering rather than reduce
-to no structure). Thus sampling features could help make any signal present more
-clear without the fear that the cases where there are no structure will hide any
-signal when results are compiled. A condition here would be that one samples a 
-sufficiently small number of features that modes are less attractive to each 
-chain (to avoid the problems seen in the simulation of small N large P small dm.
-I suspect that sampling the items and features would require more chains for 
-stable results, but I think that several individual chains would be 
-significantly improved, improving the inference overall sufficiently to make the
-cost worthwhile.
+To investigate the effect of sampling features, one could create a similarity matrix between the partitions sampled from the different chains, using the ARI as the similarity measure. This would make a $S \times S$ matrix for $S$ different chains. Clustering this matrix (using a heuristic algorithm such as ``hclust``) would then enable investigation of the diversity of the partitions presented. Ideally **all** partitions would be similar suggesting that there is common structrue within each feature and all features are relevant. However, in many settings it would be reasonable to assume that under a certain subset of features there is no subpopulation structure, and under different sets of relevant features there might be different structures present [this framework helped inspire profile regression; @molitor2010bayesian]. Some of the structure uncovered might be uninteresting in the current analysis; for example in a precision medicine setting, it might be that only one of the cluster of partitions aligns with the known patient/control grouping (although ideally there is further structure uncovered!) whereas other sets of partitions might align with other known groupings not of interest to the current application (e.g. using some variables might see the population stratified based upon gender rather than disease state). Within a given set of partitions one would ideally see overlap in the set of features used. 
 
-One could also dismiss chains where no structure is found and isolate which 
-features are contributing signal to any partitions uncovered. This would also
-help if it is the case that two (or more) reasonable partitions are present.
+<!-- A problem here is identifying which models find no structure without a visual inspection. Finding which chains find which partitions seems non-trivial. -->
+<!-- One could take an average consensus matrix as with the implementation described -->
+<!-- in the previous sections of this report. However, I think that indentifying -->
+<!-- different structures present and identifying which features contribute signal  -->
+<!-- would be part of the attraction of this approach (also, which features do not  -->
+<!-- contribute). Taking only the average consensus matrix removes this. -->
 
-Note: sampling features might also help if there are several clustering 
-structures present (although this is a different problem).
+As dimensionality is the source of so many problems for the inference, sampling features would reduce the relative density of modes enabling better mixing. If we sample features that contain no signal, we have seen in the no structure case that a chain will not attempt to impose structure misleadingly (although if the number of features is not sufficiently small the chain may stay in the initialised clustering rather than reduce to no structure). Thus sampling features could help make any signal present more clear without the fear that the cases where there are no structure will hide any signal when results are compiled. A condition here would be that one samples a sufficiently small number of features that modes are less attractive to each chain. Based upon figure [exploration], I think that $P \in [1, 75]$ is a good range to ensure that the chains do not become trapped in initialisation. 
 
-I think that the issue of inference in high $P$ space is still difficult enough
-that any improvement that sampling offers is attractive. I also think that
-the computational cost of additional chains will be partially offset by each
-individual chain becoming quicker due to reducing the dimensionality of the 
-problem.
+#### Sampling items
 
+@monti2003consensus recommend sampling of items as part of their algroithm. The argument is that this reveals the stability of clusters, and is tied to the frequentist concept of statistical significance. @bock1985some made some effots to estabilish significance tests using sampling techniques for cluster analysis. Both these sources argue that if  the clusters emerge strongly regardless of data peturbation than one can better claim that the cluster is truly present in the larger population. I would argue that using a Dirichlet Process enables one to sweep items that are outliers i nthe dataset or strangely behaving in some other ways into their own clusters. The combination of the inferred $K$ and use of many chains with the ability to better represent multiple modes, means that this stability should be represented to a degree in the consensus matrix. It is possibly an avenue that deserves deeper consideration and some investigation, but my argument for sampling of items would be slightly different. It is also based around the concept of stability, but I do not attempt to translate this into "significance".
+
+<!-- Sampling items offers the opportunity to explore certain cases that I suspect are represented with too little uncertainty when there is a large number of features ($P > 50$).  -->
+
+Consider the scenario where two clusters exist but overlap partially, and the number of items on the boundary of these two clusters is small relative to the total membership of either cluster. Ideally the sampler would be exploring a range of partitions that includes samples that separate these clusters, exchange the boundary items between the clusters, and merge the clusters. However, I have shown that the diversity of partitions sampled in high dimensional settings is smaller in practice than one might wish. Therefore removing the items on the boundary might reveal that there is uncertainty regarding the clustering here. I suspect that including many chains with random subsamples of the items would capture uncertainty about the existence and membership of clusters in this scenario better than if peturbation of the dataset is not present within the chains. I think that consensus clustering begins to address this as it enables representations of multiple modes, but I would be interested to investigate if sampling of items would help to improve the performance of the sampler further.
+
+
+<!-- Having an understanding of which clusters are most likely to be present in the larger population is important as these are the   -->
+
+<!-- provide an argument for how likely the clusters are to be present in the larger population as well as providing some insight into which clusters might split / merge if more data is provided. This is embedded more in the frequentist paradigm. This logic does present issues as in some scenarios the membership of certain clusters might be very small. In this case such clusters might be excluded from any chain where a single member is not in the sample used. I suspect that there would still be some evidence for the cluster if the number of chains used was sufficiently large, but that the uncertainty regarding the cluster would be large. This is not inherently wrong; if the cluster appears to have an underlying logic based upon domain knowledge than it is still of interest and should be mentioned in an analysis. However, if the membership is very small and the cluster does not become uncovered in any chain where a single member is not included in the analysis, I think one should be uncertain regarding the membership and existence of said cluster. -->
+
+
+
+<!-- One could also dismiss chains where no structure is found and isolate which  -->
+<!-- features are contributing signal to any partitions uncovered. This would also -->
+<!-- help if it is the case that two (or more) reasonable partitions are present. -->
+
+<!-- Note: sampling features might also help if there are several clustering  -->
+<!-- structures present (although this is a different problem). -->
+
+<!-- I think that the issue of inference in high $P$ space is still difficult enough -->
+<!-- that any improvement that sampling offers is attractive. I also think that -->
+<!-- the computational cost of additional chains will be partially offset by each -->
+<!-- individual chain becoming quicker due to reducing the dimensionality of the  -->
+<!-- problem. -->
+
+<!-- #### Combining chains -->
+
+<!-- In consensus clustering samples are combined in the most simple way possible. Each chain is given equal weight when combining the samples into the consensus matrix. One could investigate whether a weighted average could improve performance. Calculation of the weights could be done using importance sampling or some sort of optimisation based around the marginal likelihood [similar to the weighting done for different chains by @yao2020stacking]. However, I suspect that this would be difficult to implement well in consensus clustering. Computing the $S$ weights could be computationally complex, offsetting one of the main benefits of consensus clustering, the reduction in runtime. Furthermore, I do not know if their would be large benefits for the additional complexity. I suspect that the difference between weighting of samples and naively combining alll the chains will be analagous to results shown by @breiman2001random regarding random feature selection in comparison to adaptive reweighting of features. However, I do not have a strong logic regarding this and acknowledge it could be a path worth pursuing for someone who isn't me. -->
 
 ## Future applications
 
 
 ### Immunology
 
-I have said previously that immunology is an area where I think clustering, and specifically integrative clustering, can yield large dividends. Immune-mediated diseases are complex pathologies; integrating all data into analysis of such diseases yields improved understanding compared to investigation at the single view level [@hasin2017multi; @integrative2014integrative]. Investigating diseases and settings where complex molecular biology is unfolding strikes me as a natural application of clustering methods, a large attraction of which is improved interpretability. Furthermore, many immune mediated diseases are known to have a genetic [@dubois2010multiple; @okada2014genetics; @hunt2008newly; @bourges2020resolving] and epigenetic [@soskic2019chromatin] component. It has already been seen in cancer that there exists a large range of immune phenotypes within patients [@varn2016integrative; @hendrickx2017identification]. I would think that within immune-mediated diseases the variety of behaviour within the immune system could be on a similar scale of complexity; thus the combination of leveraging multiple 'omics views simultaneously and inferring $K$ thgrough use of a Dirichlet process could offer insights into patient immune profiles that are currently lacking. Alternatively to clustering using multiple 'omics profiles, one could instead use multiple datasets of gene expression across disease types as the drivers of many of these diseases have been shown to correlate, thus suggesting that sharing information across datasets could boost signal [@burren2020characterisation]. 
+Immunology is an area where clustering, and specifically integrative clustering, can yield large dividends. Immune-mediated diseases are complex pathologies; integrating all data into analysis of such diseases yields improved understanding compared to investigation at the single view level [@hasin2017multi; @integrative2014integrative]. Investigating diseases and settings where complex molecular biology is unfolding is a natural application of clustering methods due to their ability to aid and improve interpretation. Furthermore, many immune mediated diseases are known to have a genetic [@dubois2010multiple; @okada2014genetics; @hunt2008newly; @bourges2020resolving] and epigenetic [@soskic2019chromatin] component showing that analysis of 'omics level data for these diseases is known to offer insight into the disease aetiology.
 
-I see there being three statistical items of interest for clustering within immunology:
+It has already been seen in cancer that there exists a large range of immune phenotypes within patients [@varn2016integrative; @hendrickx2017identification]. One would expect that for immune-mediated diseases the variety of behaviour within the immune system would be, at a minimum, on a similar scale of complexity; thus the combination of leveraging multiple 'omics views simultaneously and inferring the number of clusters present through use of a Dirichlet process should offer insights into patient immune profiles that are currently lacking. Alternatively to clustering using multiple 'omics views, one could instead use multiple datasets of gene expression across disease types. As the drivers of many of these diseases have been shown to correlate, sharing information across datasets could boost signal [in logic similar to @burren2020characterisation]. Using consensus clustering in MDI could then be used to leverage this correlation for diseases where the data is sparser with more common diseases.
 
-1. Cells: we know that our classification of cells into different groups is simplistic. Each cell is unique; many share broad properties and characteristics, but the pretence that all cells of a certain type are exact clones is misleading. Clustering cells by their gene expression might reveal interesting heterogeneity within populations traditionally viewed as homogeneous. Particularly within patients with diseases associated with specific cell or tissue types, it might be interesting to see if subsets of traditional cell groups are behaving significantly differently by assessing all genes present, rather than relying on a small number of key signals. 
-2. Genes: understanding how genes are expressed differently within different environments is key to understanding localised pathologies like many immune-mediated diseases (such as inflammatory bowel diseases, **IBD**, and type 1 diabetes, **T1D**). Clustering genes:
+Consider the following three statistical items of interest for clustering within immunology:
+
+1. Cells: we know that our classification of cells into different groups is simplistic. Each cell is unique; many share broad properties and characteristics, but the pretence that all cells of a certain type are _exact_ clones is misleading. Clustering cells by their gene expression might reveal interesting heterogeneity within populations traditionally viewed as homogeneous. Particularly within patients with diseases associated with specific cell or tissue types, it might be interesting to see if subsets of traditional cell groups are behaving significantly differently by assessing all genes present, rather than relying on a small number of key signals. The Human Cell Atlas [@regev2017science] could be a suitable database for investigating this concept. 
+2. Genes: understanding how genes are expressed differently within different environments is key to understanding localised pathologies like many autoimmune diseases (such as inflammatory bowel diseases, **IBD**, and type 1 diabetes, **T1D**). Clustering genes:
   
-    * across tissues and cell types would be a natural application of Bayesian integrative clustering as uncertainty is quantified and the similarity between tissues may be inferred from the data. Thus tissue heterogeneity will be shown in the final results and we may learn which tissues may contain useful information regarding other tissues that might be harder / more damaging to access for a patient and can be leveraged to inform decisions that the ideal sample tends to be sparse for. 
-    * within affected tissue types from multiple diseases to leverage shared signal (e.g. cluster genes using pancreas samples of T1D patients and colon samples from IBD patients, although as these are more commonly studied diseases, ideally data from a rarer autoimmune disease such as Sarcoidosis would be included).
-    * across patients and controls within both disease associated tissues and partolling immune cells. Using MDI [@kirk2012bayesian] and the Human Cell Atlas data repository [@regev2017science] to cluster genes in people with the disease state and controls, treating the different disease states and controls as different datasets. Due to the paired dataset correlation parameter in the model, $\phi_{ij}$, datasets will be encouraged to cluster similarly, particularly as I would expect most datasets to have a large level of correlation between many clusters (e.g. house-keeping genes). Thus, any dataset specific clusters would hopefully contain strong signal and might describe novel biology that helps improve our understanding of the disease aetiology. An example of a dataset that would suit this analysis would consist of 4 datasets of gene expression:
+    * across tissues and cell types would be a natural application of Bayesian integrative clustering as uncertainty is quantified and the similarity between tissues may be inferred from the data. Thus tissue heterogeneity will be shown in the final results and we may learn which tissues may contain useful information regarding other tissues that might be harder / more damaging to access for a patient and can thus be leveraged to inform decisions that the ideal sample tends to be sparse for. 
+    * within affected tissue types from multiple diseases to leverage shared signal (e.g. cluster genes using pancreas samples of T1D patients and colon samples from IBD patients, although as these are more commonly studied diseases, ideally data from a rarer autoimmune disease would also be included).
+    * across patients and controls within both disease associated tissues and partolling immune cells. Using MDI [@kirk2012bayesian] and the Human Cell Atlas data repository to cluster genes in people with the disease state and controls, treating the different disease states and controls as different datasets. Due to the paired dataset correlation parameter in the model, $\phi_{ij}$, datasets will be encouraged to cluster similarly, particularly as I would expect most datasets to have a large level of correlation between many clusters (e.g. house-keeping genes). Thus, any dataset specific clusters would hopefully contain strong signal having overcome the strong correlation. These clusters might describe novel biology that helps improve our understanding of the disease aetiology. An example of a dataset that would suit this analysis would consist of 4 datasets of gene expression:
 
       * An example of patrolling immune cells such as CD14+ monocytes collected from the blood stream for both patients and controls; and 
       * Tissue samples of the diseases location, e.g. the pancreas for T1D or the large intestine for IBD, for both patients and controls.
   
     The tissue sample should contain activated immune cells in those suffering the disease state, whereas the circulating immune cells should be deactivated. Any clusters that emerge in the patient specific datasets but not the control datasets would be of interest. Another view that could be of interest is the different clusters emerging between tissue specific expression and the patrolling cell expression that are in the patients but not in the controls.
   
-3. Patients: it is now believed that there is greater heterogeneity within many traditional immune-mediated diseases. Clustering patients across multiple 'omics derived from the tissue associated with the disease and other datasets such as patrolling CD4, CD14 cells (i.e. immune cells that are probably not activated due to being away from the inflamed area but demonstrative of what the patients’ immune cells may have appeared prior to disease onset) could be of interest. This would allow subdivision of patients based upon an omics profile rather than purely upon observed phenotype and disease progression (although a validation of the clustering would include correlation between some of the predicted clusters and clinical subtypes).
+3. Patients: it is now believed that there is greater heterogeneity within many traditional immune-mediated diseases. Clustering patients across multiple 'omics derived from the tissue associated with the disease and other datasets such as patrolling CD4+, CD14+ cells (i.e. immune cells that are not activated due to being away from the inflamed area but demonstrative of what the patients’ immune cells may have appeared prior to disease onset) could be of interest. This would allow subdivision of patients based upon an omics profile rather than purely upon observed phenotype and disease progression (although a validation of the clustering would include correlation between some of the predicted clusters and clinical subtypes).
 
 
 <!-- I describe briefly a slightly more detailed example of a study of clustering behaviour of genes across disease states using MDI. Using data such as that available at the Human Cell Atlas it might be interesting to cluster genes in people with the disease state and controls, treating the different disease states and controls as different datasets. Due to the paired dataset correlation parameter in the model, $\phi_{ij}$, datasets will be encouraged to cluster similarly, particularly as I would expect most datasets to have a large level of correlation between many clusters (e.g. house-keeping genes). Thus, any dataset specific clusters would hopefully contain strong signal and might describe novel biology that helps improve our understanding of the disease aetiology. The ideal dataset for this would involve 4 datasets of gene expression: -->
