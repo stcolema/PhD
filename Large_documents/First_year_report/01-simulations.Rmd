@@ -1,33 +1,307 @@
-# Simulations {#simulations}
+# Methods {#methods}
 
-## Introduction
+## Consensus clustering of Bayesian mixture models
 
-The simulation study has two goals:
+As noted in the preceding section, Bayesian mixture models have many attractive features such as:
+
+1. allowing inference of $K$;
+2. allowing integration of prior information; and
+3. extending naturally to the multiple dataset scenario.
+
+However, MCMC methods, the workhorse of Bayesian inference, have pathological
+behaviour in a high dimensional setting; a setting which is prevalent in modern biomedical 
+data. The sampler becomes very slow to perform a single iteration,
+and can become trapped within a single mode for any realistic length of run time
+[@ronan2016avoiding; @chandra2020bayesian; @robert2018accelerating].
+However, MCMC samplers are often adept at finding _a_ mode. A small
+number of iterations (relative to the number required for convergence) is often
+sufficient to find a mode. Therefore I propose extending Consensus clustering to
+Bayesian mixture models. I use many short chains each with a random
+initialisation. This ensemble approach is expected to represent more modes that are present in the data than would be investigated in any single chain. The density of each mode is estimated by the number of samples generated from that part of the space, as is standard in sampling-based density estimation. 
+
+This application of consensus clustering allows one to perform inference upon a Bayesian clustering model in contexts where Bayesian inference is difficult. However, it must be stressed that although the models may be Bayesian, the inference is not. I aim to marry some of the attractions of Bayesian mixture models with those of the ensemble.
+
+The algorithm is described below:
+
+| **PROCEDURE:** Consensus clustering for Bayesian mixture models
+|
+| **Input:** 
+| a dataset $X=(x_1, \ldots, x_N)$
+| a non-parametric mixture model with membership vector $c=(c_1, \ldots, c_N)$
+| an MCMC algorithm _Sample_
+| the number of chains to run, $S$
+| the number of iterations within each chain, $R$
+| 
+| **Method:** 
+| $\mathbb{M} \leftarrow 0_{N \times N}$ \{initialise the consensus matrix.\}
+| for $s$ in $1, 2, \ldots, S$ do
+|   $set.seed(s)$ \{set the random seed that controls initialisation.\}
+|   $Y_{(0, s)} \leftarrow$ _Initialise_$(X)$ \{initial random partition.\}
+|   for $r$ in $1, 2, \ldots, R$ do
+|      $Y_{(r, s)} \leftarrow$ _Sample_$(c)$ \{generate a Markov chain for the membership vector.\}
+|   end
+|   $B^{(s)} \leftarrow Y_{(R, s)}$ \{create a coclustering matrix using the $R^{th}$ sample.\}
+|   $\mathbb{M} \leftarrow \mathbb{M} + B^{(s)}$ 
+| end
+| 
+| $\mathbb{M} \leftarrow \frac{1}{S} \mathbb{M}$ \{normalise the consensus matrix.\}
+| $\hat{Y} \leftarrow$ partition $X$ based upon $\mathbb{M}$
+|
+| **Output:** 
+| consensus matrix $M$
+| partition $\hat{Y}$
+
+In contrast to previosuly implemented versions of consensus clustering, one does not have to set $K$, as this is inferred within the non-parametric mixture model.
+
+<!-- Through use of random initialisation one creates diversity in the coclustering  -->
+<!-- matrices produced, avoiding the need for a sampling method. -->
+
+
+
+
+<!-- ### Consensus inference -->
+
+<!-- Consensus inference is an ensemble method such as _random forest_  -->
+<!-- [@breiman2001random], and aggregates many (presumably) weak learners to improve  -->
+<!-- ability to explore multiple modes and improve the model's ability to uncover  -->
+<!-- structure. It follows a similar logic to  -->
+<!-- _consensus clustering_ [@monti2003consensus], allowing many models with  -->
+<!-- different random initialisations to contribute equally weighted  -->
+<!-- votes on the clustering. In contrast to consensus clustering, consensus  -->
+<!-- inference does not require model convergence. Furthermore, consensus clustering -->
+<!-- is intended as a method to choose the number of clusters present based upon the -->
+<!-- stability of clusters for different choice of $K$, whereas consensus inference  -->
+<!-- infers $K$, and thus this uncertainty about $K$ is represented in the final  -->
+<!-- consensus matrix. More precisely I define consensus inference as follows for -->
+<!-- this report: -->
+
+<!-- ```{definition, consensusInference, name="Consensus inference"} -->
+<!-- A general method for performing inference upon clustering models using MCMC  -->
+<!-- methods. Consensus inference runs $S$ independent chains of a collapsed Gibbs -->
+<!-- sampler run for $R$ iterations saving the sample from the $R^{th}$ iteration.  -->
+<!-- That is, from the $s^{th}$ chain a single value for each variable is recorded, -->
+<!-- $\theta^{(s)}=(\theta_1^{(s)}, \ldots, \theta_Q^{(s)})$. -->
+
+<!-- The samples are then compiled into a $S \times Q$ matrix (where the $(s, q)^{th}$  -->
+<!-- entry is the sampled value for the $q^{th}$ parameter in the $s^{th}$ chain). -->
+
+<!-- Inference is performed similarly to the case of a Bayesian inference using  -->
+<!-- sampling methods, but the interpretation of results differs in that the  -->
+<!-- uncertainty measured is not necessarily the posterior variance and we do not -->
+<!-- assume that we are sampling from the posterior distribution. -->
+<!-- ``` -->
+
+
+<!-- As consensus inference uses MCMC methods, it may leverage some of the strengths  -->
+<!-- of Bayesian inference (e.g. use of a prior, inference of $K$ through use of a  -->
+<!-- _Dirichlet-Multinomial Allocation_ (**DMA**) mixture model [@green2001modelling; -->
+<!-- see @savage2013identifying for an example], suitability for an  -->
+<!-- integrative setting, and some quantification of uncertainty), but does not offer -->
+<!-- the asymptotic guarantees of Bayesian inference.  -->
+
+<!-- As each chain is independent of all others, this means that consensus inference  -->
+<!-- can use a parallel environment to reduce computational time and improve  -->
+<!-- scalability.  -->
+
+<!-- Roughly summarising: -->
+
+<!-- ```{r, my_table, echo = F} -->
+
+<!-- col_names <- c("MLE", "Bayesian", "Consensus") -->
+<!-- row_names <- c("Singularities in the likelihood",  -->
+<!--   "Can infer $K$", -->
+<!--   "Can use prior knowledge", -->
+<!--   "Quantifies uncertainty", -->
+<!--   "Robust to local maxima", -->
+<!--   "Speed" -->
+<!--   ) -->
+
+<!-- scores <- c( -->
+<!--   T, F, F, -->
+<!--   F, T, T, -->
+<!--   F, T, T, -->
+<!--   F, T, T, -->
+<!--   F, F, T, -->
+<!--   "Fast", "Slow", "Fast" -->
+<!-- ) %>%  -->
+<!--   matrix(byrow = T, ncol = 3) %>% -->
+<!--   data.frame() %>%  -->
+<!--   set_rownames(row_names) %>%  -->
+<!--   set_colnames(col_names) -->
+
+<!-- knitr::kable(scores, row.names = T, escape = F) -->
+
+
+<!-- ``` -->
+
+<!-- ## Ensemble methods -->
+
+<!-- I use the same definition of an _ensemble_ as @re2012ensemble.  --> 
+
+<!-- ```{definition, ensemble, name = "Ensemble"} -->
+<!-- A set of learning machines that work together to find some structure within data, -->
+<!-- whether this be a supervised problem such as _classification_ or an unsupervised -->
+<!-- problem such as cluster analysis. -->
+
+<!-- ``` -->
+
+
+<!-- <!-- There exists many other terms referring to the same basic concept, e.g. --> 
+<!-- <!-- a fusion, combination, aggregation, committee of learners, but I will use the  -->
+<!-- <!-- term ensemble throughout this report. --> 
+
+<!-- The concept of an ensemble of learners and its improvements is an old one, and -->
+<!-- not limited to machincal learners [@condorcet1785essay]. Much of the theoretical -->
+<!-- underpinings of ensemble learning has focused upon resampling-based methods -->
+<!-- and classification [@friedman2007bagging; @breiman1996bias; @schapire1998boosting], -->
+<!-- in keeping with the  majority of algorithms, of which _Random forest_ -->
+<!-- [@breiman2001random] is probably the most famous. There have been efforts to -->
+<!-- provide a more general mathematical basis for ensembles; Eugene Kleinberg -->
+<!-- deserves special mention for achievements based upon set theory and -->
+<!-- combinatorics [@kleinberg1977infinitary; @kleinberg1990stochastic; -->
+<!-- @kleinberg1996overtraining; @kleinberg2000mathematically]. More pertinently for -->
+<!-- the practitioner, perhaps, these methods have also displayed great empricial -->
+<!-- success, outperforming state-of-the-art methods in both simulations and -->
+<!-- benchmark datasets [@breiman2001random; @monti2003consensus; -->
+<!-- @sohn2007experimental; @afolabi2018ensemble]. Attractions of ensemble methods -->
+<!-- include their ability to explore multiple modes [@ghaemi2011review]. Most -->
+<!-- ensemble methods also enable use of a parallel enivronment to improve -->
+<!-- computation speed [@ghaemi2009survey]. -->
+
+<!-- For a more thorough review of ensemble methods with a focus on classification, -->
+<!-- please see @re2012ensemble. -->
+
+<!-- @monti2003consensus proposed a general frameworks for ensembles of clusterers, -->
+<!-- "Consensus clustering". It is an model-independent, sampling-based method, that -->
+<!-- attempts to provide a rule-based approach to choosing $K$ in the model and to -->
+<!-- improve cluster stability. The individual-level algorithm investigated in the -->
+<!-- original publication and implemented in the ``ConsensusClusterPlus`` R package -->
+<!-- [@wilkerson2010consensusclusterplus] is $k$-means clustering. This flavour of -->
+<!-- Consensus clustering has been successfully used in cancer subtyping -->
+<!-- [@verhaak2010integrated; @marisa2013gene]. -->
+
+<!-- I propose extending Consensus clustering to Bayesian models. As listed -->
+<!-- previously, Bayesian mixture models have many attractive features such as: -->
+
+<!-- 1. allowing inference of $K$; -->
+<!-- 2. allowing integration of prior information; and -->
+<!-- 3. extending naturally to the multiple dataset scenario. -->
+
+<!-- However, MCMC methods, the workhorse of Bayesian inference, have pathological -->
+<!-- behaviour in the context of modern biomedical data which is often of sufficient -->
+<!-- dimensionality that the sampler is both very slow to perform a single iteration, -->
+<!-- and can become trapped within a single mode for any realistic length of run time -->
+<!-- [@ronan2016avoiding; @chandra2020bayesian; @robert2018accelerating]. -->
+<!-- However, MCMC samplers are often adept at finding _a_ mode, therefore a small -->
+<!-- number of iterations (relative to the number required for convergence) is often -->
+<!-- sufficient to find a mode. Using many short chains each with a random -->
+<!-- initialisation, one might believe that one will explore more modes that are -->
+<!-- present in the data than would be investigated in any single chain. One may use -->
+<!-- this approach to perform inference upon a Bayesian clustering model in contexts -->
+<!-- where this is normally difficult or even impossible, although the inference -->
+<!-- itself is not Bayesian. Thus one may marry the attractions of Bayesian _models_ -->
+<!-- with those of the ensemble. -->
+
+<!-- can be slow to  -->
+<!-- explore the target distribution. In practice, particularly for complex,  -->
+<!-- high-dimensional data, ensuring that the sampler has -->
+
+<!-- 1. reached its stationary distribution; -->
+<!-- 2. explored the full support of the posterior space; and -->
+<!-- 3. converged to the expectation -->
+
+<!-- is very difficult [@robert2018accelerating]. -->
+
+<!-- Bayesian clustering models are therefore attractive, but  -->
+
+
+Note that this does sacrifice certain qualities about MCMC methods that are attractive
+
+* there are no aymptotic guarantees;
+* the uncertainty described across the partitions is not the same as the
+uncertainty described by Bayesian inference; and
+* one cannot claim that the distribution of values generated for each variable
+coincides with the posterior distribution.
+
+In cluster analysis generally, but even more so in the context of biomedical
+data and human health, any result has to be validated based upon knowledge of
+the domain. This means that aymptotic guarantees are not sufficient to validate
+a final partition; the defence and interpretation based upon the data is more
+important. Thus I argue that if consensus clustering of Bayesian mixture models
+produces sensible, interpretable results, than the loss of the asymptotic
+guarantees is insufficient reason to prevent use of this approach, particularly
+as the asymptotic guarantees do not appear to hold in practice.
+
+There are three outstanding issues for any ensemble of clusterers
+[@topchy2003combining] that need to be considered.
+
+1. Consensus: How to combine different clusterings?
+2. Diversity: How to generate different partitions?
+3. Strength: How "weak" can each input partition be?
+
+One may realise that many of the issues here are also present for sampling-based
+inference of Bayesian mixture models. In this case, one could consider the MCMC
+sampler as a special case of an clustering ensemble, being a set of many
+partitions. In this case the problems of diversity and strength are mitigated
+somewhat by mathematical properties of the Markov chain, but as the preceding
+list of problems for MCMC makes clear, these questions are not answered as
+satisfactorily as one might hope.
+
+For the problem of finding a consensus between partitions, as the labels
+generated for each partition are symbolic, combining clusterings
+can be a difficult problem [@strehl2002cluster]. Aggregating partitions into a 
+Consensus matrix [as recommended by @monti2003consensus] offers a representation
+of the partitions that overcomes this label-swapping problem. A point clustering
+may then be estimated from these matrices using one of the methods listed by
+@fritsch2009improved.
+
+The source of diversity in my approach is the use random initialisation of the
+sampler, in contrast to the original consensus clustering algorithm where 
+diversity is introduced via peturbation of the dataset using some sampling
+method. In my simulations I show that a single MCMC chain can struggle to 
+produce a diverse range of partitions and that using many different 
+initialisations helps to overcome this problem. I also display cases where the
+diversity of partitions is very limited, but this is due to each chain finding 
+the global maximum and thus a lack of diversity in the final samples is ideal.
+
+I will investigate the strength of each individual in my simulation study,
+showing emprical results for both the consensus and individual learners.
+There already exist results in the literature that the ratio of the diversity
+of partitions to the strength is more important that the strength alone,
+with the caveat that each individual performs better than random
+[@breiman2001random]. Prior expectation for a consensus of
+Bayesian mixture models would be that within a single iteration
+each Markov chain would be producing samples that are better than random as the
+sampler proposes a more probable state.
+
+## Simulation study
+
+I test the quality of the inference offered by consensus clustering in a simulation study. This study has two goals:
 
 1. absolute evaluation of consensus clustering as a inferential technique for mixture models; and 
 2. comparative evaluation of consensus and Bayesian inference of mixture models and Mclust, a popular MLE-based mixture model R package.
 
-I am interested in evaluating:
+To achieve these goals I am interested in evaluating:
 
 * Predictive performance - how well each method predicts the true clustering (metric: *Adjusted Rand Index* [@hubert1985comparing] between the predicted clustering from each method and the true clustering);
 * Uncertainty quantification - how well each method quantifies uncertainty about the true clustering (metric: *Frobenius norm* of the difference of the coclustering / consensus / posterior similarity matrices and the true coclustering matrix); and
 * Speed - how long each method takes to run (metric: *seconds*).
 
-## Data generating mechanism
+### Data generating mechanism
 
-<!-- For this case I use the notation: -->
+I use the notation:
 
-<!-- * $N$: the number of items generated; -->
-<!-- * $P$: the number of relevant features used; -->
-<!-- * $P_n$: the number of irrelevant features used; -->
-<!-- * $K$: the true number of clusters present; -->
-<!-- * $X = (x_1, \ldots, x_N)$: the items generated; -->
-<!-- * $\pi=(\pi_1, \ldots, \pi_K)$: the expected proportions of the population belonging to each cluster; -->
-<!-- * $c=(c_1, \ldots, c_N)$: the allocation variable for each item; -->
-<!-- * $\theta=(\theta_1, \ldots, \theta_K)$: the parameters associated with each component; and -->
-<!-- * $\phi=(\phi_1,\ldots, \phi_P)$: the indicator variable of feature relevance. -->
+* $N$: the number of items generated;
+* $P$: the number of features in the dataset;
+* $P_n$: the number of irrelevant features used;
+* $K$: the true number of clusters present;
+* $X = (x_1, \ldots, x_N)$: the items generated;
+* $\pi=(\pi_1, \ldots, \pi_K)$: the expected proportions of the population belonging to each cluster;
+* $c=(c_1, \ldots, c_N)$: the allocation variable for each item;
+* $\theta=(\theta_1, \ldots, \theta_K)$: the parameters associated with each component; and
+* $\phi=(\phi_1,\ldots, \phi_P)$: the indicator variable of feature relevance.
 
-Our data generating model is a finite mixture model with independent features where irrelevant features have global parameters rather than component specific parameters:
+The data generating model is a finite mixture model with independent features. Within this model there exist "irrelevant features" that have global parameters rather than component specific parameters:
 
 \[
 \begin{aligned}
@@ -38,15 +312,17 @@ p(x, c, \theta, \pi) &= \prod_{i=1}^N p(x_i | c_i, \theta_{c_i}) \prod_{i=1}^N p
 
 In the simultatiuon study described here, the model is a mixture of *Gaussian* distribution and thus $\theta_{kp}=(\mu_{kp}, \sigma^2_{kp})$.
 
-As each method of inference uses a common model, this data-generating mechanism is not expected to favour any one method over another.
+<!-- As each method of inference uses a common model, this data-generating mechanism is not expected to favour any one method over another. -->
 
-I test seven different scenarios that change various parameters in this model. The components are defined by parameters $(\mu_{kp}, \sigma^2)$ for each cluster within each feature. Within a scenario there is a common vector of possible means for each feature:
+### Study design
+
+I test seven different scenarios that change various parameters in this model. The components are defined by parameters $(\mu_{kp}, \sigma^2)$ for each cluster within each feature. Within any scenario there is a common vector of possible means for each feature:
 
 \begin{align}
 \mu = (\mu_1, \ldots, \mu_K)
 \end{align}
 
-The indices here do not necessarily associated with the corresponding cluster (i.e. $\mu_1$ does not necessarily define cluster 1). Instead the mean associated with each cluster is randomly sampled without replacement for each feature. Let $\mu$ be ordered by increasing magnitude, i.e. $\mu_i < \mu_j \forall i < j$. Then $\Delta \mu$ be the distance between two consecutive means, i.e. $\mu$ may be re-written:
+The indices here do not necessarily associated with the corresponding cluster (i.e. $\mu_1$ does not necessarily define the cluster labelled 1). Instead the mean associated with each cluster is randomly sampled without replacement for each feature. Let $\mu$ be ordered by increasing magnitude, i.e. $\mu_i < \mu_j \forall i < j$. Then $\Delta \mu$ be the distance between two consecutive means, i.e. $\mu$ may be re-written:
 
 \begin{align}
 \mu = (\mu_1, \mu_1 + \Delta \mu, \ldots, \mu_1 + ( K - 1 ) \times \Delta \mu).
@@ -54,7 +330,7 @@ The indices here do not necessarily associated with the corresponding cluster (i
 
 Thus $\Delta \mu$ may be considered a defining parameter for the scenario rather than $\mu$ itself.
 
-As the mean of a cluster in a feature is sampled from $\mu$, this means that additional features imparts more information about the clustering structure. There is $K!$ possible unique permutations of $\mu$. This means that as the number of relevant features grows the clarity of the structure becomes improves.
+As the mean of a cluster in a feature is sampled from $\mu$, this means that additional features imparts more information about the clustering structure. There is $K!$ possible unique permutations of $\mu$. This means that as the number of relevant features grows the clarity of the structure improves.
 
 The scenarios tested are:
 
@@ -111,9 +387,9 @@ The scenarios tested are:
 <!-- \end{tabular} -->
 <!-- \end{center} -->
 
-Each scenario is seen as testing certain cases or concepts.
+Each scenario is seen as testing certain concepts or else specific characteristics of real data.
 
-### 2D
+#### 2D
 This case is seen as an introduction to method performance. The small dimensionality and coherent structure means that one does expect the collapsed Gibbs sampler to explore the target distribution quite thoroughly. This is not intended to be a realistic dataset; it is intended as a setting where both ``Mclust`` and the collapsed Gibbs sampler will perform as expected, displaying no patholgical behaviour.
 
 <!-- providing an insight into how the sampling compares in consensus clustering and Bayesian inference.  -->
@@ -173,7 +449,7 @@ This case is seen as an introduction to method performance. The small dimensiona
 <!--   ) -->
 <!-- ``` -->
 
-### No structure
+#### No structure
 
 In this case all items are drawn from the same normal distribution. It is meant to be a test to see how the inference methods perform when there is no structure to find. It may be considered as analagous to attempting to quantify the false positive rate.
 
@@ -227,7 +503,7 @@ In this case all items are drawn from the same normal distribution. It is meant 
 <!--   ) -->
 <!-- ``` -->
 
-### Base case
+#### Base case
 
 This is the _base case_ which most of the following scenarios are some variation of. This is intended to be a benchmark against which performance may be judged. Due to the clarity of the structure, the lack of irrelevant features and the relatively low dimensionality each method is expected to perform well here across all metrics, predicting the true clustering correctly and with very little uncertainty.
 
@@ -296,7 +572,7 @@ This is the _base case_ which most of the following scenarios are some variation
 <!-- #   ) -->
 <!-- ``` -->
 
-### Large standard deviation
+#### Large standard deviation
 
 This is to test how distinct the clusters must be for the inference to perform well. In many datasets there is no reason to believe that the clusters should be strongly separable; this setting is intended to better understand how sensitive the different approaches are to overlap of subpopulations.
 
@@ -480,7 +756,7 @@ This is to test how distinct the clusters must be for the inference to perform w
 <!-- ``` -->
 
 
-### Small $N$, large $P$
+#### Small $N$, large $P$
 
 This is to test the _small $N$, large $P$_ scenario so common in genetics. An 
 example of this data would be in clustering patients based upon their gene 
@@ -560,7 +836,7 @@ Many of the the Cancer Genome Atlas (**TCGA**) datasets have this characteristic
 <!-- #   ) -->
 <!-- ``` -->
 
-### Irrelevant features
+#### Irrelevant features
 
 This is to test how robust to noise the methods are. In many settings, such as 
 gene expression data, a large number of noisy features that contribute little 
@@ -651,7 +927,7 @@ selection required.
 <!-- #   ) -->
 <!-- ``` -->
 
-### Varying proportions
+#### Varying proportions
 
 This simulation is designed to test how sensitive the methods are to relatively 
 small clusters when large clusters are present. For example, in precision 
@@ -726,8 +1002,6 @@ in such a setting.
 <!-- #   ) -->
 <!-- ``` -->
 
-## Method
-
 ### Data-generation
 
 For each of the scenarios described above, I generate 100 membership vectors. Using the specific parameters associated with each scenario (the details of which are listed in a table in appendix A), 100 datasetsare then generated, defined by the membership vectors. These membership vectors will be the true clustering used in model comparison. Each pairing of a dataset and membership vector, $(X^{(i)}, c^{(i)})$, is referred to as a _simulation_ within a scenario.
@@ -777,7 +1051,7 @@ The samples from the chains that pass the Shapiro-Wilks test are then pooled for
 
 For a collapsed Gibbs sampler the number of features present influences how diverse a range of partitions the sampler can explore. One can see in figure [exploration] that for a small number features the sampler suggests a different partition with every sample, but as  the number of features scales the diversity becomes more and more limited. This is not inherently a flaw; as the number of features increases so too does the amount of information pertaining to the structure in the dataset in the simulations used here. However, this does mean that it is more probable that the sampler becomes trapped in any modes it encounters as the attraction of any single mode becomes more extreme as too does the distance between modes. 
 
-![As the number of features present increases the collapsed Gibbs sampler struggles to sample a wide range of partitions. If the clarity of the underlying structure is low, this can be pathologically poor (only a single partition, the initialisation, is sampled). These results are for a datasets of similar structrue to the small $N$, large $P$ case; i.e. $N=50$, $K=5$. There is a single dataset generated for each value of $P \in \{1, \ldots, 500\}$ for each different value of $\Delta \mu$. ](./Images/Simulations/Exploration.png)
+![As the number of features present beguns to significantly exceed the number of items present the collapsed Gibbs sampler struggles to sample a wide range of partitions. If the clarity of the underlying structure is low, this can be pathologically poor (only a single partition, the initialisation, is sampled). These results are for a datasets of varying numbers of items and features (as labelled) and $K=5$. There is a single dataset generated for each value of $P \in \{1, \ldots, 500\}$ for each different value of $\Delta \mu$. ](./Images/Simulations/Exploration.png)
 
 
 For inference using a single chain this does represent a problem. In the PSMs in figure [psms for large P], the chains all converge to a mode, but there is diversity in the modes reached. The chains do not converge or all reach the global mode, and none appear to explore a range of partitions regardless of the number of iterations. Therefore no individual chain appears to describe the uncertainty present well as they repeatedly sample the same partition whereas the use of  consensus clustering enables inclusion of many of the modes (possibly all) present in the data in the inference. In the results shown in this report it appears that the global mode is represented within the first ten chains, but one can imagine that there will be cases where the global mode is not reached in the initial chains. Thus, consensus clustering offers greater confidence that the distribution described by the ensemble has captured the global mode and that this will be the predominant mode in a set of 100 chains.
@@ -864,10 +1138,11 @@ However, consensus clustering for Bayesian mixture models is intended to solve p
 
 1. Generate $S'$ Markov chains of $R'$ partitions.
 2. Use these to construct 3 consensus matrices. For some $a, b \in [0.5,1]$ (for example $a=b=\frac{3}{4}$), compure CMs for each of:
-  <!-- * Consensus$(0.75 R', 0.75 S')$; -->
-  * Consensus$(a R', S')$;
-  * Consensus$(R', b S')$;
-  * Consensus$(R', S')$;
+
+    * Consensus$(a R', S')$;
+    * Consensus$(R', b S')$;
+    * Consensus$(R', S')$;
+  
 3. If the consensus matrices are sufficiently stable, stop. If the matrices are not considered sufficiently stable for the change in $R$ between $aR'$ and $R'$,  repeat the analysis for some $R'' > R'$. Similarly one may judge if the results have sufficiently stabilised for increases in $S$.
 
 <!-- Possibly a stopping rule could be created base upon some threshold $\epsilon \in \mathbb{R_{+}}$ (for example see equation \@ref(eq:stoppingRule)), though in practice a visual comparison of the CMs should be sufficient. If the matrices are not considered sufficiently stable for the change in $R$ between $aR'$ and $R'$,  repeat the analysis for some $R'' > R'$. Similarly one may judge if the results have sufficiently stabilised for increases in $S$. -->
