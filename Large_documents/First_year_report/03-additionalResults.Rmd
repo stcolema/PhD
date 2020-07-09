@@ -4,35 +4,35 @@
 
 ## Scenarios
 
-```{r scenario_table, echo=F}
-set.seed(1)
-scn_table <- data.frame(
-  Scenario = c("Simple 2D", "No structure", "Base Case", rep("Large N, small P", 3), rep("Large standard deviation", 3), rep("Irrelevant features", 5), rep("Small N, large P", 2), "Varying proportions"),
-  N = c(100, 100, 2e2, 1e4, 1e4, 1e4, 2e2, 2e2, 2e2, 2e2, 2e2, 2e2, 2e2, 2e2, 50, 50, 200),
-  P_s = c(2, 0, 20, 4, 4, 4, 20, 20, 20, 20, 20, 20, 20, 20, 500, 500, 20),
-  P_n = c(0, 2, 0, 0, 0, 0, 0, 0, 0, 2, 10, 20, 100, 200, 0, 0, 0),
-  K = c(5, 1, 5, 5, 50, 50, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5),
-  Delta_mu = c(3, 0, 1, 1, 1, 0.5, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0.2, 1),
-  sigma2 = c(1, 1, 1, 1, 1, 1, 3, 5, 10, 1, 1, 1, 1, 1, 1, 1, 1),
-  Pi = c(rep("vec(1/K)", 16), "(0.5, 0.25, 0.125, 0.0675, 0.0675)")
-)
+<!-- ```{r scenario_table, echo=F} -->
+<!-- set.seed(1) -->
+<!-- scn_table <- data.frame( -->
+<!--   Scenario = c("Simple 2D", "No structure", "Base Case", rep("Large N, small P", 3), rep("Large standard deviation", 3), rep("Irrelevant features", 5), rep("Small N, large P", 2), "Varying proportions"), -->
+<!--   N = c(100, 100, 2e2, 1e4, 1e4, 1e4, 2e2, 2e2, 2e2, 2e2, 2e2, 2e2, 2e2, 2e2, 50, 50, 200), -->
+<!--   P_s = c(2, 0, 20, 4, 4, 4, 20, 20, 20, 20, 20, 20, 20, 20, 500, 500, 20), -->
+<!--   P_n = c(0, 2, 0, 0, 0, 0, 0, 0, 0, 2, 10, 20, 100, 200, 0, 0, 0), -->
+<!--   K = c(5, 1, 5, 5, 50, 50, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5), -->
+<!--   Delta_mu = c(3, 0, 1, 1, 1, 0.5, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0.2, 1), -->
+<!--   sigma2 = c(1, 1, 1, 1, 1, 1, 3, 5, 10, 1, 1, 1, 1, 1, 1, 1, 1), -->
+<!--   Pi = c(rep("vec(1/K)", 16), "(0.5, 0.25, 0.125, 0.0675, 0.0675)") -->
+<!-- ) -->
 
-colnames(scn_table) <- c(
-  "Scenario",
-  "$N$",
-  "$P_s$",
-  "$P_n$",
-  "$K$",
-  "$\\Delta_{\\mu}$",
-  "$\\sigma^2$",
-  "$\\pi$"
-)
+<!-- colnames(scn_table) <- c( -->
+<!--   "Scenario", -->
+<!--   "$N$", -->
+<!--   "$P_s$", -->
+<!--   "$P_n$", -->
+<!--   "$K$", -->
+<!--   "$\\Delta_{\\mu}$", -->
+<!--   "$\\sigma^2$", -->
+<!--   "$\\pi$" -->
+<!-- ) -->
 
-sims_used <- scn_table[c(1:3, 7, 8, 11:13, 17, 4:6, 15:16), ] %>%
-  set_rownames(1:nrow(.))
+<!-- sims_used <- scn_table[c(1:3, 7, 8, 11:13, 17, 4:6, 15:16), ] %>% -->
+<!--   set_rownames(1:nrow(.)) -->
 
-knitr::kable(sims_used, row.names = T, escape = F) # , "latex", longtable = T, booktabs = T, caption = "Longtable")
-```
+<!-- knitr::kable(sims_used, row.names = T, escape = F) # , "latex", longtable = T, booktabs = T, caption = "Longtable") -->
+<!-- ``` -->
 
 ## Simple 2D
 

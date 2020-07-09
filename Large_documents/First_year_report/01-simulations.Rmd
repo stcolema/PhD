@@ -312,17 +312,17 @@ p(x, c, \theta, \pi) &= \prod_{i=1}^N p(x_i | c_i, \theta_{c_i}) \prod_{i=1}^N p
 
 In the simultatiuon study described here, the model is a mixture of *Gaussian* distribution and thus $\theta_{kp}=(\mu_{kp}, \sigma^2_{kp})$.
 
-<!-- As each method of inference uses a common model, this data-generating mechanism is not expected to favour any one method over another. -->
-
-### Study design
-
-I test seven different scenarios that change various parameters in this model. The components are defined by parameters $(\mu_{kp}, \sigma^2)$ for each cluster within each feature. Within any scenario there is a common vector of possible means for each feature:
+Within any scenario there is a common vector of possible means for each feature:
 
 \begin{align}
 \mu = (\mu_1, \ldots, \mu_K)
 \end{align}
 
-The indices here do not necessarily associated with the corresponding cluster (i.e. $\mu_1$ does not necessarily define the cluster labelled 1). Instead the mean associated with each cluster is randomly sampled without replacement for each feature. Let $\mu$ be ordered by increasing magnitude, i.e. $\mu_i < \mu_j \forall i < j$. Then $\Delta \mu$ be the distance between two consecutive means, i.e. $\mu$ may be re-written:
+The indices here do not necessarily associated with the corresponding cluster (i.e. $\mu_1$ does not necessarily define the cluster labelled 1). Instead the mean vector is randomly permuted for each feature before generating the clusters; thus $\nu$, the vector of means in the $p^{th}$ feature, has the same values as $\mu$ but reordered. It is the $k^{th}$ value of this permuted vector that defines the values generated for the $k^{th}$ component in the $p^{th}$ feature, not the $k^{th}$ value from $\mu$ (although $\mu$ is one of the possible permutations of itself). 
+
+As the mean of a cluster in a feature is sampled from $\mu$, this means that additional features imparts more information about the clustering structure. There is $K!$ possible unique permutations of $\mu$. This means that as the number of relevant features grows the clarity of the structure improves.
+
+In my simulations there is a constant distance $\Delta_{\mu}$ between each consecutive entry of $\mu$, i.e.
 
 \begin{align}
 \mu = (\mu_1, \mu_1 + \Delta \mu, \ldots, \mu_1 + ( K - 1 ) \times \Delta \mu).
@@ -330,50 +330,87 @@ The indices here do not necessarily associated with the corresponding cluster (i
 
 Thus $\Delta \mu$ may be considered a defining parameter for the scenario rather than $\mu$ itself.
 
-As the mean of a cluster in a feature is sampled from $\mu$, this means that additional features imparts more information about the clustering structure. There is $K!$ possible unique permutations of $\mu$. This means that as the number of relevant features grows the clarity of the structure improves.
+| **PROCEDURE:** Data Generation
+|
+| **Input:** 
+| a distance between means $\Delta_{\mu}$
+| a common standard deviation $\sigma^2$
+| number of clusters $K$
+| number of items to generate in total $N$
+| number of features to generate in total $P$
+| number of irrelevant features to generate $P_n$
+| expected proportion of items in each cluster $\pi=(\pi_1, \ldots, \pi_K)$
+| a method for sampling $x$ times from the array $y$, with weights $\pi$: _Sample_$(y, x)$
+| a method for permuting a vector $x$: _Permute_$(x)$
+| a method for generating a value from a univariate Gaussian distribution with mean $\mu$ and standard deviation $\sigma^2$: _Gaussian_$(\mu, \sigma^2)$
+| 
+| **Method:** 
+| $X \leftarrow 0_{N \times P}$ \{initialise the data matrix.\}
+| $\mu \leftarrow (\Delta_{\mu}, \ldots, K\Delta_{\mu})$ \{create a matrix of $K$ means.\}
+<!-- | $\mu \leftarrow$ _Mean centre_$(\mu)$ \{centre the mean vector about 0.\} -->
+| $c \leftarrow$ _Sample_$(1:K, N, \pi)$ \{generate the allocation vector.\}
+<!-- | for $k$ in 1 to $K$ do -->
+<!-- |   $N_k \leftarrow \sum_{i=1}^N \mathbb{I}(c_i = k)$ \{find the number of items assigned to current cluster.\} -->
+<!-- | end $k$ -->
+| for $p$ in 1 to $P$ do
+|   $\nu \leftarrow$ _Permute_$(\mu)$ \{permute the means associated with each cluster within the current feature to create independet features.\}
+|   for $n$ in 1 to $N$ do
+|     $X(n, p) \leftarrow$ _Gaussian_$(\nu_{c_i}, \sigma^2)$ \{generate data defined by the original label.}
+|   end $n$
+| end $p$
+|
+| **Output:** 
+| data $X$
+| allocation vector $c$
 
-The scenarios tested are:
+<!-- As each method of inference uses a common model, this data-generating mechanism is not expected to favour any one method over another. -->
 
-1. The 2D case;
-2. The lack-of-structure case in 2 dimensions;
-3. The base case for which scenarios 4-6 are direct variations;
-4. Increasing $\sigma^2$;
-5. Increasing the number of irrelevant features;
-6. Varying the expected proportion of the total population assigned to each sub-population;
-7. The large $N$, small $P$ setting; and
-8. The small $N$, large $P$ case.
+### Study design
+
+I test seven different scenarios that change various parameters in this model. The scenarios tested and there defining parameters are shown below in table \ref{scenario_table}. In this case I have separated the number of relevant signals ($P_s$), such that $P=P_s + P_n$.s
+
+<!-- 1. The 2D case; -->
+<!-- 2. The lack-of-structure case in 2 dimensions; -->
+<!-- 3. The base case for which scenarios 4s-6 are direct variations; -->
+<!-- 4. Increasing $\sigma^2$; -->
+<!-- 5. Increasing the number of irrelevant features; -->
+<!-- 6. Varying the expected proportion of the total population assigned to each sub-population; -->
+<!-- 7. The large $N$, small $P$ setting; and -->
+<!-- 8. The small $N$, large $P$ case. -->
+
+<!-- More details of each scenario are given in table \ref{scenario_table}. -->
 
 <!-- A more detailed description of each scenario and various sub-scenarios is given in the below table. -->
 
-<!-- ```{r scenario_table, echo=F} -->
-<!-- set.seed(1) -->
-<!-- scn_table <- data.frame( -->
-<!--   Scenario = c("Simple 2D", "No structure", "Base Case", rep("Large N, small P", 3), rep("Large standard deviation", 3), rep("Irrelevant features", 5), rep("Small N, large P", 2), "Varying proportions"), -->
-<!--   N = c(100, 100, 2e2, 1e4, 1e4, 1e4, 2e2, 2e2, 2e2, 2e2, 2e2, 2e2, 2e2, 2e2, 50, 50, 200), -->
-<!--   P_s = c(2, 0, 20, 4, 4, 4, 20, 20, 20, 20, 20, 20, 20, 20, 500, 500, 20), -->
-<!--   P_n = c(0, 2, 0, 0, 0, 0, 0, 0, 0, 2, 10, 20, 100, 200, 0, 0, 0), -->
-<!--   K = c(5, 1, 5, 5, 50, 50, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5), -->
-<!--   Delta_mu = c(3, 0, 1, 1, 1, 0.5, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0.2, 1), -->
-<!--   sigma2 = c(1, 1, 1, 1, 1, 1, 3, 5, 10, 1, 1, 1, 1, 1, 1, 1, 1), -->
-<!--   Pi = c(rep("vec(1/K)", 16), "(0.5, 0.25, 0.125, 0.0675, 0.0675)") -->
-<!-- ) -->
+```{r scenario_table, echo=F}
+set.seed(1)
+scn_table <- data.frame(
+  Scenario = c("Simple 2D", "No structure", "Base Case", rep("Large N, small P", 3), rep("Large standard deviation", 3), rep("Irrelevant features", 5), rep("Small N, large P", 2), "Varying proportions"),
+  N = c(100, 100, 2e2, 1e4, 1e4, 1e4, 2e2, 2e2, 2e2, 2e2, 2e2, 2e2, 2e2, 2e2, 50, 50, 200),
+  P_s = c(2, 0, 20, 4, 4, 4, 20, 20, 20, 20, 20, 20, 20, 20, 500, 500, 20),
+  P_n = c(0, 2, 0, 0, 0, 0, 0, 0, 0, 2, 10, 20, 100, 200, 0, 0, 0),
+  K = c(5, 1, 5, 5, 50, 50, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5),
+  Delta_mu = c(3, 0, 1, 1, 1, 0.5, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0.2, 1),
+  sigma2 = c(1, 1, 1, 1, 1, 1, 3, 5, 10, 1, 1, 1, 1, 1, 1, 1, 1),
+  Pi = c(rep("vec(1/K)", 16), "(0.5, 0.25, 0.125, 0.0675, 0.0675)")
+)
 
-<!-- colnames(scn_table) <- c( -->
-<!--   "Scenario", -->
-<!--   "$N$", -->
-<!--   "$P_s$", -->
-<!--   "$P_n$", -->
-<!--   "$K$", -->
-<!--   "$\\Delta_{\\mu}$", -->
-<!--   "$\\sigma^2$", -->
-<!--   "$\\pi$" -->
-<!-- ) -->
+colnames(scn_table) <- c(
+  "Scenario",
+  "$N$",
+  "$P_s$",
+  "$P_n$",
+  "$K$",
+  "$\\Delta_{\\mu}$",
+  "$\\sigma^2$",
+  "$\\pi$"
+)
 
-<!-- sims_used <- scn_table[c(1:3, 7, 8, 11:13, 17, 4:6, 15:16), ] %>% -->
-<!--   set_rownames(1:nrow(.)) -->
+sims_used <- scn_table[c(1:3, 7, 8, 11:13, 17, 15:16), ] %>%
+  set_rownames(1:nrow(.))
 
-<!-- knitr::kable(sims_used, row.names = T, escape = F) # , "latex", longtable = T, booktabs = T, caption = "Longtable") -->
-<!-- ``` -->
+knitr::kable(sims_used, row.names = T, escape = F) # , "latex", longtable = T, booktabs = T, caption = "Longtable")
+```
 
 <!-- \begin{center} -->
 <!-- \captionof{table}{Multirow Table.} -->
@@ -398,179 +435,181 @@ This case is seen as an introduction to method performance. The small dimensiona
 
 <!-- This means that we can compare consensus clustering to Bayesian inference with a strong belief that the Markov chain has converged (given appropriate tests). This means that we can process how well consensus clustering performs with a deeper understanding of the context than might be possible in higher dimensional cases. -->
 
-<!-- ```{r, simple2dView, echo = F, cache = T} -->
-<!-- scn <- "Simple 2D" -->
-<!-- row_ind <- which(sims_used$Scenario == scn) -->
-<!-- N <- sims_used[["$N$"]][row_ind] -->
-<!-- P_s <- sims_used[["$P_s$"]][row_ind] -->
-<!-- P_n <- sims_used[["$P_n$"]][row_ind] -->
-<!-- K <- sims_used[["$K$"]][row_ind] -->
-<!-- dm <- sims_used[["$\\Delta_{\\mu}$"]][row_ind] -->
-<!-- s2 <- sims_used[["$\\sigma^2$"]][row_ind] -->
-<!-- pi <- sims_used[["$\\pi$"]][row_ind] -->
+```{r, simple2dView, echo = F, cache = T}
+set.seed(1)
 
-<!-- if (pi == "vec(1/K)") { -->
-<!--   pi <- rep(1 / K, K) -->
-<!-- } else { -->
-<!--   pi <- "(0.5, 0.25, 0.125, 0.0675, 0.0675)" %>% -->
-<!--     stringr::str_remove_all("[() ]") %>% -->
-<!--     strsplit(",") %>% -->
-<!--     unlist() %>% -->
-<!--     as.numeric() -->
-<!-- } -->
+scn <- "Simple 2D"
+row_ind <- which(sims_used$Scenario == scn)
+N <- sims_used[["$N$"]][row_ind]
+P_s <- sims_used[["$P_s$"]][row_ind]
+P_n <- sims_used[["$P_n$"]][row_ind]
+K <- sims_used[["$K$"]][row_ind]
+dm <- sims_used[["$\\Delta_{\\mu}$"]][row_ind]
+s2 <- sims_used[["$\\sigma^2$"]][row_ind]
+pi <- sims_used[["$\\pi$"]][row_ind]
 
-<!-- # Generate dataset -->
-<!-- simple2D_gen <- generateSimulationDataset(K, N, P_s, -->
-<!--   delta_mu = dm, -->
-<!--   p_n = P_n, -->
-<!--   cluster_sd = s2, -->
-<!--   pi = pi -->
-<!-- ) -->
+if (pi == "vec(1/K)") {
+  pi <- rep(1 / K, K)
+} else {
+  pi <- "(0.5, 0.25, 0.125, 0.0675, 0.0675)" %>%
+    stringr::str_remove_all("[() ]") %>%
+    strsplit(",") %>%
+    unlist() %>%
+    as.numeric()
+}
+
+# Generate dataset
+simple2D_gen <- generateSimulationDataset(K, N, P_s,
+  delta_mu = dm,
+  p_n = P_n,
+  cluster_sd = s2,
+  pi = pi
+)
 
 
-<!-- annotatedHeatmap(scale(simple2D_gen$data), simple2D_gen$cluster_IDs, -->
-<!--   main = "Simple 2D (seed 1)", -->
-<!--   show_rownames = F, -->
-<!--   show_colnames = F -->
-<!-- ) -->
+annotatedHeatmap(scale(simple2D_gen$data), simple2D_gen$cluster_IDs,
+  main = "2D data (seed 1)",
+  show_rownames = F,
+  show_colnames = F
+)
 
-<!-- simple2D_gen$data %>% -->
-<!--   scale() %>% -->
-<!--   data.frame() %>% -->
-<!--   dplyr::mutate(Cluster = as.factor(simple2D_gen$cluster_IDs)) %>% -->
-<!--   ggplot(aes(x = Gene_1, y = Gene_2, colour = Cluster)) + -->
-<!--   geom_point() + -->
-<!--   scale_colour_viridis_d() + -->
-<!--   labs( -->
-<!--     title = "Example: Simple 2D case (seed 1)", -->
-<!--     x = "Gene 1", -->
-<!--     y = "Gene 2", -->
-<!--     subtitle = "Note that multiple clusters may overlap." -->
-<!--   ) -->
-<!-- ``` -->
+# simple2D_gen$data %>%
+#   scale() %>%
+#   data.frame() %>%
+#   dplyr::mutate(Cluster = as.factor(simple2D_gen$cluster_IDs)) %>%
+#   ggplot(aes(x = Gene_1, y = Gene_2, colour = Cluster)) +
+#   geom_point() +
+#   scale_colour_viridis_d() +
+#   labs(
+#     title = "Example: Simple 2D case (seed 1)",
+#     x = "Gene 1",
+#     y = "Gene 2",
+#     subtitle = "Note that multiple clusters may overlap."
+#   )
+```
 
 #### No structure
 
 In this case all items are drawn from the same normal distribution. It is meant to be a test to see how the inference methods perform when there is no structure to find. It may be considered as analagous to attempting to quantify the false positive rate.
 
-<!-- ```{r, noStructureView, echo = F, cache = T} -->
-<!-- scn <- "No structure" -->
-<!-- row_ind <- which(sims_used$Scenario == scn) -->
-<!-- N <- sims_used[["$N$"]][row_ind] -->
-<!-- P_s <- sims_used[["$P_s$"]][row_ind] -->
-<!-- P_n <- sims_used[["$P_n$"]][row_ind] -->
-<!-- K <- sims_used[["$K$"]][row_ind] -->
-<!-- dm <- sims_used[["$\\Delta_{\\mu}$"]][row_ind] -->
-<!-- s2 <- sims_used[["$\\sigma^2$"]][row_ind] -->
-<!-- pi <- sims_used[["$\\pi$"]][row_ind] -->
+```{r, noStructureView, echo = F, cache = T}
+scn <- "No structure"
+row_ind <- which(sims_used$Scenario == scn)
+N <- sims_used[["$N$"]][row_ind]
+P_s <- sims_used[["$P_s$"]][row_ind]
+P_n <- sims_used[["$P_n$"]][row_ind]
+K <- sims_used[["$K$"]][row_ind]
+dm <- sims_used[["$\\Delta_{\\mu}$"]][row_ind]
+s2 <- sims_used[["$\\sigma^2$"]][row_ind]
+pi <- sims_used[["$\\pi$"]][row_ind]
 
-<!-- if (pi == "vec(1/K)") { -->
-<!--   pi <- rep(1 / K, K) -->
-<!-- } else { -->
-<!--   pi <- "(0.5, 0.25, 0.125, 0.0675, 0.0675)" %>% -->
-<!--     stringr::str_remove_all("[() ]") %>% -->
-<!--     strsplit(",") %>% -->
-<!--     unlist() %>% -->
-<!--     as.numeric() -->
-<!-- } -->
+if (pi == "vec(1/K)") {
+  pi <- rep(1 / K, K)
+} else {
+  pi <- "(0.5, 0.25, 0.125, 0.0675, 0.0675)" %>%
+    stringr::str_remove_all("[() ]") %>%
+    strsplit(",") %>%
+    unlist() %>%
+    as.numeric()
+}
 
-<!-- # Generate dataset -->
-<!-- noStructure_gen <- generateSimulationDataset(K, N, P_s, -->
-<!--   delta_mu = dm, -->
-<!--   p_n = P_n, -->
-<!--   cluster_sd = s2, -->
-<!--   pi = pi -->
-<!-- ) -->
+# Generate dataset
+noStructure_gen <- generateSimulationDataset(K, N, P_s,
+  delta_mu = dm,
+  p_n = P_n,
+  cluster_sd = s2,
+  pi = pi
+)
 
 
-<!-- annotatedHeatmap(scale(noStructure_gen$data), noStructure_gen$cluster_IDs, -->
-<!--   main = "No structure (seed 1)", -->
-<!--   show_rownames = F, -->
-<!--   show_colnames = F -->
-<!-- ) -->
+annotatedHeatmap(scale(noStructure_gen$data), noStructure_gen$cluster_IDs,
+  main = "No structure (seed 1)",
+  show_rownames = F,
+  show_colnames = F
+)
 
-<!-- noStructure_gen$data %>% -->
-<!--   scale() %>% -->
-<!--   data.frame() %>% -->
-<!--   dplyr::mutate(Cluster = as.factor(noStructure_gen$cluster_IDs)) %>% -->
-<!--   ggplot(aes(x = Noise_1, y = Noise_2, colour = Cluster)) + -->
-<!--   geom_point() + -->
-<!--   scale_colour_viridis_d() + -->
-<!--   labs( -->
-<!--     title = "Example: No structure case (seed 1)", -->
-<!--     x = "Gene 1", -->
-<!--     y = "Gene 2" -->
-<!--   ) -->
-<!-- ``` -->
+# noStructure_gen$data %>%
+#   scale() %>%
+#   data.frame() %>%
+#   dplyr::mutate(Cluster = as.factor(noStructure_gen$cluster_IDs)) %>%
+#   ggplot(aes(x = Noise_1, y = Noise_2, colour = Cluster)) +
+#   geom_point() +
+#   scale_colour_viridis_d() +
+#   labs(
+#     title = "Example: No structure case (seed 1)",
+#     x = "Gene 1",
+#     y = "Gene 2"
+#   )
+```
 
 #### Base case
 
 This is the _base case_ which most of the following scenarios are some variation of. This is intended to be a benchmark against which performance may be judged. Due to the clarity of the structure, the lack of irrelevant features and the relatively low dimensionality each method is expected to perform well here across all metrics, predicting the true clustering correctly and with very little uncertainty.
 
-<!-- ```{r, baseCase, echo = F, cache = T} -->
-<!-- scn <- "Base Case" -->
-<!-- row_ind <- which(sims_used$Scenario == scn)[1] -->
-<!-- N <- sims_used[["$N$"]][row_ind] -->
-<!-- P_s <- sims_used[["$P_s$"]][row_ind] -->
-<!-- P_n <- sims_used[["$P_n$"]][row_ind] -->
-<!-- K <- sims_used[["$K$"]][row_ind] -->
-<!-- dm <- sims_used[["$\\Delta_{\\mu}$"]][row_ind] -->
-<!-- s2 <- sims_used[["$\\sigma^2$"]][row_ind] -->
-<!-- pi <- sims_used[["$\\pi$"]][row_ind] -->
+```{r, baseCase, echo = F, cache = T}
+scn <- "Base Case"
+row_ind <- which(sims_used$Scenario == scn)[1]
+N <- sims_used[["$N$"]][row_ind]
+P_s <- sims_used[["$P_s$"]][row_ind]
+P_n <- sims_used[["$P_n$"]][row_ind]
+K <- sims_used[["$K$"]][row_ind]
+dm <- sims_used[["$\\Delta_{\\mu}$"]][row_ind]
+s2 <- sims_used[["$\\sigma^2$"]][row_ind]
+pi <- sims_used[["$\\pi$"]][row_ind]
 
-<!-- if (pi == "vec(1/K)") { -->
-<!--   pi <- rep(1 / K, K) -->
-<!-- } else { -->
-<!--   pi <- "(0.5, 0.25, 0.125, 0.0675, 0.0675)" %>% -->
-<!--     stringr::str_remove_all("[() ]") %>% -->
-<!--     strsplit(",") %>% -->
-<!--     unlist() %>% -->
-<!--     as.numeric() -->
-<!-- } -->
-
-
-<!-- # Generate dataset -->
-<!-- baseCase_gen <- generateSimulationDataset(K, N, P_s, -->
-<!--   delta_mu = dm, -->
-<!--   p_n = P_n, -->
-<!--   cluster_sd = s2, -->
-<!--   pi = pi -->
-<!-- ) -->
+if (pi == "vec(1/K)") {
+  pi <- rep(1 / K, K)
+} else {
+  pi <- "(0.5, 0.25, 0.125, 0.0675, 0.0675)" %>%
+    stringr::str_remove_all("[() ]") %>%
+    strsplit(",") %>%
+    unlist() %>%
+    as.numeric()
+}
 
 
-<!-- annotatedHeatmap(scale(baseCase_gen$data), baseCase_gen$cluster_IDs, -->
-<!--   main = paste0(scn, " (seed 1)"), -->
-<!--   show_rownames = F, -->
-<!--   show_colnames = F -->
-<!-- ) -->
+# Generate dataset
+baseCase_gen <- generateSimulationDataset(K, N, P_s,
+  delta_mu = dm,
+  p_n = P_n,
+  cluster_sd = s2,
+  pi = pi
+)
 
 
-<!-- # Set labels for facet wrapping -->
-<!-- cluster_labels <- c(paste0("Cluster ", 1:K)) -->
-<!-- names(cluster_labels) <- 1:K -->
+annotatedHeatmap(scale(baseCase_gen$data), baseCase_gen$cluster_IDs,
+  main = paste0(scn, " (seed 1)"),
+  show_rownames = F,
+  show_colnames = F
+)
 
 
-<!-- pc1 <- prcomp(baseCase_gen$data)$x -->
-<!-- pcaSeriesPlot(x = pc1, labels = baseCase_gen$cluster_IDs, n_comp = min(P_s, 6)) + -->
-<!--   facet_wrap(~Cluster, labeller = labeller(Cluster = cluster_labels)) + -->
-<!--   labs( -->
-<!--     title = paste0("PCA series for ", scn, " scenario") #, -->
-<!--     # subtitle = "Notice how the clusters separate across the components." -->
-<!--   ) -->
+# Set labels for facet wrapping
+# cluster_labels <- c(paste0("Cluster ", 1:K))
+# names(cluster_labels) <- 1:K
 
-<!-- # noStructure_gen$data %>% -->
-<!-- #   scale() %>% -->
-<!-- #   data.frame() %>% -->
-<!-- #   dplyr::mutate(Cluster = as.factor(noStructure_gen$cluster_IDs)) %>% -->
-<!-- #   ggplot(aes(x = Gene_1, y = Gene_1, colour = Cluster)) + -->
-<!-- #   geom_point() + -->
-<!-- #   scale_colour_viridis_d() + -->
-<!-- #   labs( -->
-<!-- #     title = "Example: No structure case (seed 1)", -->
-<!-- #     x = "Gene 1", -->
-<!-- #     y = "Gene 2" -->
-<!-- #   ) -->
-<!-- ``` -->
+
+# pc1 <- prcomp(baseCase_gen$data)$x
+# pcaSeriesPlot(x = pc1, labels = baseCase_gen$cluster_IDs, n_comp = min(P_s, 6)) +
+#   facet_wrap(~Cluster, labeller = labeller(Cluster = cluster_labels)) +
+#   labs(
+#     title = paste0("PCA series for ", scn, " scenario") #,
+#     # subtitle = "Notice how the clusters separate across the components."
+#   )
+
+# noStructure_gen$data %>%
+#   scale() %>%
+#   data.frame() %>%
+#   dplyr::mutate(Cluster = as.factor(noStructure_gen$cluster_IDs)) %>%
+#   ggplot(aes(x = Gene_1, y = Gene_1, colour = Cluster)) +
+#   geom_point() +
+#   scale_colour_viridis_d() +
+#   labs(
+#     title = "Example: No structure case (seed 1)",
+#     x = "Gene 1",
+#     y = "Gene 2"
+#   )
+```
 
 #### Large standard deviation
 
@@ -578,71 +617,71 @@ This is to test how distinct the clusters must be for the inference to perform w
 
 <!-- _A priori_, I would think that Bayesian inference would perform optimally here. The reasonable number of features (20) means that the collapsed Gibbs sampler should explore the space well. The large variance within each cluster means that much of the signal is hidden and the data might appear more as a continuum with no clustering structure; but I hope that the Bayesian inference will correctly idenitfy some structure and capture a large amount of uncertainty. I think consensus clustering will perform quite well and do not have a strong intuition for how ``Mclust`` will perform. I think that the clever initialisation based upon ``hclust`` will help in unpicking much structure, but I suspect that the final clustering will be too certain. -->
 
-<!-- ```{r, largeStandardDeviation, echo = F, cache = T} -->
-<!-- scn <- "Large standard deviation" -->
-<!-- row_ind <- which(sims_used$Scenario == scn)[1] -->
-<!-- N <- sims_used[["$N$"]][row_ind] -->
-<!-- P_s <- sims_used[["$P_s$"]][row_ind] -->
-<!-- P_n <- sims_used[["$P_n$"]][row_ind] -->
-<!-- K <- sims_used[["$K$"]][row_ind] -->
-<!-- dm <- sims_used[["$\\Delta_{\\mu}$"]][row_ind] -->
-<!-- s2 <- sims_used[["$\\sigma^2$"]][row_ind] -->
-<!-- pi <- sims_used[["$\\pi$"]][row_ind] -->
+```{r, largeStandardDeviation, echo = F, cache = T}
+scn <- "Large standard deviation"
+row_ind <- which(sims_used$Scenario == scn)[1]
+N <- sims_used[["$N$"]][row_ind]
+P_s <- sims_used[["$P_s$"]][row_ind]
+P_n <- sims_used[["$P_n$"]][row_ind]
+K <- sims_used[["$K$"]][row_ind]
+dm <- sims_used[["$\\Delta_{\\mu}$"]][row_ind]
+s2 <- sims_used[["$\\sigma^2$"]][row_ind]
+pi <- sims_used[["$\\pi$"]][row_ind]
 
-<!-- if (pi == "vec(1/K)") { -->
-<!--   pi <- rep(1 / K, K) -->
-<!-- } else { -->
-<!--   pi <- "(0.5, 0.25, 0.125, 0.0675, 0.0675)" %>% -->
-<!--     stringr::str_remove_all("[() ]") %>% -->
-<!--     strsplit(",") %>% -->
-<!--     unlist() %>% -->
-<!--     as.numeric() -->
-<!-- } -->
-
-
-<!-- # Generate dataset -->
-<!-- largeStadDev_gen <- generateSimulationDataset(K, N, P_s, -->
-<!--   delta_mu = dm, -->
-<!--   p_n = P_n, -->
-<!--   cluster_sd = s2, -->
-<!--   pi = pi -->
-<!-- ) -->
+if (pi == "vec(1/K)") {
+  pi <- rep(1 / K, K)
+} else {
+  pi <- "(0.5, 0.25, 0.125, 0.0675, 0.0675)" %>%
+    stringr::str_remove_all("[() ]") %>%
+    strsplit(",") %>%
+    unlist() %>%
+    as.numeric()
+}
 
 
-<!-- annotatedHeatmap(scale(largeStadDev_gen$data), largeStadDev_gen$cluster_IDs, -->
-<!--   main = "Large N, small P (seed 1)", -->
-<!--   show_rownames = F, -->
-<!--   show_colnames = F -->
-<!-- ) -->
+# Generate dataset
+largeStadDev_gen <- generateSimulationDataset(K, N, P_s,
+  delta_mu = dm,
+  p_n = P_n,
+  cluster_sd = s2,
+  pi = pi
+)
 
 
-<!-- # Set labels for facet wrapping -->
-<!-- cluster_labels <- c(paste0("Cluster ", 1:K)) -->
-<!-- names(cluster_labels) <- 1:K -->
+annotatedHeatmap(scale(largeStadDev_gen$data), largeStadDev_gen$cluster_IDs,
+  main = "Large standard deviation (seed 1)",
+  show_rownames = F,
+  show_colnames = F
+)
 
 
-<!-- pc1 <- prcomp(largeStadDev_gen$data)$x -->
-<!-- suppressWarnings( -->
-<!--   pcaSeriesPlot(x = pc1, labels = largeStadDev_gen$cluster_IDs, n_comp = min(P_s, 6)) + -->
-<!--   facet_wrap(~Cluster, labeller = labeller(Cluster = cluster_labels)) + -->
-<!--   labs( -->
-<!--     title = "PCA series for large N, small P scenario", -->
-<!--     subtitle = "Notice how the clusters separate across the components." -->
-<!--   ) -->
-<!-- ) -->
-<!-- # noStructure_gen$data %>% -->
-<!-- #   scale() %>% -->
-<!-- #   data.frame() %>% -->
-<!-- #   dplyr::mutate(Cluster = as.factor(noStructure_gen$cluster_IDs)) %>% -->
-<!-- #   ggplot(aes(x = Gene_1, y = Gene_1, colour = Cluster)) + -->
-<!-- #   geom_point() + -->
-<!-- #   scale_colour_viridis_d() + -->
-<!-- #   labs( -->
-<!-- #     title = "Example: No structure case (seed 1)", -->
-<!-- #     x = "Gene 1", -->
-<!-- #     y = "Gene 2" -->
-<!-- #   ) -->
-<!-- ``` -->
+# Set labels for facet wrapping
+# cluster_labels <- c(paste0("Cluster ", 1:K))
+# names(cluster_labels) <- 1:K
+# 
+# 
+# pc1 <- prcomp(largeStadDev_gen$data)$x
+# suppressWarnings(
+#   pcaSeriesPlot(x = pc1, labels = largeStadDev_gen$cluster_IDs, n_comp = min(P_s, 6)) +
+#   facet_wrap(~Cluster, labeller = labeller(Cluster = cluster_labels)) +
+#   labs(
+#     title = "PCA series for large N, small P scenario",
+#     subtitle = "Notice how the clusters separate across the components."
+#   )
+# )
+# noStructure_gen$data %>%
+#   scale() %>%
+#   data.frame() %>%
+#   dplyr::mutate(Cluster = as.factor(noStructure_gen$cluster_IDs)) %>%
+#   ggplot(aes(x = Gene_1, y = Gene_1, colour = Cluster)) +
+#   geom_point() +
+#   scale_colour_viridis_d() +
+#   labs(
+#     title = "Example: No structure case (seed 1)",
+#     x = "Gene 1",
+#     y = "Gene 2"
+#   )
+```
 
 <!-- To highlight how strongly the clusters overlap within each feature I include a  -->
 <!-- an example of the within-feature distributions for each case. -->
@@ -771,70 +810,70 @@ Many of the the Cancer Genome Atlas (**TCGA**) datasets have this characteristic
 <!-- neighbours is not feasible, than this will be similar to a high-dimensional  -->
 <!-- extension to the _no structure_ case. -->
 
-<!-- ```{r, smallNlargeP, echo = F, cache = T} -->
-<!-- scn <- "Small N, large P" -->
-<!-- row_ind <- which(sims_used$Scenario == scn)[2] -->
-<!-- N <- sims_used[["$N$"]][row_ind] -->
-<!-- P_s <- sims_used[["$P_s$"]][row_ind] -->
-<!-- P_n <- sims_used[["$P_n$"]][row_ind] -->
-<!-- K <- sims_used[["$K$"]][row_ind] -->
-<!-- dm <- sims_used[["$\\Delta_{\\mu}$"]][row_ind] -->
-<!-- s2 <- sims_used[["$\\sigma^2$"]][row_ind] -->
-<!-- pi <- sims_used[["$\\pi$"]][row_ind] -->
+```{r, smallNlargeP, echo = F, cache = T}
+scn <- "Small N, large P"
+row_ind <- which(sims_used$Scenario == scn)[2]
+N <- sims_used[["$N$"]][row_ind]
+P_s <- sims_used[["$P_s$"]][row_ind]
+P_n <- sims_used[["$P_n$"]][row_ind]
+K <- sims_used[["$K$"]][row_ind]
+dm <- sims_used[["$\\Delta_{\\mu}$"]][row_ind]
+s2 <- sims_used[["$\\sigma^2$"]][row_ind]
+pi <- sims_used[["$\\pi$"]][row_ind]
 
-<!-- if (pi == "vec(1/K)") { -->
-<!--   pi <- rep(1 / K, K) -->
-<!-- } else { -->
-<!--   pi <- "(0.5, 0.25, 0.125, 0.0675, 0.0675)" %>% -->
-<!--     stringr::str_remove_all("[() ]") %>% -->
-<!--     strsplit(",") %>% -->
-<!--     unlist() %>% -->
-<!--     as.numeric() -->
-<!-- } -->
-
-
-<!-- # Generate dataset -->
-<!-- smallNlargeP_gen <- generateSimulationDataset(K, N, P_s, -->
-<!--   delta_mu = dm, -->
-<!--   p_n = P_n, -->
-<!--   cluster_sd = s2, -->
-<!--   pi = pi -->
-<!-- ) -->
+if (pi == "vec(1/K)") {
+  pi <- rep(1 / K, K)
+} else {
+  pi <- "(0.5, 0.25, 0.125, 0.0675, 0.0675)" %>%
+    stringr::str_remove_all("[() ]") %>%
+    strsplit(",") %>%
+    unlist() %>%
+    as.numeric()
+}
 
 
-<!-- annotatedHeatmap(scale(smallNlargeP_gen$data), smallNlargeP_gen$cluster_IDs, -->
-<!--   main = "Small N, large P (seed 1)", -->
-<!--   show_rownames = F, -->
-<!--   show_colnames = F -->
-<!-- ) -->
+# Generate dataset
+smallNlargeP_gen <- generateSimulationDataset(K, N, P_s,
+  delta_mu = dm,
+  p_n = P_n,
+  cluster_sd = s2,
+  pi = pi
+)
 
 
-<!-- # Set labels for facet wrapping -->
-<!-- cluster_labels <- c(paste0("Cluster ", 1:K)) -->
-<!-- names(cluster_labels) <- 1:K -->
+annotatedHeatmap(scale(smallNlargeP_gen$data), smallNlargeP_gen$cluster_IDs,
+  main = "Small N, large P (seed 1)",
+  show_rownames = F,
+  show_colnames = F
+)
 
 
-<!-- pc1 <- prcomp(smallNlargeP_gen$data)$x -->
-<!-- pcaSeriesPlot(x = pc1, labels = smallNlargeP_gen$cluster_IDs, n_comp = min(P_s, 6)) + -->
-<!--   facet_wrap(~Cluster, labeller = labeller(Cluster = cluster_labels)) + -->
-<!--   labs( -->
-<!--     title = "PCA series for small N, large P scenario", -->
-<!--     subtitle = "The clusters appear to be separable, despite the wide range of loadings within clusters." -->
-<!--   ) -->
+# Set labels for facet wrapping
+# cluster_labels <- c(paste0("Cluster ", 1:K))
+# names(cluster_labels) <- 1:K
 
-<!-- # noStructure_gen$data %>% -->
-<!-- #   scale() %>% -->
-<!-- #   data.frame() %>% -->
-<!-- #   dplyr::mutate(Cluster = as.factor(noStructure_gen$cluster_IDs)) %>% -->
-<!-- #   ggplot(aes(x = Gene_1, y = Gene_1, colour = Cluster)) + -->
-<!-- #   geom_point() + -->
-<!-- #   scale_colour_viridis_d() + -->
-<!-- #   labs( -->
-<!-- #     title = "Example: No structure case (seed 1)", -->
-<!-- #     x = "Gene 1", -->
-<!-- #     y = "Gene 2" -->
-<!-- #   ) -->
-<!-- ``` -->
+
+# pc1 <- prcomp(smallNlargeP_gen$data)$x
+# pcaSeriesPlot(x = pc1, labels = smallNlargeP_gen$cluster_IDs, n_comp = min(P_s, 6)) +
+#   facet_wrap(~Cluster, labeller = labeller(Cluster = cluster_labels)) +
+#   labs(
+#     title = "PCA series for small N, large P scenario",
+#     subtitle = "The clusters appear to be separable, despite the wide range of loadings within clusters."
+#   )
+
+# noStructure_gen$data %>%
+#   scale() %>%
+#   data.frame() %>%
+#   dplyr::mutate(Cluster = as.factor(noStructure_gen$cluster_IDs)) %>%
+#   ggplot(aes(x = Gene_1, y = Gene_1, colour = Cluster)) +
+#   geom_point() +
+#   scale_colour_viridis_d() +
+#   labs(
+#     title = "Example: No structure case (seed 1)",
+#     x = "Gene 1",
+#     y = "Gene 2"
+#   )
+```
 
 #### Irrelevant features
 
@@ -862,70 +901,70 @@ selection required.
 <!-- could use a less intense feature selection as removing all noisy features  -->
 <!-- would not be a requisite to avoid obscuring subpopulation signal. -->
 
-<!-- ```{r, irrelevantFeatures, echo = F, cache = T} -->
-<!-- scn <- "Irrelevant features" -->
-<!-- row_ind <- which(sims_used$Scenario == scn)[3] -->
-<!-- N <- sims_used[["$N$"]][row_ind] -->
-<!-- P_s <- sims_used[["$P_s$"]][row_ind] -->
-<!-- P_n <- sims_used[["$P_n$"]][row_ind] -->
-<!-- K <- sims_used[["$K$"]][row_ind] -->
-<!-- dm <- sims_used[["$\\Delta_{\\mu}$"]][row_ind] -->
-<!-- s2 <- sims_used[["$\\sigma^2$"]][row_ind] -->
-<!-- pi <- sims_used[["$\\pi$"]][row_ind] -->
+```{r, irrelevantFeatures, echo = F, cache = T}
+scn <- "Irrelevant features"
+row_ind <- which(sims_used$Scenario == scn)[3]
+N <- sims_used[["$N$"]][row_ind]
+P_s <- sims_used[["$P_s$"]][row_ind]
+P_n <- sims_used[["$P_n$"]][row_ind]
+K <- sims_used[["$K$"]][row_ind]
+dm <- sims_used[["$\\Delta_{\\mu}$"]][row_ind]
+s2 <- sims_used[["$\\sigma^2$"]][row_ind]
+pi <- sims_used[["$\\pi$"]][row_ind]
 
-<!-- if (pi == "vec(1/K)") { -->
-<!--   pi <- rep(1 / K, K) -->
-<!-- } else { -->
-<!--   pi <- "(0.5, 0.25, 0.125, 0.0675, 0.0675)" %>% -->
-<!--     stringr::str_remove_all("[() ]") %>% -->
-<!--     strsplit(",") %>% -->
-<!--     unlist() %>% -->
-<!--     as.numeric() -->
-<!-- } -->
-
-
-<!-- # Generate dataset -->
-<!-- irrelevantFeatures_gen <- generateSimulationDataset(K, N, P_s, -->
-<!--   delta_mu = dm, -->
-<!--   p_n = P_n, -->
-<!--   cluster_sd = s2, -->
-<!--   pi = pi -->
-<!-- ) -->
+if (pi == "vec(1/K)") {
+  pi <- rep(1 / K, K)
+} else {
+  pi <- "(0.5, 0.25, 0.125, 0.0675, 0.0675)" %>%
+    stringr::str_remove_all("[() ]") %>%
+    strsplit(",") %>%
+    unlist() %>%
+    as.numeric()
+}
 
 
-<!-- annotatedHeatmap(scale(irrelevantFeatures_gen$data), irrelevantFeatures_gen$cluster_IDs, -->
-<!--   main = paste0("Irrelevant features (seed 1, ", P_n, " irrelevant features)"), -->
-<!--   show_rownames = F, -->
-<!--   show_colnames = F -->
-<!-- ) -->
+# Generate dataset
+irrelevantFeatures_gen <- generateSimulationDataset(K, N, P_s,
+  delta_mu = dm,
+  p_n = P_n,
+  cluster_sd = s2,
+  pi = pi
+)
 
 
-<!-- # Set labels for facet wrapping -->
-<!-- cluster_labels <- c(paste0("Cluster ", 1:K)) -->
-<!-- names(cluster_labels) <- 1:K -->
+annotatedHeatmap(scale(irrelevantFeatures_gen$data), irrelevantFeatures_gen$cluster_IDs,
+  main = paste0("Irrelevant features (seed 1, ", P_n, " irrelevant features)"),
+  show_rownames = F,
+  show_colnames = F
+)
 
+# 
+# # Set labels for facet wrapping
+# cluster_labels <- c(paste0("Cluster ", 1:K))
+# names(cluster_labels) <- 1:K
+# 
+# 
+# pc1 <- prcomp(irrelevantFeatures_gen$data)$x
+# pcaSeriesPlot(x = pc1, labels = irrelevantFeatures_gen$cluster_IDs, n_comp = min(P_s, 6)) +
+#   facet_wrap(~Cluster, labeller = labeller(Cluster = cluster_labels)) +
+#   labs(
+#     title = "PCA series for irrelevant features scenario",
+#     subtitle = "In this example one might expect clusters 2 and 3 to merge, with cluster 5 also\nin danger of being subsumed."
+#   )
 
-<!-- pc1 <- prcomp(irrelevantFeatures_gen$data)$x -->
-<!-- pcaSeriesPlot(x = pc1, labels = irrelevantFeatures_gen$cluster_IDs, n_comp = min(P_s, 6)) + -->
-<!--   facet_wrap(~Cluster, labeller = labeller(Cluster = cluster_labels)) + -->
-<!--   labs( -->
-<!--     title = "PCA series for irrelevant features scenario", -->
-<!--     subtitle = "In this example one might expect clusters 2 and 3 to merge, with cluster 5 also\nin danger of being subsumed." -->
-<!--   ) -->
-
-<!-- # noStructure_gen$data %>% -->
-<!-- #   scale() %>% -->
-<!-- #   data.frame() %>% -->
-<!-- #   dplyr::mutate(Cluster = as.factor(noStructure_gen$cluster_IDs)) %>% -->
-<!-- #   ggplot(aes(x = Gene_1, y = Gene_1, colour = Cluster)) + -->
-<!-- #   geom_point() + -->
-<!-- #   scale_colour_viridis_d() + -->
-<!-- #   labs( -->
-<!-- #     title = "Example: No structure case (seed 1)", -->
-<!-- #     x = "Gene 1", -->
-<!-- #     y = "Gene 2" -->
-<!-- #   ) -->
-<!-- ``` -->
+# noStructure_gen$data %>%
+#   scale() %>%
+#   data.frame() %>%
+#   dplyr::mutate(Cluster = as.factor(noStructure_gen$cluster_IDs)) %>%
+#   ggplot(aes(x = Gene_1, y = Gene_1, colour = Cluster)) +
+#   geom_point() +
+#   scale_colour_viridis_d() +
+#   labs(
+#     title = "Example: No structure case (seed 1)",
+#     x = "Gene 1",
+#     y = "Gene 2"
+#   )
+```
 
 #### Varying proportions
 
@@ -937,70 +976,70 @@ analysis could be very important for clinical outcomes. This scenario is
 intended to offer insight into how the different inferential appraoches perform
 in such a setting.
 
-<!-- ```{r, varyingProportionsView, echo = F, cache = T} -->
-<!-- scn <- "Varying proportions" -->
-<!-- row_ind <- which(sims_used$Scenario == scn)[1] -->
-<!-- N <- sims_used[["$N$"]][row_ind] -->
-<!-- P_s <- sims_used[["$P_s$"]][row_ind] -->
-<!-- P_n <- sims_used[["$P_n$"]][row_ind] -->
-<!-- K <- sims_used[["$K$"]][row_ind] -->
-<!-- dm <- sims_used[["$\\Delta_{\\mu}$"]][row_ind] -->
-<!-- s2 <- sims_used[["$\\sigma^2$"]][row_ind] -->
-<!-- pi <- sims_used[["$\\pi$"]][row_ind] -->
+```{r, varyingProportionsView, echo = F, cache = T}
+scn <- "Varying proportions"
+row_ind <- which(sims_used$Scenario == scn)[1]
+N <- sims_used[["$N$"]][row_ind]
+P_s <- sims_used[["$P_s$"]][row_ind]
+P_n <- sims_used[["$P_n$"]][row_ind]
+K <- sims_used[["$K$"]][row_ind]
+dm <- sims_used[["$\\Delta_{\\mu}$"]][row_ind]
+s2 <- sims_used[["$\\sigma^2$"]][row_ind]
+pi <- sims_used[["$\\pi$"]][row_ind]
 
-<!-- if (pi == "vec(1/K)") { -->
-<!--   pi <- rep(1 / K, K) -->
-<!-- } else { -->
-<!--   pi <- "(0.5, 0.25, 0.125, 0.0675, 0.0675)" %>% -->
-<!--     stringr::str_remove_all("[() ]") %>% -->
-<!--     strsplit(",") %>% -->
-<!--     unlist() %>% -->
-<!--     as.numeric() -->
-<!-- } -->
-
-
-<!-- # Generate dataset -->
-<!-- varyingProportions_gen <- generateSimulationDataset(K, N, P_s, -->
-<!--   delta_mu = dm, -->
-<!--   p_n = P_n, -->
-<!--   cluster_sd = s2, -->
-<!--   pi = pi -->
-<!-- ) -->
+if (pi == "vec(1/K)") {
+  pi <- rep(1 / K, K)
+} else {
+  pi <- "(0.5, 0.25, 0.125, 0.0675, 0.0675)" %>%
+    stringr::str_remove_all("[() ]") %>%
+    strsplit(",") %>%
+    unlist() %>%
+    as.numeric()
+}
 
 
-<!-- annotatedHeatmap(scale(varyingProportions_gen$data), varyingProportions_gen$cluster_IDs, -->
-<!--   main = paste0(scn, " (seed 1)"), -->
-<!--   show_rownames = F, -->
-<!--   show_colnames = F -->
-<!-- ) -->
+# Generate dataset
+varyingProportions_gen <- generateSimulationDataset(K, N, P_s,
+  delta_mu = dm,
+  p_n = P_n,
+  cluster_sd = s2,
+  pi = pi
+)
 
 
-<!-- # Set labels for facet wrapping -->
-<!-- cluster_labels <- c(paste0("Cluster ", 1:K)) -->
-<!-- names(cluster_labels) <- 1:K -->
+annotatedHeatmap(scale(varyingProportions_gen$data), varyingProportions_gen$cluster_IDs,
+  main = paste0(scn, " (seed 1)"),
+  show_rownames = F,
+  show_colnames = F
+)
 
 
-<!-- pc1 <- prcomp(varyingProportions_gen$data)$x -->
-<!-- pcaSeriesPlot(x = pc1, labels = varyingProportions_gen$cluster_IDs, n_comp = min(P_s, 6)) + -->
-<!--   facet_wrap(~Cluster, labeller = labeller(Cluster = cluster_labels)) + -->
-<!--   labs( -->
-<!--     title = paste0("PCA series for ", scn, " scenario") #, -->
-<!--     # subtitle = "Notice how the clusters separate across the components." -->
-<!--   ) -->
+# # Set labels for facet wrapping
+# cluster_labels <- c(paste0("Cluster ", 1:K))
+# names(cluster_labels) <- 1:K
+# 
+# 
+# pc1 <- prcomp(varyingProportions_gen$data)$x
+# pcaSeriesPlot(x = pc1, labels = varyingProportions_gen$cluster_IDs, n_comp = min(P_s, 6)) +
+#   facet_wrap(~Cluster, labeller = labeller(Cluster = cluster_labels)) +
+#   labs(
+#     title = paste0("PCA series for ", scn, " scenario") #,
+#     # subtitle = "Notice how the clusters separate across the components."
+#   )
 
-<!-- # noStructure_gen$data %>% -->
-<!-- #   scale() %>% -->
-<!-- #   data.frame() %>% -->
-<!-- #   dplyr::mutate(Cluster = as.factor(noStructure_gen$cluster_IDs)) %>% -->
-<!-- #   ggplot(aes(x = Gene_1, y = Gene_1, colour = Cluster)) + -->
-<!-- #   geom_point() + -->
-<!-- #   scale_colour_viridis_d() + -->
-<!-- #   labs( -->
-<!-- #     title = "Example: No structure case (seed 1)", -->
-<!-- #     x = "Gene 1", -->
-<!-- #     y = "Gene 2" -->
-<!-- #   ) -->
-<!-- ``` -->
+# noStructure_gen$data %>%
+#   scale() %>%
+#   data.frame() %>%
+#   dplyr::mutate(Cluster = as.factor(noStructure_gen$cluster_IDs)) %>%
+#   ggplot(aes(x = Gene_1, y = Gene_1, colour = Cluster)) +
+#   geom_point() +
+#   scale_colour_viridis_d() +
+#   labs(
+#     title = "Example: No structure case (seed 1)",
+#     x = "Gene 1",
+#     y = "Gene 2"
+#   )
+```
 
 ### Data-generation
 
