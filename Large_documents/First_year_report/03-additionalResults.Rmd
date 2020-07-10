@@ -2,7 +2,7 @@
 
 # Simulation study {#addResults}
 
-## Scenarios
+<!-- ## Scenarios -->
 
 <!-- ```{r scenario_table, echo=F} -->
 <!-- set.seed(1) -->
