@@ -324,10 +324,8 @@ clusters is often necessary for improved understanding and interpretation
 [@meinshausen2010stability] - reducing a complex, $P$-dimensional dataset to
 a 1-dimensional, discrete variable can significantly aid interpretation. 
 The groups defined by cluster analysis are more homogenous than the full dataset,
-this can enable downstream analysis, for example if there is some outcome variable 
-of interest local linear models can explain variation within the clusters whereas
-the global variation is too complex for a linear model [see @gadd2020enriched
-for an example of a joint model for this kind of analysis]. In partitioning the
+this can enable downstream analysis. For example, if there is some outcome variable 
+of interest, local linear models are often better able to explain variation within the clusters than for the global dataset, as the global variation is more complex for a linear model [see @gadd2020enriched for an example of a joint model for this kind of analysis]. In partitioning the
 data, structure within the variation has been captured by the cluster analysis,
 enabling a more interpretable analysis of each individual cluster.
 
@@ -346,8 +344,8 @@ _clustering_ or partition, $Y$, of the data be defined by:
 	Y &= \left\{Y_1,\ldots,Y_K\right\} \\
 	Y_k &= \left\{x_i : c_i = k \right\}  \\
 	Y_i \cap Y_j &= \emptyset \hspace{4 pt} \forall \hspace{4 pt} i,j \in \{1,\ldots,K\},  i \neq j \\
-	n_k & = \mid Y_k \mid \hspace{4 pt} \geq 1 \hspace{4 pt} \forall \hspace{4 pt} k \in \{1,\ldots,K\} \\
-	\sum_{k=1}^Kn_k &= n
+	N_k & = \mid Y_k \mid \hspace{4 pt} \geq 1 \hspace{4 pt} \forall \hspace{4 pt} k \in \{1,\ldots,K\} \\
+	\sum_{k=1}^KN_k &= N
 \end{align}
 	
 ```
@@ -482,15 +480,15 @@ success, outperforming state-of-the-art methods in both simulations and
 benchmark datasets [@breiman2001random; @monti2003consensus;
 @sohn2007experimental; @afolabi2018ensemble]. Attractions of ensemble methods
 include their ability to explore multiple modes [@ghaemi2011review] and reducitons
-in computational runtime due to the fact that most
+in computational runtime because most
 ensemble methods also enable use of a parallel enivronment to improve
 computation speed [@ghaemi2009survey].
 
 For a more thorough review of ensemble methods with a focus on classification,
 please see @re2012ensemble.
 
-@monti2003consensus proposed a general frameworks for ensembles of clusterers,
-"Consensus clustering". It is an model-independent, sampling-based method, that
+@monti2003consensus proposed a general framework for ensembles of clusterers,
+"Consensus clustering". It is a model-independent, sampling-based method, that
 attempts to provide a rule-based approach to choosing $K$ in the model and to
 improve cluster stability. The individual-level algorithm investigated in the
 original publication and implemented in the ``ConsensusClusterPlus`` R package
@@ -554,7 +552,7 @@ The original algorithm is described below.
 Although ensemble methods can offer improvements and some more defined 
 rules on choosing $K$, they do not overcome the heuristic nature of the 
 underlying clustering algorithm or analysis decisions. 
-_Model-based cluster analysis_ or _mixture models_ approach embeds the cluster
+_Model-based cluster analysis_ or _mixture models_ embed the cluster
 analysis within a statistical framework and offers a principled approach to many
 issues associated with cluster analysis. Each subpopulation is described
 within the model by a probability distribution (hence the model is a mixture of
@@ -580,14 +578,16 @@ population assigned to the $k^{th}$ cluster. Then for item $x_i$ in a _finite
 mixture model_:
 
 \begin{align}
-	p(x_i|c_i = k) &= \pi_k f(x_i | \theta_k) \\
-	p(x_i) &= \sum_{k=1}^K \pi_k f(x_i | \theta_k)
+	p(x_i|c_i = k) &= \pi_k f_k(x_i | \theta_k) \\
+	p(x_i) &= \sum_{k=1}^K \pi_k f_k(x_i | \theta_k)
 \end{align}
 
 ```
 
-The flexibility in choice of $f(\cdot)$ means that these models can be applied
-in many different scenarios.
+The flexibility in choice of $f_k(\cdot)$ means that these models can be applied
+in many different scenarios. One can also imagine an extension where $f_k(\cdot)$ 
+is something other than a pdf, for example each $f_k(\cdot)$ could be a different classifier function [comparable to _Boosting_ where different models are trained on different areas of the sample space, @schapire1990strength]. Normally however, a common choice
+of distribution is used for each cluster and thus $f(\cdot)=f_k(\cdot).
 
 Inference of the parameters of these models is normally performed using the
 Maximum Likelihood Estimates (**MLE**) or Bayesian inference. Due to the complex
@@ -599,7 +599,7 @@ in Bayesian inference the most common method used is a Markov-Chain Monte Carlo
 
 ### Maximum likelihood estimate
 
-MLE-based inference of mixture models tends to be very quick but it is:
+MLE-based inference of mixture models tends to be very quick, but it is:
 
 <!-- 1. difficult to combine multiple sources of information [see @singh2005combining -->
 <!-- for an  example of how to consider this]; -->
@@ -616,25 +616,25 @@ relation to the sample size [@stahl2012model], models with unrestrained
 covariances and large numbers of components are prone to this problem.
 @fraley2007bayesian suggest using Bayesian inference as a means of overcoming
 this issue, recommending use of a _maximum a posteriori_ (*MAP*) estimate
-instead of an ML estimate.
+instead of a MLE.
 
-### Bayesian inference
+### Bayesian inference {#bayesianInference}
 
 Another choice is to perform Bayesian inference. This allows:
 
-1. Incorporation of prior beliefs into the inference; this also means that one
+1. incorporation of prior beliefs into the inference; this also means that one
 may apply Bayesian methods even when the sample size is small.
-2. Inference of $K$ through use of the Dirichlet Process [@ferguson1973bayesian].
-3. Avoidance of some of the issues in convergence. As one often is only
+2. inference of $K$ through use of the Dirichlet Process [@ferguson1973bayesian].
+3. avoidance of some of the issues in convergence. As one often is only
 interested in a subset of variables (for example, the allocation variables,
 $c_i$), one may integrate over the remaining nuisance parameters. This means
 that one may avoid directly calculating awkward variables (such as covariances
 matrices) that are prone to causing issues such as singularities in the
 likelihood function [an example of such a solution is the
 _collapsed Gibbs sampler_; @liu1994collapsed].
-4. Extension to a multiple dataset setting [see @kirk2012bayesian;
-@gabasova2017clusternomics; and @lock2013bayesian for
-examples].
+<!-- 4. extension to a multiple dataset setting [see @kirk2012bayesian; -->
+<!-- @gabasova2017clusternomics; and @lock2013bayesian for -->
+<!-- examples]. -->
 
 MCMC methods also offer asymptotic guarantees with regards to exploring the 
 full posterior distribution rather than a single mode. However, in practice 
@@ -657,11 +657,11 @@ complexity. For high dimensional data these remain slow to converge and may have
 limited success. Other methods attempt to accelerate the speed at which the
 sampler reaches the target distribution, e.g. utilising stochastic optimisation
 [@welling2011bayesian] or to attempt and leverage parallel chains
-[@ahmed2012scalable; however there is controversy over convergence in parallel
+[@ahmed2012scalable; however, there is controversy over convergence in parallel
 methods, @robert2018accelerating].
 
 In short, different MCMC methods tend to trade off different weaknesses to be
-applicable in different contexts, but there are no general solution to the 3 
+applicable in different contexts, but there is no general solution to the 3 
 problems listed by @robert2018accelerating.
 
 <!-- An alternative means of performing Bayesian inference, VI is an optimisation -->
@@ -686,8 +686,8 @@ Posterior similarity matrix.
 ```{definition, psm, name = "Posterior similarity matrix"}
 A _posterior similarity matrix_ (**PSM**) is an $(N \times N)$ matrix that stores, for
 each pair of items, the proportion of partitions sampled from the Markov chain
-for which the pair are clustered together. Thus one may consider the PSM as a
-special case of the consensus matrix where all of the partitions are generated
+for which the pair are clustered together. Thus, one may consider the PSM as a
+special case of the consensus matrix where all the partitions are generated
 from a single Markov chain.
 
 ```

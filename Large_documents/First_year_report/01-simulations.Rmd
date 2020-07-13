@@ -13,6 +13,9 @@ As noted in the preceding section, Bayesian mixture models have many attractive 
 2. allowing integration of prior information; and
 3. extending naturally to the multiple dataset scenario.
 
+Bayesian mixture models also extend naturally to the multiple dataset setting [see @kirk2012bayesian; @gabasova2017clusternomics; and @lock2013bayesian for
+examples].
+
 However, MCMC methods, the workhorse of Bayesian inference, have pathological
 behaviour in a high dimensional setting; a setting which is prevalent in modern biomedical 
 data. The sampler becomes very slow to perform a single iteration,
@@ -20,7 +23,7 @@ and can become trapped within a single mode for any realistic length of run time
 [@ronan2016avoiding; @chandra2020bayesian; @robert2018accelerating].
 However, MCMC samplers are often adept at finding _a_ mode. A small
 number of iterations (relative to the number required for convergence) is often
-sufficient to find a mode. Therefore I propose extending Consensus clustering to
+sufficient to find a mode. Therefore, I propose extending Consensus clustering to
 Bayesian mixture models. I use many short chains each with a random
 initialisation. This ensemble approach is expected to represent more modes that are present in the data than would be investigated in any single chain. The density of each mode is estimated by the number of samples generated from that part of the space, as is standard in sampling-based density estimation. 
 
@@ -38,7 +41,7 @@ The algorithm is described below:
 | the number of iterations within each chain, $R$
 | 
 | **Method:** 
-| $\mathbb{M} \leftarrow 0_{N \times N}$ \{initialise the consensus matrix.\}
+| $\mathbf{M} \leftarrow 0_{N \times N}$ \{initialise the consensus matrix.\}
 | for $s$ in $1, 2, \ldots, S$ do
 |   $set.seed(s)$ \{set the random seed that controls initialisation.\}
 |   $Y_{(0, s)} \leftarrow$ _Initialise_$(X)$ \{initial random partition.\}
@@ -46,14 +49,14 @@ The algorithm is described below:
 |      $Y_{(r, s)} \leftarrow$ _Sample_$(c)$ \{generate a Markov chain for the membership vector.\}
 |   end
 |   $B^{(s)} \leftarrow Y_{(R, s)}$ \{create a coclustering matrix using the $R^{th}$ sample.\}
-|   $\mathbb{M} \leftarrow \mathbb{M} + B^{(s)}$ 
+|   $\mathbf{M} \leftarrow \mathbf{M} + B^{(s)}$ 
 | end
 | 
-| $\mathbb{M} \leftarrow \frac{1}{S} \mathbb{M}$ \{normalise the consensus matrix.\}
+| $\mathbf{M} \leftarrow \frac{1}{S} \mathbf{M}$ \{normalise the consensus matrix.\}
 | $\hat{Y} \leftarrow$ partition $X$ based upon $\mathbb{M}$
 |
 | **Output:** 
-| consensus matrix $M$
+| consensus matrix $\mathbf{M}$
 | partition $\hat{Y}$
 
 In contrast to previosuly implemented versions of consensus clustering, one does not have to set $K$, as this is inferred within the non-parametric mixture model.
@@ -232,10 +235,10 @@ In cluster analysis generally, but even more so in the context of biomedical
 data and human health, any result has to be validated based upon knowledge of
 the domain. This means that aymptotic guarantees are not sufficient to validate
 a final partition; the defence and interpretation based upon the data is more
-important. Thus I argue that if consensus clustering of Bayesian mixture models
+important. Thus, I argue that if consensus clustering of Bayesian mixture models
 produces sensible, interpretable results, than the loss of the asymptotic
 guarantees is insufficient reason to prevent use of this approach, particularly
-as the asymptotic guarantees do not appear to hold in practice.
+as the asymptotic behaviour does not often emerge in practice.
 
 There are three outstanding issues for any ensemble of clusterers
 [@topchy2003combining] that need to be considered.
@@ -248,9 +251,9 @@ One may realise that many of the issues here are also present for sampling-based
 inference of Bayesian mixture models. In this case, one could consider the MCMC
 sampler as a special case of an clustering ensemble, being a set of many
 partitions. In this case the problems of diversity and strength are mitigated
-somewhat by mathematical properties of the Markov chain, but as the preceding
-list of problems for MCMC makes clear, these questions are not answered as
-satisfactorily as one might hope.
+somewhat by mathematical properties of the Markov chain, but as the problems for
+MCMC listed in section \ref(bayesian-inference) makes clear, these questions are
+not answered as satisfactorily as one might hope.
 
 For the problem of finding a consensus between partitions, as the labels
 generated for each partition are symbolic, combining clusterings
@@ -272,9 +275,9 @@ the global maximum and thus a lack of diversity in the final samples is ideal.
 I will investigate the strength of each individual in my simulation study,
 showing emprical results for both the consensus and individual learners.
 There already exist results in the literature that the ratio of the diversity
-of partitions to the strength is more important that the strength alone,
+of partitions to the strength is more important than the strength alone,
 with the caveat that each individual performs better than random
-[@breiman2001random]. Prior expectation for a consensus of
+[@breiman2001random]. My prior expectation for a consensus of
 Bayesian mixture models would be that within a single iteration
 each Markov chain would be producing samples that are better than random as the
 sampler proposes a more probable state.
@@ -323,7 +326,7 @@ Within my generated datasets, there is a vector of means:
 \mu = (\mu_1, \ldots, \mu_K)
 \end{align}
 
-The indices here do not necessarily associated with the corresponding cluster (i.e. $\mu_1$ does not necessarily define the cluster labelled 1). Instead the mean vector is randomly permuted for each feature before generating the clusters; thus $\nu$, the vector of means in the $p^{th}$ feature, has the same values as $\mu$ but reordered. It is the $k^{th}$ value of this permuted vector that defines the values generated for the $k^{th}$ component in the $p^{th}$ feature, not the $k^{th}$ value from $\mu$ (although $\mu$ is one of the possible permutations of itself). 
+The indices here do not necessarily associate with the corresponding cluster (i.e. $\mu_1$ does not necessarily define the cluster labelled 1). Instead the mean vector is randomly permuted for each feature before generating the clusters; thus $\nu$, the vector of means in the $p^{th}$ feature, has the same values as $\mu$ but reordered. It is the $k^{th}$ value of this permuted vector that defines the values generated for the $k^{th}$ component in the $p^{th}$ feature, not the $k^{th}$ value from $\mu$ (although $\mu$ is one of the possible permutations of itself). 
 
 As the mean of a cluster in a feature is sampled from $\mu$, this means that additional features imparts more information about the clustering structure. There is $K!$ possible unique permutations of $\mu$. This means that as the number of relevant features grows the clarity of the structure improves.
 
@@ -527,7 +530,7 @@ noStructure_gen <- generateSimulationDataset(K, N, P_s,
 )
 
 
-annotatedHeatmap(scale(noStructure_gen$data), noStructure_gen$cluster_IDs,
+no_structure_ph <- annotatedHeatmap(scale(noStructure_gen$data), noStructure_gen$cluster_IDs,
   main = "No structure (seed 1)",
   show_rownames = F,
   show_colnames = F
@@ -582,7 +585,7 @@ baseCase_gen <- generateSimulationDataset(K, N, P_s,
 )
 
 
-annotatedHeatmap(scale(baseCase_gen$data), baseCase_gen$cluster_IDs,
+base_case_ph <- annotatedHeatmap(scale(baseCase_gen$data), baseCase_gen$cluster_IDs,
   main = paste0(scn, " (seed 1)"),
   show_rownames = F,
   show_colnames = F
@@ -653,7 +656,7 @@ largeStadDev_gen <- generateSimulationDataset(K, N, P_s,
 )
 
 
-annotatedHeatmap(scale(largeStadDev_gen$data), largeStadDev_gen$cluster_IDs,
+large_std_dev_ph <- annotatedHeatmap(scale(largeStadDev_gen$data), largeStadDev_gen$cluster_IDs,
   main = "Large standard deviation (seed 1)",
   show_rownames = F,
   show_colnames = F
@@ -846,7 +849,7 @@ smallNlargeP_gen <- generateSimulationDataset(K, N, P_s,
 )
 
 
-annotatedHeatmap(scale(smallNlargeP_gen$data), smallNlargeP_gen$cluster_IDs,
+small_n_large_p_ph <- annotatedHeatmap(scale(smallNlargeP_gen$data), smallNlargeP_gen$cluster_IDs,
   main = "Small N, large P (seed 1)",
   show_rownames = F,
   show_colnames = F
@@ -883,7 +886,7 @@ annotatedHeatmap(scale(smallNlargeP_gen$data), smallNlargeP_gen$cluster_IDs,
 #### Irrelevant features
 
 This is to test how robust to noise the methods are. In many settings, such as 
-gene expression data, a large number of noisy features that contribute little 
+gene expression data, many noisy features that contribute little 
 or no information about underlying structure are expected to be present. 
 Investigating how robust each method is to irrelevant features is important; if
 methods are highly sensitive to noise, feature selection becomes a far more 
@@ -937,7 +940,7 @@ irrelevantFeatures_gen <- generateSimulationDataset(K, N, P_s,
 )
 
 
-annotatedHeatmap(scale(irrelevantFeatures_gen$data), irrelevantFeatures_gen$cluster_IDs,
+irr_features_ph <- annotatedHeatmap(scale(irrelevantFeatures_gen$data), irrelevantFeatures_gen$cluster_IDs,
   main = paste0("Irrelevant features (seed 1, ", P_n, " irrelevant features)"),
   show_rownames = F,
   show_colnames = F
@@ -1012,11 +1015,17 @@ varyingProportions_gen <- generateSimulationDataset(K, N, P_s,
 )
 
 
-annotatedHeatmap(scale(varyingProportions_gen$data), varyingProportions_gen$cluster_IDs,
+varying_prop_ph <- annotatedHeatmap(scale(varyingProportions_gen$data), varyingProportions_gen$cluster_IDs,
   main = paste0(scn, " (seed 1)"),
   show_rownames = F,
   show_colnames = F
 )
+
+
+# (wrap_elements(panel = simple2dPh$gtable, clip = FALSE) +
+#   wrap_elements(panel = noStructurePh$gtable, clip = FALSE)) /
+#   wrap_elements(panel = simple2dPh$gtable, clip = FALSE) 
+  
 
 
 # # Set labels for facet wrapping
@@ -1059,8 +1068,10 @@ For MLE, I use the R package ``Mclust`` [@R-mclust]. This is a popular implement
 For each dataset the following inference are performed:
 
 1. Consensus clustering using a range of different choices of $R$ and $S$. The sets used are:
-  * $R = \{1, 2, \ldots, 10, 20, \ldots, 100, 200, \ldots, 1000, 2000, \ldots, 10000\}$; and
-  * $S = \{1, 2, \ldots, 100\}$.
+
+    * $R = \{1, 2, \ldots, 10, 20, \ldots, 100, 200, \ldots, 1000, 2000, \ldots, 10000\}$; and
+    * $S = \{1, 2, \ldots, 100\}$.
+    
   I will showcase a subset of these combinations, with _Consensus ($r$, $s$)_ denoting the inference performed using the $r^{th}$ sample from $s$ different chains for all $s \in S, r \in R$.
 2. Bayesian inference using 10 chains running for 1 million iterations, saving every thousandth sample.
 3. Mclust over a range of possible $K$.
@@ -1084,18 +1095,18 @@ is used to attempt to quantify performance here. Note that as Mclust only propos
 
 The Frobenius norm is a flawed proxy for uncertainty quantification. As a standalone statistic it is not sufficient as if no model is performing well the best performer under this metric will probably be that which is most sparse. It is important, particularly in the cases where the ARI is very low, to inspect the heatmaps of the PSMs and consensus matrices to understand what is happening. The Frobenius norm is used as it does contain _some_ information about how well uncertainty is quantified and describes this within a single number. This means that it translates well to comparison across many simulations within a single scenario. Furthermore, if there is a trend within the distribution of the Frobenius norms for each model than inspection of the PSMs and consensus matrices for a single simulation might be sufficient to understand the behaviour within the entire scenario in combination with the Frobenius norm.
 
-For the Bayesian models I am also interested in within-chain model and across-chain convergence. I calculate the Geweke statistic [@geweke1992evaluating] and the Gelman-Rubin shrinkage parameter [$\hat{R}$, @gelman1992inference] as measures of these respectively.
-If the Geweke statistic of a chain is not appreaing to be a normal-distribution, as tested by a Shapiro-Wilks test, that chain is removed from the analysis. Chains are tested for the failure to converge using the extension of $\hat{R}$ proposed by @vats2018revisiting, using a threshold of 1.01. This is a summary statistic for entire set of chains; the original $\hat{R}$ value described by @gelman1992inference is plotted as a function of the chain iteration as a visual aid in assessing convergence. Note that a low value in these statistics is not sufficient to definitively claim convergence, but a high value **does** indicate a lack of convergence.
+For the Bayesian models I am also interested in within-chain and across-chain convergence. I calculate the Geweke statistic [@geweke1992evaluating] and the Gelman-Rubin shrinkage parameter [$\hat{R}$, @gelman1992inference] as measures of these respectively.
+If the Geweke statistic of a chain is not appreaing to follow a normal-distribution, as tested by a Shapiro-Wilks test, that chain is removed from the analysis. Chains are tested for the failure to converge using the extension of $\hat{R}$ proposed by @vats2018revisiting, using a threshold of 1.01. This is a summary statistic for entire set of chains; the original $\hat{R}$ value described by @gelman1992inference is plotted as a function of the chain iteration as a visual aid in assessing convergence. Note that a low value in these statistics is not sufficient to definitively claim convergence, but a high value **does** indicate a lack of convergence.
 
-The samples from the chains that pass the Shapiro-Wilks test are then pooled for the comparison beyond methods. I do not drop the entire analysis based upon overall convergence as doing so might lead some scenarios to having a very small number of data points for the Bayesian inference in the model comparison plots. Pooling samples is done to avoid model selection problems and to enable comparison across simulations. The pooling will mean that the statistics for the Bayesian inference in model comparison will might be more robust to modes (as we might have several different modes present in the pooled samples), thus inflating performance. This will be an upper limit on the performance of the Bayesian method.
+The samples from the chains that pass the Shapiro-Wilks test are then pooled for the comparison beyond methods. I do not drop the entire analysis based upon overall convergence as doing so might lead some scenarios to having a very small number of data points for the Bayesian inference in the model comparison plots. Pooling samples is done to avoid model selection problems and to enable comparison across simulations. The pooling will mean that the statistics for the Bayesian inference in model comparison will be more robust to modes (as we might have several different modes present in the pooled samples), thus inflating performance. This will be an upper limit on the performance of the Bayesian method.
 
 ## Results
 
 <!-- I assume that if the consensus matrices are both consistent with the PSMs and unchanging beyond a given value of $R$ that the chain has reached the staitonary distribution by said value of $R$ (albeit possibly a single mode of the target distribution).  -->
 
-For a collapsed Gibbs sampler the number of features present influences how diverse a range of partitions the sampler can explore. It can be seen in figure [exploration] that for a small number features the sampler suggests a different partition with every sample, but as  the number of features scales the diversity becomes more and more limited. This is not inherently a flaw; as the number of features increases so too does the amount of information pertaining to the structure in the dataset in the simulations used here. However, this does mean that it is more probable that the sampler becomes trapped in any modes it encounters as the attraction of any single mode becomes more extreme as too does the distance between modes. 
+For a collapsed Gibbs sampler, the number of features present influences how diverse a range of partitions the sampler can explore. It can be seen in figure [exploration] that for a small number features the sampler suggests a different partition with every sample, but as  the number of features scales the diversity becomes more and more limited. This is not inherently a flaw; as the number of features increases so too does the amount of information pertaining to the structure in the dataset in the simulations used here. However, this does mean that it is more probable that the sampler becomes trapped in any modes it encounters as the attraction of any single mode becomes more extreme as too does the distance between modes. 
 
-![As the number of features present beguns to significantly exceed the number of items present the collapsed Gibbs sampler struggles to sample a wide range of partitions. If the clarity of the underlying structure is low, this can be pathologically poor (only a single partition, the initialisation, is sampled). These results are for a datasets of varying numbers of items and features (as labelled) and $K=5$. There is a single dataset generated for each value of $P \in \{1, \ldots, 500\}$ for each different value of $\Delta \mu$. ](./Images/Simulations/Exploration.png)
+![As the number of features present beguns to significantly exceed the number of items present the collapsed Gibbs sampler struggles to sample a wide range of partitions. If the clarity of the underlying structure is low, this can be pathologically poor (only a single partition, the initialisation, is sampled). These results are for datasets of varying numbers of items and features (as labelled) and $K=5$. There is a single dataset generated for each value of $P \in \{1, \ldots, 500\}$ for each different value of $\Delta \mu$. ](./Images/Simulations/Exploration.png)
 
 
 For inference using a single chain this does represent a problem. In the PSMs in figure [psms for large P], the chains all converge to a mode, but there is diversity in the modes reached. The chains do not converge or all reach the global mode, and none appear to explore a range of partitions regardless of the number of iterations. Therefore no individual chain appears to describe the uncertainty present well as they repeatedly sample the same partition whereas the use of  consensus clustering enables inclusion of many of the modes (possibly all) present in the data in the inference. In the results shown in this report it appears that the global mode is represented within the first ten chains, but one can imagine that there will be cases where the global mode is not reached in the initial chains. Thus, consensus clustering offers greater confidence that the distribution described by the ensemble has captured the global mode and that this will be the predominant mode in a set of 100 chains.
@@ -1112,11 +1123,11 @@ Based upon the results for the scenarios where the clarity of the subpopulation 
 
 ![The predictive performance of the different methods for the 100 simulations of the scenario with 20 relevant and 100 irrelevant features. Consensus ($r, s$) refers to $s$ samples drawn from the $r^{th}$ iteration of $s$ different chains. ``Mclust`` cannot uncover the true structure. For the sampling-based methods it appears that deeper into the chain the parttions become closer to the truth, as seen by the continuing improvement for higher values of $r$ and the excellent performance of the pooled long chains in the Bayesian inference. ](./Images/Simulations/irrelevant_features_100/irrelevant_features_100_all_model_performance.png)
 
-As more irrelevant features are added the behaviour of the sampler changes. In this case the samples do not appear to be being drawn from the target distribution until much further into the chain. In the comparison of the consensus matrices for the scenario with 20 relevant features and 100 irrelevant feature shown in figure [cms], there is evidence of stabilising only by using $R=10,000$. This suggests that deeper chain depth is ideal for more noisy data. Despite this, consensus clustering can find the true structure using very short chains, although the uncertainty present is quite high. This is due to the different chains clustering different groups of items in different orders; the individual chains have not merged all of the generated components correctly at early iterations. This leads to the partitions presented containing too many clusters in the early samples. However, the chains do not appear to cluster items that are from different subpopulations in any sample. This means that the union of partitions from the short chains used in forming the consensus matrix does capture the true structure as the averaging over the partitions does have the correct items grouped together. Thus the predicted clustering matches the true clustering even if the level of uncertainty present is high. This shows that the consensus clustering does work even in the case that each individual learner is very weak; as long as each contains some signal the ensemble can perform very well. This is reassuring as in the case that the number of irrelevant features is high, one would ideally sample from deeper in the chain; that one may avoid this and still perform meaningful inference means that consensus clustering may be used in settings where a single iteration is very slow and thus many short chains are necessary. 
+As more irrelevant features are added the behaviour of the sampler changes. In this case the samples do not appear to be being drawn from the target distribution until much further into the chain. In the comparison of the consensus matrices for the scenario with 20 relevant features and 100 irrelevant feature shown in figure [cms], there is evidence of stabilising only by using $R=10,000$. This suggests that deeper chain depth is ideal for more noisy data. Despite this, consensus clustering can find the true structure using very short chains, although the uncertainty present is quite high. This is due to the different chains clustering different groups of items in different orders; the individual chains have not merged all of the generated components correctly at early iterations. This leads to the partitions presented containing too many clusters in the early samples. However, the chains do not appear to cluster items that are from different subpopulations in any sample. This means that the union of partitions from the short chains used in forming the consensus matrix does capture the true structure as the averaging over the partitions does have the correct items grouped together. Thus, the predicted clustering matches the true clustering even if the level of uncertainty present is high. This shows that the consensus clustering does work even in the case that each individual learner is very weak. If each contains some signal the ensemble can perform very well. This is reassuring as in the case that the number of irrelevant features is high, one would ideally sample from deeper in the chain; that one may avoid this and still perform meaningful inference means that consensus clustering may be used in settings where a single iteration is very slow and thus many short chains are necessary. 
 
 ![A grid of consensus matrices from the first simulation within the scenario with 20 relevant and 100 irrelevant features annotated by the true clustering, ordered by the CM from Consensus (10000, 100). Within the grid, each row has a constant $R$ and each column is a constant $S$ for $R \in (1, 10, 100, 1000, 10000)$ and $S \in (1, 10, 30, 50, 100)$. One can see that no structure is uncovered in the first iteration (corresponding to the result in figure ari-boxplots). The uncertainty is very high for $R=10$ and $S \neq 1$, but the structure is beginning to be uncovered (again this corresponds with the result in figure ari-boxplots). By the 100th iteration the structure is uncovered with a large degree of confidence. The 4 rightmost columns appear practically identical - the benefits of using more than 10 chains is less than the benefit of using more than 10 iterations within each chain. ](./Images/Simulations/irrelevant_features_100/CMs/ConsensusSimulation1ConsensusMatrixGrid.png)
 
-This means that as the subpopulations become more similar or the level of irrelevant featues is high, deeper samples are preferred for a well-informed analysis. However, it is rewarding to see that if a point clustering is the object of interest, than there is evidence (see figure [ari-boxplots]) that extremely short chains can suffice, predicting a point estimate that is close to the generating structure, if enough learners are present in the final ensemble. 
+This means that as the subpopulations become more similar or the level of irrelevant featues is high, deeper samples are preferred for a well-informed analysis. However, it is rewarding to see that if a point clustering is the object of interest, then there is evidence (see figure [ari-boxplots]) that extremely short chains can suffice, predicting a point estimate that is close to the generating structure, if enough learners are present in the final ensemble. 
 
 
 <!-- ![For the scenario with 20 relevant features and $\sigma^2=9$, there is a similar process. Increasing $R$ appears to be more important than increasing $S$ as the (4, 2) entry in the grid corresponds closely to the (5, 5) entry .  ](./Images/Simulations/large_standard_deviation_3/CMs/ConsensusSimulation1ConsensusMatrixGrid.png) -->
@@ -1156,7 +1167,7 @@ The advantages of being able to use independent short chains in terms of run tim
 
 
 
-![The time taken for each Markov chain to finish appears to scale linearly with the number of samples generated. This suggests that using shorter chains will reduce the computational time linearly; thus if the individual chains may be run in parallel significant time savings may be available. Assume one has 4 CPUs available to run chains upon and a single iteration takes $t$ seconds. Then based upon the relationship shown here, 10 chains of 10,000 iterations would take approximately $3 \times 10^4 t$ seconds and 100 chains of 10 iterations would take roughly $2.5 \times 10^2 t$ seconds, a difference of several orders of magnitude. ](./Images/Simulations/base_case/base_caseTimeComparisonGibbs.png)
+![The time taken for each Markov chain to finish appears to scale linearly with the number of samples generated. This suggests that using shorter chains will reduce the computational time linearly, thus if the individual chains may be run in parallel significant time savings may be available. Assume one has 4 CPUs available to run chains upon and a single iteration takes $t$ seconds. Then based upon the relationship shown here, 10 chains of 10,000 iterations would take approximately $3 \times 10^4 t$ seconds and 100 chains of 10 iterations would take roughly $2.5 \times 10^2 t$ seconds, a difference of several orders of magnitude. ](./Images/Simulations/base_case/base_caseTimeComparisonGibbs.png)
 
 
 
@@ -1187,11 +1198,11 @@ However, consensus clustering for Bayesian mixture models is intended to solve p
     * Consensus$(R', b S')$;
     * Consensus$(R', S')$;
   
-3. If the consensus matrices are sufficiently stable, stop. If the matrices are not considered sufficiently stable for the change in $R$ between $aR'$ and $R'$,  repeat the analysis for some $R'' > R'$. Similarly one may judge if the results have sufficiently stabilised for increases in $S$.
+3. If the consensus matrices are sufficiently stable, stop. If the matrices are not considered sufficiently stable for the change in $R$ between $aR'$ and $R'$,  repeat the analysis for some $R'' > R'$. Similarly, one may judge if the results have sufficiently stabilised for increases in $S$.
 
 <!-- Possibly a stopping rule could be created base upon some threshold $\epsilon \in \mathbb{R_{+}}$ (for example see equation \@ref(eq:stoppingRule)), though in practice a visual comparison of the CMs should be sufficient. If the matrices are not considered sufficiently stable for the change in $R$ between $aR'$ and $R'$,  repeat the analysis for some $R'' > R'$. Similarly one may judge if the results have sufficiently stabilised for increases in $S$. -->
 
-Of course there may be settings in which one is using consensus clustering as each iteration of the sampler is slow and thus there is a computational limit upon $R$. In this case, if one believes that this limit is less than the value required for a stable CM (i.e. probably on the scale of $10^1$) one has to validate the final clustering upon the data and prior knowledge of relaitonships within the data. Of course, this step is intrinsic to any cluster analaysis but perhaps acquires a greater depth of rigour in this case.
+Of course, there may be settings in which one is using consensus clustering as each iteration of the sampler is slow and thus there is a computational limit upon $R$. In this case if one believes that this limit is less than the value required for a stable CM (i.e. probably on the scale of $10^1$) one must validate the final clustering upon the data and prior knowledge of relaitonships within the data. Of course, this step is intrinsic to any cluster analaysis but perhaps acquires a greater depth of rigour in this case.
 
 <!-- \begin{align} -->
 <!-- &||CM(R', S') - CM(R', b S')||_F &< \epsilon \\ -->
